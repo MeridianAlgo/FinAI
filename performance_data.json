@@ -1,0 +1,114 @@
+{
+  "AAPL": [
+    {
+      "total_reward": 2266.25,
+      "avg_reward": 453.25,
+      "model_weights": {
+        "price_predictor": 760.625,
+        "trend_analyzer": 500.0,
+        "risk_assessor": 400.0,
+        "sentiment_analyzer": 300.0,
+        "fundamental_scorer": 305.625
+      },
+      "training_samples": 160,
+      "timestamp": "2025-09-18T21:55:36.341488"
+    },
+    {
+      "total_reward": 2220.807453416149,
+      "avg_reward": 444.16149068322983,
+      "model_weights": {
+        "price_predictor": 742.2360248447205,
+        "trend_analyzer": 475.46583850931677,
+        "risk_assessor": 400.0,
+        "sentiment_analyzer": 300.0,
+        "fundamental_scorer": 303.1055900621118
+      },
+      "training_samples": 161,
+      "timestamp": "2025-09-18T21:55:37.083272"
+    },
+    {
+      "total_reward": 1861.3141862489122,
+      "avg_reward": 372.2628372497824,
+      "model_weights": {
+        "price_predictor": 691.8189730200174,
+        "trend_analyzer": 289.38207136640557,
+        "risk_assessor": 399.6083550913838,
+        "sentiment_analyzer": 300.0,
+        "fundamental_scorer": 180.5047867711053
+      },
+      "training_samples": 1149,
+      "timestamp": "2025-09-18T21:57:22.294108"
+    }
+  ],
+  "MSFT": [
+    {
+      "total_reward": 2130.625,
+      "avg_reward": 426.125,
+      "model_weights": {
+        "price_predictor": 696.25,
+        "trend_analyzer": 466.5625,
+        "risk_assessor": 400.0,
+        "sentiment_analyzer": 300.0,
+        "fundamental_scorer": 267.8125
+      },
+      "training_samples": 160,
+      "timestamp": "2025-09-18T21:55:37.881059"
+    },
+    {
+      "total_reward": 2319.8757763975154,
+      "avg_reward": 463.9751552795031,
+      "model_weights": {
+        "price_predictor": 759.0062111801242,
+        "trend_analyzer": 485.09316770186336,
+        "risk_assessor": 400.0,
+        "sentiment_analyzer": 300.0,
+        "fundamental_scorer": 375.77639751552795
+      },
+      "training_samples": 161,
+      "timestamp": "2025-09-18T21:55:38.618126"
+    }
+  ],
+  "GOOGL": [
+    {
+      "total_reward": 2314.6875,
+      "avg_reward": 462.9375,
+      "model_weights": {
+        "price_predictor": 738.125,
+        "trend_analyzer": 495.0,
+        "risk_assessor": 400.0,
+        "sentiment_analyzer": 300.0,
+        "fundamental_scorer": 381.5625
+      },
+      "training_samples": 160,
+      "timestamp": "2025-09-18T21:55:39.276660"
+    },
+    {
+      "total_reward": 2278.5714285714284,
+      "avg_reward": 455.71428571428567,
+      "model_weights": {
+        "price_predictor": 744.0993788819876,
+        "trend_analyzer": 500.0,
+        "risk_assessor": 400.0,
+        "sentiment_analyzer": 300.0,
+        "fundamental_scorer": 334.472049689441
+      },
+      "training_samples": 161,
+      "timestamp": "2025-09-18T21:55:40.008370"
+    }
+  ],
+  "SOFI": [
+    {
+      "total_reward": 1827.8125,
+      "avg_reward": 365.5625,
+      "model_weights": {
+        "price_predictor": 572.5,
+        "trend_analyzer": 488.75,
+        "risk_assessor": 400.0,
+        "sentiment_analyzer": 300.0,
+        "fundamental_scorer": 66.5625
+      },
+      "training_samples": 160,
+      "timestamp": "2025-09-18T21:56:48.655216"
+    }
+  ]
+}
