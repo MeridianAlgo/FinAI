@@ -94,18 +94,6 @@ review the individual licenses for complete terms and conditions.
 
 ================================================================================
 
-HUGGING FACE MODEL LICENSES
-
-This software downloads and uses AI models from Hugging Face:
-
-1. ProsusAI/finbert - Used under Apache License 2.0
-2. cardiffnlp/twitter-roberta-base-sentiment-latest - Used under MIT License
-
-These models are downloaded to the user's local machine and are subject to
-their respective licenses and terms of use as published by their creators.
-
-================================================================================
-
 CONTACT INFORMATION
 
 For questions about this license or the software:
