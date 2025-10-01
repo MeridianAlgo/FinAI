@@ -270,25 +270,16 @@ scipy==1.11.4
 
 MIT License - see LICENSE file for details
 
-## Support
+---
+## A Quick Disclaimer
 
-For issues and questions:
-1. Check the documentation
-2. Review error messages
-3. Test with different symbols
-4. Check data availability
+This material is for informational purposes only and does not constitute financial, investment, legal, tax, or accounting advice. It is not intended to provide personalized recommendations or solicitations to buy or sell any securities or financial products.
+Investing involves substantial risks, including the potential loss of principal. Market conditions, economic factors, and other variables can lead to volatility and losses. Past performance is not indicative of future results; historical returns do not guarantee similar outcomes.
+Always consult a qualified financial advisor, attorney, or tax professional to assess your specific situation, risk tolerance, and objectives before making any investment decisions. We assume no liability for actions taken based on this information.
 
-## Changelog
+---
 
-### Version 2.0
-- Lazy loading implementation
-- 10-year data support
-- Enhanced ML models
-- Minimalistic CLI interface
-- Improved accuracy and performance
+**Made with ❤️ by Quantum Meridian (A MeridianAlgo Team)**
 
-### Version 1.0
-- Initial release
-- Basic AI models
-- Terminal interface
-- Yahoo Finance integration
+*Empowering the next generation of quantitative finance professionals through hands-on learning and practical implementation.*
+
