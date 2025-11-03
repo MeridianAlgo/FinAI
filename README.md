@@ -172,3 +172,113 @@ python main.py chat
 
 ## License
 MIT (adjust as desired)
+
+## Distributed Training (Server/Worker)
+
+FinAI supports distributed, CPU-only training across multiple machines using a lightweight server/worker architecture with dataset sharding and FedAvg aggregation. It includes robust error handling, persistence, and optional auth for remote workers.
+
+### Components
+- **Server**: `distributed_server.py`
+  - Assigns shards to workers, tracks progress, aggregates checkpoints via weighted FedAvg.
+  - Auto-sizes shard count based on active workers (heartbeats), with a configurable max.
+  - Persists session state to disk so you can resume later.
+  - Optional token auth for secure remote access.
+- **Worker**: `distributed_worker.py`
+  - Fetches shard jobs, trains CPU-only on its shard, uploads shard checkpoints.
+  - Sends heartbeats using a `worker_id` for dynamic shard sizing.
+  - Reports detailed errors with tracebacks and exits on failure.
+
+### CSV Tracking
+- `datasets.csv`: Pending datasets to train.
+- `trained_datasets.csv`: Only successful trainings are recorded here.
+- On failures, datasets remain in `datasets.csv` for retry; nothing is written to `trained_datasets.csv`.
+
+### Start the Server
+Install CPU-only PyTorch (aggregation uses torch):
+```bash
+pip install --index-url https://download.pytorch.org/whl/cpu torch
+```
+Run the server (token optional but recommended for remote access):
+```bash
+python distributed_server.py \
+  --host 0.0.0.0 \
+  --port 8000 \
+  --max-shards 8 \
+  --token YOUR_SECRET_TOKEN
+```
+
+Server endpoints:
+- `GET /next_job?worker_id=<id>`: Assigns a shard to a worker.
+- `POST /report_shard?name=<dataset>&shard_index=<i>&total_shards=<n>&num_samples=<k>` (binary body): Upload shard checkpoint.
+- `POST /report_result`: Legacy/single-shard reporting.
+- `GET /health`: Returns `{ ok: true, active_workers: N }`.
+
+### Start Workers
+Install deps:
+```bash
+pip install datasets numpy
+pip install --index-url https://download.pytorch.org/whl/cpu torch
+```
+Run worker(s):
+```bash
+python distributed_worker.py \
+  --server http://<server-ip>:8000 \
+  --id <unique-worker-id> \
+  --token YOUR_SECRET_TOKEN
+```
+
+Workers will:
+- Poll `/next_job` (with `worker_id`) which doubles as a heartbeat.
+- Train only their assigned shard on CPU and upload a checkpoint to the server.
+- Exit with a clear error and traceback on failure.
+
+### Dynamic Sharding and Leases
+- The server automatically sets `total_shards` = min(active_workers, `--max-shards`).
+- Sessions are persisted under `uploads/sessions/<dataset>.json` and include assigned/completed shards and leases.
+- A shard assignment has a lease. If a worker disappears, the server reclaims the shard after a timeout and reassigns it.
+- Once all shards complete, the server aggregates checkpoints with weighted FedAvg and saves:
+  - `models/distributed/<dataset_slug>/finai_gpt_fedavg.pt`
+
+Tip: For strict non-overlapping shards, connect the expected workers before a dataset starts (so shard count stabilizes). Dynamic increases mid-run may reuse some data; FedAvg still preserves accuracy.
+
+### Error Handling (Server + Worker)
+- All handlers wrapped in try/except with full traceback logging on the server.
+- Worker prints and reports exact errors with traceback; exits on failure.
+- Failed datasets are NOT added to `trained_datasets.csv` and are NOT removed from `datasets.csv`.
+
+### Sequential Training With Fail-Fast
+`train_sequential_v2.py` trains datasets one-by-one on CPU. If a dataset fails, it prints the exact error and exits immediately. Only successful datasets are moved to `trained_datasets.csv`.
+
+Run:
+```bash
+python train_sequential_v2.py
+```
+
+### Remote Access Options
+You can train from another network using either:
+
+- Tailscale (recommended):
+  1) Install on server and worker PCs. 2) `tailscale up` on each. 3) Use the server's tailnet IP in `--server`.
+
+- Port Forwarding:
+  - Forward TCP 8000 on your router to the server's LAN IP.
+  - Use your public IP in `--server` and set a strong `--token`.
+
+Examples:
+```bash
+# Tailscale example
+python distributed_worker.py --server http://100.x.y.z:8000 --id home-worker-1 --token YOUR_SECRET_TOKEN
+
+# Port forwarding example
+python distributed_worker.py --server http://YOUR_PUBLIC_IP:8000 --id remote-worker-1 --token YOUR_SECRET_TOKEN
+```
+
+### Health and Monitoring
+```bash
+curl http://<server-ip>:8000/health
+# -> { "ok": true, "active_workers": N }
+```
+
+### Artifacts
+- Sequential: `models/<dataset_slug>/finai_gpt.pt`, `models/<dataset_slug>/tokenizer.pkl`
+- Distributed aggregated: `models/distributed/<dataset_slug>/finai_gpt_fedavg.pt`
