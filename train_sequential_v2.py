@@ -8,7 +8,15 @@ import os
 import sys
 import time
 import csv
+from datetime import datetime
 from pathlib import Path
+from typing import List, Dict, Tuple, Optional
+
+# Force CPU usage
+import os
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'  # Disable GPU
+
+import torch
 from datasets import load_dataset
 from src.core.finai import FinAI
 
@@ -16,20 +24,8 @@ from src.core.finai import FinAI
 DATASET_HEADERS = ['name', 'config', 'split', 'date_trained', 'model_path', 'status']
 
 def detect_gpu():
-    """Auto-detect GPU availability"""
-    try:
-        import torch
-        if torch.cuda.is_available():
-            return True
-        try:
-            import torch_directml
-            if torch_directml.is_available():
-                return True
-        except ImportError:
-            pass
-        return False
-    except ImportError:
-        return False
+    """Force CPU usage"""
+    return False  # Always use CPU
 
 def load_datasets_csv(file_path):
     """Load datasets from a CSV file"""
@@ -119,21 +115,45 @@ def train_on_dataset(dataset_info):
             
         print(f"  Extracted {len(texts)} text samples")
         
-        use_gpu = detect_gpu()
-        print(f"\nGPU Available: {use_gpu}")
+        print("\nUsing CPU for training")
+        device = torch.device("cpu")
+        print(f"Using device: {device}")
         
         print("Initializing FinAI...")
-        model = FinAI(use_gpu=use_gpu)
+        model = FinAI()
         
-        print("Starting training...")
-        model.train(texts)
+        # Ensure model is on CPU
+        if hasattr(model, 'model') and model.model is not None:
+            model.model = model.model.to(device)
         
-        model_dir = "models"
-        model_path = os.path.join(model_dir, dataset_name.replace('/', '_'))
-        os.makedirs(model_dir, exist_ok=True)
-        
-        print(f"Saving model to {model_path}")
-        model.save_model(model_path)
+        print("Starting training (CPU-only) via train_from_file...")
+        import tempfile
+        with tempfile.NamedTemporaryFile('w', delete=False, encoding='utf-8', suffix='.txt') as tf:
+            for line in texts:
+                tf.write(line.replace('\n', ' ') + '\n')
+            tmp_path = tf.name
+
+        try:
+            model.train_from_file(tmp_path, use_gpu=False)
+        finally:
+            try:
+                os.remove(tmp_path)
+            except Exception:
+                pass
+
+        # Save artifacts in a dataset-specific folder
+        base_models = 'models'
+        src_model = os.path.join(base_models, 'finai_gpt.pt')
+        src_token = os.path.join(base_models, 'tokenizer.pkl')
+        out_dir = os.path.join(base_models, dataset_name.replace('/', '_'))
+        os.makedirs(out_dir, exist_ok=True)
+        if os.path.exists(src_model):
+            import shutil
+            shutil.copy2(src_model, os.path.join(out_dir, 'finai_gpt.pt'))
+        if os.path.exists(src_token):
+            import shutil
+            shutil.copy2(src_token, os.path.join(out_dir, 'tokenizer.pkl'))
+        model_path = out_dir
         
         training_time = (time.time() - start_time) / 60
         print(f"\nTraining completed in {training_time:.2f} minutes")
@@ -173,23 +193,28 @@ def main():
         
         # Train on the dataset
         success, result = train_on_dataset(current_dataset)
-        
-        # Update the dataset info
-        current_dataset['date_trained'] = time.strftime("%Y-%m-%d %H:%M:%S")
-        current_dataset['status'] = 'completed' if success else 'failed'
-        current_dataset['model_path'] = result if success else ''
-        
-        # Add to trained datasets
-        trained_datasets.append(current_dataset)
-        save_datasets_csv("trained_datasets.csv", trained_datasets)
-        
-        # Remove from pending datasets
-        datasets = [d for d in datasets if d['name'] != current_dataset['name']]
-        save_datasets_csv("datasets.csv", datasets)
-        
-        status = "completed successfully" if success else f"failed: {result}"
-        print(f"\nDataset '{current_dataset['name']}' {status}")
-        print("\n" + "="*80 + "\n")
+
+        if success:
+            # Update the dataset info only on success
+            current_dataset['date_trained'] = time.strftime("%Y-%m-%d %H:%M:%S")
+            current_dataset['status'] = 'completed'
+            current_dataset['model_path'] = result
+
+            # Add to trained datasets
+            trained_datasets.append(current_dataset)
+            save_datasets_csv("trained_datasets.csv", trained_datasets)
+
+            # Remove from pending datasets
+            datasets = [d for d in datasets if d['name'] != current_dataset['name']]
+            save_datasets_csv("datasets.csv", datasets)
+
+            print(f"\nDataset '{current_dataset['name']}' completed successfully")
+            print("\n" + "="*80 + "\n")
+        else:
+            # Failure: do not move to trained_datasets.csv, do not remove from datasets.csv
+            print(f"\nDataset '{current_dataset['name']}' failed with error:\n{result}")
+            print("Aborting training loop.")
+            sys.exit(1)
 
 if __name__ == "__main__":
     try:
