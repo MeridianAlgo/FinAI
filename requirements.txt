@@ -1,0 +1,5 @@
+torch>=2.0.0
+numpy>=1.24.0
+
+# Optional GPU backend for some Windows AMD GPUs:
+# pip install torch-directml
