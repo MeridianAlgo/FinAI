@@ -10,20 +10,21 @@ class Config:
     DATASET_DIR = "datasets"
 
     # Data (no loss: full usage, longer context for better learning)
-    BLOCK_SIZE = 1024  # 4x original: Captures dependencies, reduces truncation loss
+    BLOCK_SIZE = 256  # Smaller context for PCs; keeps useful span without huge memory
     MAX_DATA_TOKENS = float('inf')  # No subsampling—use all data
 
-    # Transformer architecture (scaled to ~350M params: medium, trainable on 16GB VRAM)
-    N_LAYER = 24  # 6x original: Deeper for richer representations (like GPT-3 mini)
-    N_HEAD = 16   # 4x original: Better multi-head attention (dim per head=64)
-    N_EMBD = 1024 # 4x original: Wider embeddings for capacity without OOM
-    DROPOUT = 0.05 # Halved: Lower for accuracy, still prevents minor overfitting
+    # Transformer architecture (small ~15M params; vocab embedding dominates size)
+    # Note: With ~50k vocab and tied embeddings, minimum is ~12.8M just for embeddings at 256 dims.
+    N_LAYER = 4
+    N_HEAD = 4    # head_dim = 64
+    N_EMBD = 256
+    DROPOUT = 0.05
 
     # Training (2–3x faster convergence; ~10k steps for 1M tokens = 1–2 epochs)
-    TRAIN_EPOCHS = 3  # Better than steps: Full passes over data
-    TRAIN_STEPS = 10000  # 5x original: Sufficient for medium model (adjust via len(dataset)/effective_batch)
-    BATCH_SIZE = 32  # Halved for VRAM safety; effective=256 with accum
-    GRADIENT_ACCUM_STEPS = 8  # New: Simulates batch=256, stable gradients
+    TRAIN_EPOCHS = 1
+    TRAIN_STEPS = 5000  # As requested
+    BATCH_SIZE = 16  # Lighter for consumer GPUs/CPU
+    GRADIENT_ACCUM_STEPS = 4  # Effective batch ~64
     LEARNING_RATE = 6e-4  # 2x original: Higher start for faster early progress
     WEIGHT_DECAY = 0.1  # New: L2 reg for generalization (AdamW default)
     WARMUP_STEPS = 100  # New: 1% of steps: Linear ramp to avoid early divergence

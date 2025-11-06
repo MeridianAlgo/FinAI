@@ -371,6 +371,14 @@ class LanguageModel(nn.Module):
                     f"Step {done}/{steps} | loss {(loss.item() * grad_accum_steps):.4f} | "
                     f"lr {current_lr:.2e} | elapsed {elapsed_td} | ETA {eta}"
                 )
+
+                # Periodic checkpoint save to unified model path
+                try:
+                    from src.config import Config
+                    ckpt_path = Config().LANGUAGE_MODEL_PATH
+                    self.save(ckpt_path, training_state={'total_steps_completed': step + 1})
+                except Exception as _:
+                    pass
         
         self.is_trained = True
         print(f"\n{'='*80}")
@@ -436,6 +444,10 @@ class LanguageModel(nn.Module):
         start_time = time.time()
         if accelerator.is_main_process:
             print(f"[Accelerate] Training on device={accelerator.device} | steps={steps}, batch_size={batch_size}, block_size={self.block_size} | mp={mixed_precision} | accum={gradient_accumulation_steps}")
+        # Define progress trackers (were missing before)
+        from collections import deque as _deque
+        step_times = _deque(maxlen=100)
+        last_tick = time.time()
 
         for step in range(steps):
             with accelerator.accumulate(model):
@@ -468,6 +480,14 @@ class LanguageModel(nn.Module):
                     elapsed_td = timedelta(seconds=int(elapsed))
                     current_lr = scheduler.get_last_lr()[0]
                     print(f"Step {done}/{steps} | loss {loss.item():.4f} | lr {current_lr:.2e} | elapsed {elapsed_td} | ETA {eta}")
+
+                    # Periodic checkpoint save to unified model path (main process only)
+                    try:
+                        from src.config import Config
+                        ckpt_path = Config().LANGUAGE_MODEL_PATH
+                        model.save(ckpt_path, training_state={'total_steps_completed': step + 1})
+                    except Exception as _:
+                        pass
 
         self.is_trained = True
         return accelerator.is_main_process

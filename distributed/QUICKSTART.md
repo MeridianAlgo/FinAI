@@ -23,38 +23,45 @@ Note the server IP address shown (e.g., `http://192.168.1.100:8765`)
 On your laptop:
 ```bash
 cd FinAI
-python distributed/worker.py --server http://192.168.1.100:8765
+python distributed/worker.py --server http://192.168.1.100:8765 --password MeridianAlgo@TRAIN
 ```
 
 On your PC:
 ```bash
 cd FinAI
-python distributed/worker.py --server http://192.168.1.100:8765
+python distributed/worker.py --server http://192.168.1.100:8765 --password MeridianAlgo@TRAIN
 ```
 
 On friend's PC:
 ```bash
 cd FinAI
-python distributed/worker.py --server http://192.168.1.100:8765 --worker-id friend_pc
+python distributed/worker.py --server http://192.168.1.100:8765 --password MeridianAlgo@TRAIN --worker-id friend_pc
 ```
 
 ## Step 3: Submit Tasks
 
 From any machine:
 ```bash
-python distributed/client.py --server http://192.168.1.100:8765 submit
+python distributed/client.py --server http://192.168.1.100:8765 --password MeridianAlgo@TRAIN submit
 ```
 
 ## Step 4: Monitor
 
-Check status:
+**Option 1: Web Dashboard (Recommended)**
 ```bash
-python distributed/client.py --server http://192.168.1.100:8765 status
+pip install flask flask-socketio
+python distributed/dashboard.py --server http://192.168.1.100:8765 --password MeridianAlgo@TRAIN
+```
+Then open http://localhost:5000 in your browser
+
+**Option 2: Command Line**
+```bash
+python distributed/client.py --server http://192.168.1.100:8765 --password MeridianAlgo@TRAIN status
 ```
 
 View workers:
 ```bash
-python distributed/client.py --server http://192.168.1.100:8765 workers
+python distributed/client.py --server http://192.168.1.100:8765 --password MeridianAlgo@TRAIN workers
 ```
 
 View tasks:

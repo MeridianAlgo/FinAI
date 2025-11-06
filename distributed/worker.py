@@ -14,6 +14,7 @@ import requests
 import threading
 from pathlib import Path
 from datetime import datetime
+import base64
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -119,6 +120,8 @@ class DistributedWorker:
     def complete_task(self, task_id, result):
         """Report task completion to server"""
         try:
+            # Upload latest checkpoint so others continue from here
+            self._upload_checkpoint_safe()
             requests.post(
                 f"{self.server_url}/complete_task",
                 json={
@@ -140,14 +143,23 @@ class DistributedWorker:
         dataset_name = task['dataset']
         config = task.get('config', {})
         
+        # Estimate ETA (default 2 hours per dataset)
+        estimated_time = 7200  # 2 hours in seconds
+        eta_hours = estimated_time // 3600
+        eta_minutes = (estimated_time % 3600) // 60
+        
         print(f"\n{'='*80}")
         print(f"Processing task: {task_id}")
         print(f"Dataset: {dataset_name}")
+        print(f"Estimated time: {eta_hours}h {eta_minutes}m")
+        print(f"Expected completion: {time.strftime('%I:%M %p', time.localtime(time.time() + estimated_time))}")
         print(f"{'='*80}\n")
         
         start_time = time.time()
-        
+
         try:
+            # Always pull the latest unified checkpoint before training
+            self._download_checkpoint_safe()
             # Import here to avoid loading on startup
             from datasets import load_dataset
             
@@ -216,14 +228,18 @@ class DistributedWorker:
             
             print(f"\nTask completed in {elapsed:.2f}s")
             return result
-        
+
         except Exception as e:
             print(f"\nTask failed: {e}")
             import traceback
             traceback.print_exc()
-            
+
             self.stats['errors'] += 1
-            
+            # Upload latest checkpoint (whatever progress was saved inside training loop)
+            self._upload_checkpoint_safe()
+            # Report drop so task is requeued
+            self._report_drop_safe(task_id, reason=str(e))
+
             return {
                 'status': 'failed',
                 'error': str(e),
@@ -292,7 +308,7 @@ class DistributedWorker:
             while self.running:
                 # Get task from server
                 task = self.get_task()
-                
+
                 if task:
                     self.current_task = task
                     result = self.process_task(task)
@@ -301,9 +317,13 @@ class DistributedWorker:
                 else:
                     # No tasks available, wait
                     time.sleep(10)
-        
+
         except KeyboardInterrupt:
             print("\n\nWorker stopped by user")
+            # If we were in the middle of a task, report drop and upload checkpoint
+            if self.current_task:
+                self._upload_checkpoint_safe()
+                self._report_drop_safe(self.current_task.get('task_id'), reason='KeyboardInterrupt')
         
         finally:
             self.running = False
@@ -311,6 +331,59 @@ class DistributedWorker:
             print(f"  Tasks completed: {self.stats['tasks_completed']}")
             print(f"  Total training time: {self.stats['total_training_time']:.2f}s")
             print(f"  Errors: {self.stats['errors']}")
+
+    # ----- Unified checkpoint helpers -----
+    def _download_checkpoint_safe(self):
+        """Download latest unified checkpoint from server if present"""
+        try:
+            resp = requests.get(
+                f"{self.server_url}/checkpoint",
+                params={'auth_password': self.auth_password},
+                timeout=10
+            )
+            if resp.status_code == 200 and resp.content:
+                models_dir = Path('models')
+                models_dir.mkdir(parents=True, exist_ok=True)
+                ckpt_path = models_dir / 'finai_gpt.pt'
+                with open(ckpt_path, 'wb') as f:
+                    f.write(resp.content)
+                print(f"Pulled latest checkpoint: {ckpt_path}")
+        except Exception as e:
+            print(f"Checkpoint download skipped: {e}")
+
+    def _upload_checkpoint_safe(self):
+        """Upload local unified checkpoint to server (base64) if exists"""
+        try:
+            ckpt_path = Path('models') / 'finai_gpt.pt'
+            if ckpt_path.exists():
+                raw = ckpt_path.read_bytes()
+                payload = {
+                    'filename': 'finai_gpt.pt',
+                    'content_base64': base64.b64encode(raw).decode('utf-8'),
+                    'auth_password': self.auth_password
+                }
+                r = requests.post(f"{self.server_url}/upload_checkpoint", json=payload, timeout=20)
+                if r.status_code == 200:
+                    print("Uploaded checkpoint to server")
+        except Exception as e:
+            print(f"Checkpoint upload skipped: {e}")
+
+    def _report_drop_safe(self, task_id, reason='unknown'):
+        """Notify server that this worker dropped the task so it can be requeued"""
+        try:
+            requests.post(
+                f"{self.server_url}/report_drop",
+                json={
+                    'worker_id': self.worker_id,
+                    'task_id': task_id,
+                    'reason': reason,
+                    'auth_password': self.auth_password
+                },
+                timeout=10
+            )
+            print(f"Reported drop for task {task_id} ({reason})")
+        except Exception as e:
+            print(f"Drop report failed: {e}")
 
 def main():
     """Start worker"""

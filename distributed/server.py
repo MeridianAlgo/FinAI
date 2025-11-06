@@ -49,14 +49,59 @@ workers = {}  # worker_id -> {last_seen, status, current_task, stats}
 task_queue = []  # List of pending tasks
 completed_tasks = []  # List of completed tasks
 model_shards = {}  # shard_id -> {worker_id, status, checksum}
+available_datasets = []  # Loaded from datasets.csv
+
+def load_available_datasets():
+    """Load available datasets from datasets.csv"""
+    import csv
+    global available_datasets
+    
+    datasets_file = Path("datasets.csv")
+    trained_file = Path("trained_datasets.csv")
+    
+    if not datasets_file.exists():
+        return
+    
+    # Load trained datasets
+    trained_names = set()
+    if trained_file.exists():
+        with open(trained_file, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            trained_names = {row['name'] for row in reader}
+    
+    # Load all datasets
+    with open(datasets_file, 'r', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        available_datasets = [
+            {
+                'name': row['name'],
+                'config': row.get('config', ''),
+                'split': row.get('split', 'train'),
+                'status': 'trained' if row['name'] in trained_names else 'pending'
+            }
+            for row in reader
+        ]
+    
+    print(f"Loaded {len(available_datasets)} datasets ({len([d for d in available_datasets if d['status'] == 'pending'])} pending)")
+
+# Load datasets on startup
+load_available_datasets()
 
 class DistributedTrainingServer(BaseHTTPRequestHandler):
     """HTTP server for coordinating distributed training"""
     
     def log_message(self, format, *args):
-        """Override to add timestamps to logs"""
+        """Override to add timestamps to logs - only log important events"""
+        # Skip logging for dashboard polling requests (check formatted line)
+        try:
+            line = format % args
+        except Exception:
+            line = str(format)
+        skip_patterns = ['GET /status', 'GET /workers', 'GET /tasks', 'GET /get_task', 'GET /datasets', 'GET /checkpoint']
+        if any(pat in line for pat in skip_patterns):
+            return
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        print(f"[{timestamp}] {format % args}")
+        print(f"[{timestamp}] {line}")
     
     def _send_json(self, data, status=200):
         """Send JSON response"""
@@ -120,6 +165,29 @@ class DistributedTrainingServer(BaseHTTPRequestHandler):
                 'pending': task_queue,
                 'completed': completed_tasks
             })
+        
+        elif path == '/datasets':
+            # List available datasets
+            self._send_json({
+                'datasets': available_datasets
+            })
+
+        elif path == '/checkpoint':
+            # Download the latest shared model checkpoint
+            ckpt_path = MODELS_DIR / 'finai_gpt.pt'
+            if not ckpt_path.exists():
+                self._send_json({'error': 'No checkpoint available'}, 404)
+                return
+            try:
+                with open(ckpt_path, 'rb') as f:
+                    data = f.read()
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/octet-stream')
+                self.send_header('Content-Length', str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+            except Exception as e:
+                self._send_json({'error': str(e)}, 500)
         
         elif path == '/get_task':
             # Worker requesting a task
@@ -202,11 +270,42 @@ class DistributedTrainingServer(BaseHTTPRequestHandler):
                 'dataset': data.get('dataset'),
                 'config': data.get('config', {}),
                 'submitted_at': time.time(),
-                'status': 'pending'
+                'status': 'pending',
+                'assigned_worker': data.get('assigned_worker')  # Optional: assign to specific worker
             }
             task_queue.append(task)
             self.log_message(f"Task submitted: {task['task_id']} - {task['dataset']}")
             self._send_json({'status': 'submitted', 'task_id': task['task_id']})
+        
+        elif path == '/assign_task':
+            # Assign a specific task to a specific worker
+            worker_id = data.get('worker_id')
+            dataset = data.get('dataset')
+            config = data.get('config', {})
+            
+            if not worker_id or not dataset:
+                self._send_json({'error': 'worker_id and dataset required'}, 400)
+                return
+            
+            if worker_id not in workers:
+                self._send_json({'error': 'Worker not found'}, 404)
+                return
+            
+            # Create task assigned to specific worker
+            task = {
+                'task_id': hashlib.md5(f"{time.time()}{worker_id}".encode()).hexdigest()[:8],
+                'dataset': dataset,
+                'config': config,
+                'submitted_at': time.time(),
+                'status': 'assigned',
+                'assigned_worker': worker_id
+            }
+            
+            # Add to front of queue so it's picked up next
+            task_queue.insert(0, task)
+            
+            self.log_message(f"Task assigned: {task['task_id']} - {dataset} to {worker_id}")
+            self._send_json({'status': 'assigned', 'task_id': task['task_id']})
         
         elif path == '/complete_task':
             # Worker completed a task
@@ -244,6 +343,45 @@ class DistributedTrainingServer(BaseHTTPRequestHandler):
             
             self.log_message(f"Shard uploaded: {shard_id} from {worker_id}")
             self._send_json({'status': 'uploaded', 'shard_id': shard_id})
+
+        elif path == '/upload_checkpoint':
+            # Upload unified model checkpoint (base64)
+            import base64
+            filename = data.get('filename', 'finai_gpt.pt')
+            content_b64 = data.get('content_base64')
+            if not content_b64:
+                self._send_json({'error': 'content_base64 required'}, 400)
+                return
+            try:
+                raw = base64.b64decode(content_b64)
+                out_path = MODELS_DIR / filename
+                out_path.parent.mkdir(parents=True, exist_ok=True)
+                with open(out_path, 'wb') as f:
+                    f.write(raw)
+                self.log_message(f"Checkpoint uploaded: {filename} ({len(raw)} bytes)")
+                self._send_json({'status': 'uploaded', 'path': str(out_path)})
+            except Exception as e:
+                self._send_json({'error': str(e)}, 500)
+
+        elif path == '/report_drop':
+            # Worker reports a dropped task; requeue task for others
+            worker_id = data.get('worker_id')
+            task_id = data.get('task_id')
+            reason = data.get('reason', 'unknown')
+            # Try to recover task from worker's current_task
+            task = None
+            if worker_id in workers:
+                task = workers[worker_id].get('current_task')
+                workers[worker_id]['current_task'] = None
+                workers[worker_id]['status'] = 'idle'
+                workers[worker_id]['last_seen'] = time.time()
+            if task:
+                task['status'] = 'pending'
+                task_queue.insert(0, task)  # Requeue at front
+                self.log_message(f"Task dropped: {task_id} by {worker_id} (reason: {reason}); requeued")
+                self._send_json({'status': 'requeued', 'task_id': task.get('task_id')})
+            else:
+                self._send_json({'status': 'ok', 'message': 'No task to requeue'})
         
         else:
             self._send_json({'error': 'Unknown endpoint'}, 404)
@@ -286,12 +424,15 @@ def main():
     print("  GET  /status        - Server status")
     print("  GET  /workers       - List workers")
     print("  GET  /tasks         - List tasks")
+    print("  GET  /checkpoint    - Download latest model checkpoint")
     print("  GET  /get_task      - Get next task (worker)")
     print("  POST /register      - Register worker")
     print("  POST /heartbeat     - Worker heartbeat")
     print("  POST /submit_task   - Submit training task")
     print("  POST /complete_task - Mark task complete")
     print("  POST /upload_shard  - Upload model shard")
+    print("  POST /upload_checkpoint - Upload unified model checkpoint (base64)")
+    print("  POST /report_drop   - Report dropped task and requeue it")
     print()
     print("Press Ctrl+C to stop")
     print("="*80)
