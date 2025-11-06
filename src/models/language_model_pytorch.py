@@ -2,6 +2,7 @@
 import math
 import os
 from typing import Optional, Tuple
+from collections import deque
 
 import torch
 import torch.nn as nn
@@ -321,6 +322,8 @@ class LanguageModel(nn.Module):
         scaler = torch.cuda.amp.GradScaler() if use_amp else None
 
         optimizer.zero_grad(set_to_none=True)
+        step_times = deque(maxlen=100)
+        last_tick = time.time()
         for step in range(steps):
             # Gradient accumulation
             for micro_step in range(grad_accum_steps):
@@ -353,11 +356,15 @@ class LanguageModel(nn.Module):
 
             # Report progress
             if (step + 1) % max(1, steps // 20) == 0 or step == 0:
-                elapsed = time.time() - start_time
+                now = time.time()
+                step_times.append(now - last_tick)
+                last_tick = now
+                # Use moving average over recent steps for a more accurate ETA
+                avg_step = (sum(step_times) / len(step_times)) if step_times else (now - start_time) / (step + 1)
+                elapsed = now - start_time
                 done = step + 1
-                avg = elapsed / max(1, done)
                 remaining = steps - done
-                eta = timedelta(seconds=int(avg * max(0, remaining)))
+                eta = timedelta(seconds=int(avg_step * max(0, remaining)))
                 elapsed_td = timedelta(seconds=int(elapsed))
                 current_lr = scheduler.get_last_lr()[0]
                 print(
@@ -390,9 +397,9 @@ class LanguageModel(nn.Module):
             raise RuntimeError("Install required packages: pip install accelerate transformers") from e
 
         accelerator = Accelerator(
-            mixed_precision=mixed_precision, 
+            mixed_precision=mixed_precision,
             gradient_accumulation_steps=gradient_accumulation_steps,
-            log_with="tensorboard"
+            log_with=None
         )
         
         self.train()
@@ -450,15 +457,17 @@ class LanguageModel(nn.Module):
 
             if (step + 1) % max(1, steps // 20) == 0 or step == 0:
                 if accelerator.is_main_process:
-                    elapsed = time.time() - start_time
+                    now = time.time()
+                    step_times.append(now - last_tick)
+                    last_tick = now
+                    avg_step = (sum(step_times) / len(step_times)) if step_times else (now - start_time) / (step + 1)
+                    elapsed = now - start_time
                     done = step + 1
-                    avg = elapsed / max(1, done)
                     remaining = steps - done
-                    eta = timedelta(seconds=int(avg * max(0, remaining)))
+                    eta = timedelta(seconds=int(avg_step * max(0, remaining)))
                     elapsed_td = timedelta(seconds=int(elapsed))
                     current_lr = scheduler.get_last_lr()[0]
-                    print(f"Step {done}/{steps} | loss {loss.item():.4f} | lr {current_lr:.2e} | "
-                          f"elapsed {elapsed_td} | ETA {eta}")
+                    print(f"Step {done}/{steps} | loss {loss.item():.4f} | lr {current_lr:.2e} | elapsed {elapsed_td} | ETA {eta}")
 
         self.is_trained = True
         return accelerator.is_main_process
@@ -482,7 +491,7 @@ class LanguageModel(nn.Module):
             checkpoint['training_state'] = training_state
         
         torch.save(checkpoint, path)
-        print(f"✓ Model saved to {path}")
+        print(f"Model saved to {path}")
 
     @staticmethod
     def load(path: str, use_gpu: bool = True, use_grad_checkpointing: bool = False) -> tuple:
@@ -556,7 +565,7 @@ class LanguageModel(nn.Module):
         # Extract training state if available
         training_state = ckpt.get('training_state', {})
         
-        print(f"✓ Model loaded from {path} (continuing training on same model)")
+        print(f"Model loaded from {path} (continuing training on same model)")
         if training_state:
             total_steps = training_state.get('total_steps_completed', 0)
             print(f"  Previous training: {total_steps:,} steps completed")

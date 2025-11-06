@@ -71,14 +71,14 @@ def git_commit_and_push(dataset_number):
     """Commit and push to git after dataset training"""
     try:
         print(f"\n{'='*80}")
-        print("📦 Committing to Git...")
+        print("Committing to Git...")
         print("="*80)
         
         # Git add all changes
         result = subprocess.run(['git', 'add', '.'], 
                               capture_output=True, text=True, check=False)
         if result.returncode != 0:
-            print(f"  ⚠️  Git add failed: {result.stderr}")
+            print(f"Git add failed: {result.stderr}")
             return False
         
         # Git commit with message
@@ -88,13 +88,13 @@ def git_commit_and_push(dataset_number):
         
         if result.returncode != 0:
             if 'nothing to commit' in result.stdout:
-                print("  ℹ️  No changes to commit")
+                print("No changes to commit")
                 return True
             else:
-                print(f"  ⚠️  Git commit failed: {result.stderr}")
+                print(f"Git commit failed: {result.stderr}")
                 return False
         
-        print(f"  ✓ Committed: {commit_msg}")
+        print(f"Committed: {commit_msg}")
         
         # Git push
         result = subprocess.run(['git', 'push', 'origin', 'main'],
@@ -106,20 +106,20 @@ def git_commit_and_push(dataset_number):
                                   capture_output=True, text=True, check=False)
             
             if result.returncode != 0:
-                print(f"  ⚠️  Git push failed: {result.stderr}")
-                print("  💡 Tip: Commit was successful, but push failed.")
+                print(f"Git push failed: {result.stderr}")
+                print("Tip: Commit was successful, but push failed.")
                 print("      Check your remote configuration and network.")
                 return False
         
-        print("  ✓ Pushed to remote repository")
+        print("Pushed to remote repository")
         print("="*80 + "\n")
         return True
         
     except FileNotFoundError:
-        print("  ⚠️  Git not found. Please install git or commit manually.")
+        print("Git not found. Please install git or commit manually.")
         return False
     except Exception as e:
-        print(f"  ⚠️  Git operation failed: {e}")
+        print(f"Git operation failed: {e}")
         return False
 
 def extract_text_from_dataset(dataset, split="train"):
@@ -132,7 +132,7 @@ def extract_text_from_dataset(dataset, split="train"):
         else:
             data = dataset[list(dataset.keys())[0]]
         
-        print(f"  Processing {len(data)} examples...")
+        print(f"Processing {len(data)} examples...")
         
         # Try multiple common field names
         text_fields = ['text', 'input', 'question', 'instruction', 'content', 'prompt', 'query', 'answer', 'response', 'output']
@@ -162,7 +162,7 @@ def extract_text_from_dataset(dataset, split="train"):
                 texts.append(text.strip())
     
     except Exception as e:
-        print(f"  WARNING: Error processing dataset: {e}")
+        print(f"Warning: Error processing dataset: {e}")
     
     return texts
 
@@ -173,12 +173,12 @@ def train_single_dataset(dataset_info, dataset_number, cfg):
     dataset_split = dataset_info.get('split', 'train')
     
     print(f"\n{'='*80}")
-    print(f"Dataset #{dataset_number}: {dataset_name}")
+    print(f"Training on dataset {dataset_number}: {dataset_name}")
     print("="*80)
     
     try:
         # Load the dataset
-        print(f"Loading dataset...")
+        print("Loading dataset...")
         token = get_hf_token()
         dataset = None
         try:
@@ -194,7 +194,7 @@ def train_single_dataset(dataset_info, dataset_number, cfg):
                 except TypeError:
                     dataset = load_dataset(dataset_name, use_auth_token=token) if token else load_dataset(dataset_name)
         except Exception as e:
-            print(f"  ❌ Could not load dataset (auth or access issue?): {e}")
+            print(f"Could not load dataset (auth or access issue?): {e}")
             return False
         
         # Extract text
@@ -202,18 +202,19 @@ def train_single_dataset(dataset_info, dataset_number, cfg):
         texts = extract_text_from_dataset(dataset, dataset_split)
         
         if not texts:
-            print(f"  ❌ No text data found in {dataset_name}, skipping...")
+            print(f"No text data found in {dataset_name}, skipping.")
             return False
         
-        print(f"  ✓ Extracted {len(texts):,} text samples")
+        print(f"Extracted {len(texts):,} text samples")
         
-        # Save to temporary file
-        temp_file = f"temp_dataset_{dataset_number}.txt"
+        # Save to temporary file in datasets folder
+        os.makedirs("datasets", exist_ok=True)
+        temp_file = f"datasets/temp_dataset_{dataset_number}.txt"
         print(f"Writing to temporary file...")
         with open(temp_file, 'w', encoding='utf-8') as f:
             f.write("\n\n".join(texts))
         file_size_mb = os.path.getsize(temp_file) / 1024 / 1024
-        print(f"  ✓ Written {file_size_mb:.2f} MB")
+        print(f"Written {file_size_mb:.2f} MB")
         
         # Train using FinAI
         print(f"\n{'='*80}")
@@ -239,7 +240,7 @@ def train_single_dataset(dataset_info, dataset_number, cfg):
             # Update status
             update_dataset_status(dataset_name, 'completed', cfg.LANGUAGE_MODEL_PATH)
             
-            print(f"\n✅ Dataset #{dataset_number} completed: {dataset_name}")
+            print(f"\nDataset #{dataset_number} completed: {dataset_name}")
             
             # Git commit and push
             git_commit_and_push(dataset_number)
@@ -250,10 +251,10 @@ def train_single_dataset(dataset_info, dataset_number, cfg):
             # Clean up temporary file
             if os.path.exists(temp_file):
                 os.remove(temp_file)
-                print(f"✓ Cleaned up temporary file\n")
+                print(f"Cleaned up temporary file\n")
     
     except Exception as e:
-        print(f"\n❌ Failed to train on {dataset_name}: {str(e)}")
+        print(f"\nFailed to train on {dataset_name}: {str(e)}")
         import traceback
         traceback.print_exc()
         return False

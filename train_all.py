@@ -16,6 +16,14 @@ from datasets import load_dataset
 from src.core.finai import FinAI
 from src.config import Config
 
+def get_hf_token() -> str | None:
+    """Return a Hugging Face token if available via env or local store."""
+    try:
+        from huggingface_hub import HfFolder
+        return os.environ.get('HF_TOKEN') or os.environ.get('HUGGINGFACE_TOKEN') or HfFolder.get_token()
+    except Exception:
+        return os.environ.get('HF_TOKEN') or os.environ.get('HUGGINGFACE_TOKEN')
+
 # CSV file headers
 DATASET_HEADERS = ['name', 'config', 'split', 'date_trained', 'model_path', 'status']
 
@@ -63,14 +71,14 @@ def git_commit_and_push(dataset_number):
     """Commit and push to git after dataset training"""
     try:
         print(f"\n{'='*80}")
-        print("📦 Committing to Git...")
+        print("Committing to Git...")
         print("="*80)
         
         # Git add all changes
         result = subprocess.run(['git', 'add', '.'], 
                               capture_output=True, text=True, check=False)
         if result.returncode != 0:
-            print(f"  ⚠️  Git add failed: {result.stderr}")
+            print(f"Git add failed: {result.stderr}")
             return False
         
         # Git commit with message
@@ -80,13 +88,13 @@ def git_commit_and_push(dataset_number):
         
         if result.returncode != 0:
             if 'nothing to commit' in result.stdout:
-                print("  ℹ️  No changes to commit")
+                print("No changes to commit")
                 return True
             else:
-                print(f"  ⚠️  Git commit failed: {result.stderr}")
+                print(f"Git commit failed: {result.stderr}")
                 return False
         
-        print(f"  ✓ Committed: {commit_msg}")
+        print(f"Committed: {commit_msg}")
         
         # Git push
         result = subprocess.run(['git', 'push', 'origin', 'main'],
@@ -98,20 +106,20 @@ def git_commit_and_push(dataset_number):
                                   capture_output=True, text=True, check=False)
             
             if result.returncode != 0:
-                print(f"  ⚠️  Git push failed: {result.stderr}")
-                print("  💡 Tip: Commit was successful, but push failed.")
+                print(f"Git push failed: {result.stderr}")
+                print("Tip: Commit was successful, but push failed.")
                 print("      Check your remote configuration and network.")
                 return False
         
-        print("  ✓ Pushed to remote repository")
+        print("Pushed to remote repository")
         print("="*80 + "\n")
         return True
         
     except FileNotFoundError:
-        print("  ⚠️  Git not found. Please install git or commit manually.")
+        print("Git not found. Please install git or commit manually.")
         return False
     except Exception as e:
-        print(f"  ⚠️  Git operation failed: {e}")
+        print(f"Git operation failed: {e}")
         return False
 
 def extract_text_from_dataset(dataset, split="train"):
@@ -124,7 +132,7 @@ def extract_text_from_dataset(dataset, split="train"):
         else:
             data = dataset[list(dataset.keys())[0]]
         
-        print(f"  Processing {len(data)} examples...")
+        print(f"Processing {len(data)} examples...")
         
         # Try multiple common field names
         text_fields = ['text', 'input', 'question', 'instruction', 'content', 'prompt', 'query', 'answer', 'response', 'output']
@@ -154,8 +162,8 @@ def extract_text_from_dataset(dataset, split="train"):
                 texts.append(text.strip())
     
     except Exception as e:
-        print(f"  WARNING: Error processing dataset: {e}")
-    
+        print(f"Error processing dataset: {e}")
+        
     return texts
 
 def main():
@@ -173,8 +181,8 @@ def main():
     pending_datasets = [d for d in datasets if d['name'] not in trained_names]
     
     if not pending_datasets:
-        print("✓ No new datasets to train. All datasets have been processed.")
-        print("  The model has already been trained on all available data.\n")
+        print("No new datasets to train. All datasets have been processed.")
+        print("The model has already been trained on all available data.\n")
         return
     
     print(f"Found {len(pending_datasets)} new dataset(s) to add to training:")
@@ -196,39 +204,50 @@ def main():
         
         try:
             # Load the dataset
-            dataset = load_dataset(dataset_name, dataset_config) if dataset_config else load_dataset(dataset_name)
+            token = get_hf_token()
+            if dataset_config:
+                try:
+                    dataset = load_dataset(dataset_name, dataset_config, token=token) if token else load_dataset(dataset_name, dataset_config)
+                except TypeError:
+                    dataset = load_dataset(dataset_name, dataset_config, use_auth_token=token) if token else load_dataset(dataset_name, dataset_config)
+            else:
+                try:
+                    dataset = load_dataset(dataset_name, token=token) if token else load_dataset(dataset_name)
+                except TypeError:
+                    dataset = load_dataset(dataset_name, use_auth_token=token) if token else load_dataset(dataset_name)
             
             # Extract text
             print(f"Extracting text from {dataset_name}...")
             texts = extract_text_from_dataset(dataset, dataset_split)
             
             if not texts:
-                print(f"  WARNING: No text data found in {dataset_name}, skipping...")
+                print(f"Warning: No text data found in {dataset_name}, skipping.")
                 continue
             
-            print(f"  ✓ Extracted {len(texts):,} text samples")
+            print(f"Extracted {len(texts):,} text samples")
             combined_text.extend(texts)
             successful_datasets.append(dataset_info)
             
         except Exception as e:
-            print(f"  ERROR loading {dataset_name}: {str(e)}")
-            print(f"  Skipping this dataset...")
+            print(f"Error loading {dataset_name}: {str(e)}")
+            print(f"Skipping this dataset...")
             continue
     
     if not combined_text:
-        print("\n❌ ERROR: No valid training data found in any dataset")
+        print("\nERROR: No valid training data found in any dataset")
         return
     
     print(f"\n{'='*80}")
     print(f"Total text samples across all datasets: {len(combined_text):,}")
     print(f"{'='*80}\n")
     
-    # Save combined text to temporary file
-    temp_file = "combined_training_data.txt"
+    # Save combined text to temporary file in datasets folder
+    os.makedirs("datasets", exist_ok=True)
+    temp_file = "datasets/combined_training_data.txt"
     print(f"Writing combined data to {temp_file}...")
     with open(temp_file, 'w', encoding='utf-8') as f:
         f.write("\n\n".join(combined_text))
-    print(f"✓ Written {os.path.getsize(temp_file) / 1024 / 1024:.2f} MB\n")
+    print(f"Written {os.path.getsize(temp_file) / 1024 / 1024:.2f} MB\n")
     
     # Train using FinAI (which handles single model persistence)
     finai = FinAI()
@@ -255,20 +274,20 @@ def main():
         
         for i, dataset_info in enumerate(successful_datasets, start=dataset_number):
             update_dataset_status(dataset_info['name'], 'completed', model_path)
-            print(f"\n✓ Dataset #{i} completed: {dataset_info['name']}")
+            print(f"\nDataset #{i} completed: {dataset_info['name']}")
             
             # Git commit and push after each dataset
             git_commit_and_push(i)
         
         print("\n" + "="*80)
-        print("✅ Training completed successfully!")
-        print(f"   Model saved to: {model_path}")
-        print(f"   Datasets trained: {len(successful_datasets)}")
-        print(f"   Total datasets in history: {len(trained_datasets) + len(successful_datasets)}")
+        print("Training completed successfully")
+        print(f"Model saved to: {model_path}")
+        print(f"Datasets trained: {len(successful_datasets)}")
+        print(f"Total datasets in history: {len(trained_datasets) + len(successful_datasets)}")
         print("="*80 + "\n")
         
     except Exception as e:
-        print(f"\n❌ Training failed: {str(e)}")
+        print(f"\nTraining failed: {str(e)}")
         import traceback
         traceback.print_exc()
         return
@@ -276,7 +295,7 @@ def main():
         # Clean up temporary file
         if os.path.exists(temp_file):
             os.remove(temp_file)
-            print(f"✓ Cleaned up temporary file: {temp_file}\n")
+            print(f"Cleaned up temporary file: {temp_file}\n")
 
 if __name__ == "__main__":
     try:

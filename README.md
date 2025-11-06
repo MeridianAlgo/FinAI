@@ -31,9 +31,16 @@ FinAI/
 ├── scripts/                      # Utility scripts
 │   ├── download_all_datasets.py  # Download financial datasets
 │   ├── manage_datasets.py        # Dataset tracking utilities
-│   └── verify_gpu.py             # GPU setup verification
+│   ├── verify_gpu.py             # GPU setup verification
+│   └── sort_datasets_by_size_v2.py  # Sorts datasets.csv by size (HF Hub)
 │
-├── tests/                        # Test suites
+├── distributed/                  # Distributed training system
+│   ├── server.py                 # Coordination server (Raspberry Pi)
+│   ├── worker.py                 # Worker node (laptop, PC, etc.)
+│   ├── client.py                 # Task submission client
+│   ├── README.md                 # Distributed training guide
+│   └── EFFICIENCY_ANALYSIS.md    # Performance analysis
+│
 ├── archive/                      # Archived old files
 │
 ├── main.py                       # CLI entrypoint
@@ -351,6 +358,27 @@ python train_all.py \
 ```bash
 accelerate launch --num_processes 2 train_all.py
 ```
+
+### **Distributed Training (Multiple Machines)**
+
+Train across multiple machines for 2-3x speedup:
+
+**Server (Raspberry Pi or always-on machine):**
+```bash
+python distributed/server.py
+```
+
+**Workers (laptop, PC, friend's PC):**
+```bash
+python distributed/worker.py --server http://SERVER_IP:8765
+```
+
+**Submit tasks:**
+```bash
+python distributed/client.py --server http://SERVER_IP:8765 submit
+```
+
+See `distributed/README.md` for full documentation.
 
 ### **Clean Up Old Models**
 

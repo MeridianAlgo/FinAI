@@ -55,14 +55,14 @@ class FinAI:
         # Load or create tokenizer (must be consistent)
         if os.path.exists(self.config.TOKENIZER_PATH):
             self.tokenizer = Tokenizer.load(self.config.TOKENIZER_PATH)
-            print("✓ Loaded existing tokenizer")
+            print("Loaded existing tokenizer")
         else:
             self.tokenizer = Tokenizer()
-            print("✓ Created new tokenizer")
+            print("Created new tokenizer")
         
         tokens = self.tokenizer.encode(text)
         tokens_tensor = torch.tensor(tokens, dtype=torch.long)
-        print(f"✓ Tokenized {len(tokens):,} tokens")
+        print(f"Tokenized {len(tokens):,} tokens")
 
         # Use optimized defaults from config
         steps = steps or self.config.TRAIN_STEPS
@@ -85,14 +85,14 @@ class FinAI:
         # Load existing model or create new one (SAME model always)
         training_state = {}
         if os.path.exists(self.config.LANGUAGE_MODEL_PATH):
-            print("\n✓ Loading existing model to CONTINUE training...")
+            print("\nLoading existing model to continue training...")
             self.model, training_state = GPTModel.load(
                 self.config.LANGUAGE_MODEL_PATH, 
                 use_gpu=use_gpu,
                 use_grad_checkpointing=self.config.USE_GRAD_CHECKPOINTING
             )
         else:
-            print("\n✓ Creating NEW model (first time)...")
+            print("\nCreating new model (first time)...")
             self.model = GPTModel(
                 vocab_size=self.tokenizer.vocab_size,
                 block_size=self.config.BLOCK_SIZE,
@@ -120,7 +120,7 @@ class FinAI:
                     print("Accelerate not installed; using standard training")
 
         if accel_enabled:
-            print("\n🚀 Using Accelerate for optimized training\n")
+            print("\nUsing Accelerate for optimized training\n")
             try:
                 is_main = self.model.train_on_tokens_accelerate(
                     tokens_tensor,
@@ -162,7 +162,7 @@ class FinAI:
             self._save_models()
 
         print("\n" + "="*80)
-        print("✓ Training complete - Model saved to:", self.config.LANGUAGE_MODEL_PATH)
+        print("Training complete - Model saved to:", self.config.LANGUAGE_MODEL_PATH)
         print("="*80 + "\n")
 
     def _load_models(self) -> bool:
@@ -183,7 +183,7 @@ class FinAI:
         os.makedirs(self.config.MODEL_DIR, exist_ok=True)
         self.tokenizer.save(self.config.TOKENIZER_PATH)
         self.model.save(self.config.LANGUAGE_MODEL_PATH, training_state=training_state)
-        print(f"✓ Model checkpoint saved (continuing same model)")
+        print(f"Model checkpoint saved (continuing same model)")
 
     def generate_response(self, user_input: str) -> str:
         """Generate response with improved sampling (top-k + top-p)"""
