@@ -1,5 +1,17 @@
+# FinAI - Modern GPT Requirements
+
+# Core dependencies
 torch>=2.0.0
+transformers>=4.30.0
+accelerate>=0.24.0
+datasets>=2.14.0
 numpy>=1.24.0
 
-# Optional GPU backend for some Windows AMD GPUs:
+# Optional but recommended
+tiktoken>=0.5.0  # For GPT-style tokenization
+
+# Optional GPU backend for Windows AMD GPUs:
 # pip install torch-directml
+
+# For AMD ROCm (Linux):
+# pip install torch --index-url https://download.pytorch.org/whl/rocm5.7
