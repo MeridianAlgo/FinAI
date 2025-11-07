@@ -155,128 +155,6 @@
             color: #333;
         }
         
-        .assign-btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            margin-top: 10px;
-            width: 100%;
-            transition: all 0.2s;
-        }
-        
-        .assign-btn:hover {
-            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-        }
-        
-        .datasets-section {
-            max-height: 400px;
-            overflow-y: auto;
-        }
-        
-        .dataset-item {
-            background: #f8f9fa;
-            padding: 15px;
-            margin: 10px 0;
-            border-radius: 8px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border: 1px solid #e0e0e0;
-            transition: all 0.2s;
-        }
-        
-        .dataset-item:hover {
-            background: #e9ecef;
-            border-color: #667eea;
-        }
-        
-        .dataset-name {
-            font-weight: 600;
-            color: #333;
-        }
-        
-        .dataset-status {
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 0.85em;
-            font-weight: bold;
-        }
-        
-        .status-pending {
-            background: #ffc107;
-            color: #333;
-        }
-        
-        .status-trained {
-            background: #28a745;
-            color: white;
-        }
-        
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 2000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.8);
-        }
-        
-        .modal-content {
-            background: white;
-            margin: 10% auto;
-            padding: 30px;
-            border-radius: 15px;
-            width: 80%;
-            max-width: 600px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-        }
-        
-        .close {
-            color: #999;
-            float: right;
-            font-size: 28px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        
-        .close:hover {
-            color: #333;
-        }
-        
-        .modal-title {
-            color: #667eea;
-            font-size: 1.5em;
-            margin-bottom: 20px;
-        }
-        
-        .dataset-list {
-            max-height: 400px;
-            overflow-y: auto;
-        }
-        
-        .dataset-select-item {
-            background: #f8f9fa;
-            padding: 15px;
-            margin: 10px 0;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-            border: 2px solid transparent;
-        }
-        
-        .dataset-select-item:hover {
-            background: #e9ecef;
-            border-color: #667eea;
-        }
-        
         .task-table {
             width: 100%;
             border-collapse: collapse;
@@ -398,13 +276,6 @@
         </div>
         
         <div class="section">
-            <div class="section-title">📚 Available Datasets (<span id="datasetCount">0</span>)</div>
-            <div class="datasets-section" id="datasetsSection">
-                <div class="no-data">Loading datasets...</div>
-            </div>
-        </div>
-        
-        <div class="section">
             <div class="section-title">📋 Pending Tasks (<span id="pendingCount">0</span>)</div>
             <div id="pendingTasksTable">
                 <div class="no-data">No pending tasks</div>
@@ -421,21 +292,8 @@
         <div class="update-time">Last updated: <span id="updateTime">Never</span></div>
     </div>
     
-    <!-- Modal for dataset selection -->
-    <div id="assignModal" class="modal">
-        <div class="modal-content">
-            <span class="close">&times;</span>
-            <h2 class="modal-title">Assign Dataset to <span id="modalWorkerName"></span></h2>
-            <div class="dataset-list" id="modalDatasetList">
-                <div class="no-data">Loading...</div>
-            </div>
-        </div>
-    </div>
-    
     <script>
         const socket = io();
-        let currentWorkerId = null;
-        let availableDatasets = [];
         
         socket.on('connect', function() {
             document.getElementById('connectionStatus').textContent = '🟢 Connected';
@@ -481,9 +339,6 @@
                             <strong>Errors:</strong> ${worker.errors}<br>
                             ${worker.capabilities.cuda_available ? '🎮 GPU: ' + worker.capabilities.cuda_devices + ' device(s)' : '💻 CPU only'}
                         </div>
-                        <button class="assign-btn" onclick="openAssignModal('${worker.id}')">
-                            📝 Assign Dataset
-                        </button>
                     </div>
                 `).join('');
             }
@@ -555,96 +410,10 @@
             document.getElementById('updateTime').textContent = new Date().toLocaleTimeString();
         }
         
-        // Load datasets
-        function loadDatasets() {
-            fetch('/api/datasets')
-                .then(response => response.json())
-                .then(data => {
-                    availableDatasets = data.datasets || [];
-                    displayDatasets();
-                });
-        }
-        
-        function displayDatasets() {
-            const datasetsSection = document.getElementById('datasetsSection');
-            document.getElementById('datasetCount').textContent = availableDatasets.length;
-            
-            if (availableDatasets.length === 0) {
-                datasetsSection.innerHTML = '<div class="no-data">No datasets available</div>';
-            } else {
-                datasetsSection.innerHTML = availableDatasets.map(dataset => `
-                    <div class="dataset-item">
-                        <div class="dataset-name">${dataset.name}</div>
-                        <div class="dataset-status status-${dataset.status}">${dataset.status}</div>
-                    </div>
-                `).join('');
-            }
-        }
-        
-        function openAssignModal(workerId) {
-            currentWorkerId = workerId;
-            document.getElementById('modalWorkerName').textContent = workerId;
-            
-            const modalDatasetList = document.getElementById('modalDatasetList');
-            const pendingDatasets = availableDatasets.filter(d => d.status === 'pending');
-            
-            if (pendingDatasets.length === 0) {
-                modalDatasetList.innerHTML = '<div class="no-data">No pending datasets available</div>';
-            } else {
-                modalDatasetList.innerHTML = pendingDatasets.map(dataset => `
-                    <div class="dataset-select-item" onclick="assignDataset('${dataset.name}')">
-                        <strong>${dataset.name}</strong>
-                    </div>
-                `).join('');
-            }
-            
-            document.getElementById('assignModal').style.display = 'block';
-        }
-        
-        function assignDataset(datasetName) {
-            fetch('/api/assign', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    worker_id: currentWorkerId,
-                    dataset: datasetName
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'assigned') {
-                    alert(`✅ Assigned ${datasetName} to ${currentWorkerId}`);
-                    document.getElementById('assignModal').style.display = 'none';
-                } else {
-                    alert(`❌ Error: ${data.error || 'Failed to assign task'}`);
-                }
-            })
-            .catch(error => {
-                alert(`❌ Error: ${error}`);
-            });
-        }
-        
-        // Close modal
-        document.querySelector('.close').onclick = function() {
-            document.getElementById('assignModal').style.display = 'none';
-        }
-        
-        window.onclick = function(event) {
-            const modal = document.getElementById('assignModal');
-            if (event.target == modal) {
-                modal.style.display = 'none';
-            }
-        }
-        
         // Initial load
         fetch('/api/status')
             .then(response => response.json())
             .then(data => updateDashboard(data));
-        
-        loadDatasets();
-        setInterval(loadDatasets, 10000); // Reload datasets every 10 seconds
     </script>
 </body>
 </html>
