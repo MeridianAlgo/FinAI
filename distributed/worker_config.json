@@ -1,0 +1,11 @@
+{
+  "server_url": "http://YOUR_SERVER_IP:8765",
+  "auth_password": "MeridianAlgo@TRAIN",
+  "worker_id": "auto",
+  "heartbeat_interval": 30,
+  "task_poll_interval": 10,
+  "gpu_enabled": "auto",
+  "num_threads": "auto",
+  "min_ram_gb": 4,
+  "min_disk_gb": 20
+}
