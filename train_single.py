@@ -5,11 +5,6 @@ Quick test script for training on one dataset
 """
 import sys
 import os
-import time
-import threading
-import webbrowser
-from datetime import timedelta
-from pathlib import Path
 from datasets import load_dataset
 from src.core.finai import FinAI
 from src.config import Config
@@ -50,22 +45,6 @@ def train_single_dataset(dataset_name):
         
         print(f"Saved to: {temp_file}")
         
-        # Start dashboard in background
-        print(f"\nStarting training dashboard...")
-        dashboard_thread = threading.Thread(
-            target=lambda: os.system('python training_dashboard.py --no-browser'),
-            daemon=True
-        )
-        dashboard_thread.start()
-        time.sleep(2)  # Give dashboard time to start
-        
-        # Open dashboard in browser
-        try:
-            webbrowser.open('http://localhost:8080')
-        except:
-            pass
-        
-        print(f"Dashboard available at: http://localhost:8080")
         print(f"\nStarting training...")
         finai = FinAI()
         cfg = Config()

@@ -6,39 +6,36 @@ FinAI is a lightweight yet powerful transformer-based language model that trains
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
-- [Features](#-features)
-- [Quick Start](#-quick-start)
-- [Training Modes](#-training-modes)
-- [Training Dashboard](#-training-dashboard)
-- [Distributed Training](#-distributed-training)
-- [Model Architecture](#-model-architecture)
-- [Configuration](#️-configuration)
-- [Commands Reference](#-commands-reference)
-- [Project Structure](#-project-structure)
-- [Documentation](#-documentation)
-- [Requirements](#-requirements)
+- [Features](#features)
+- [Quick Start](#quick-start)
+- [Training Modes](#training-modes)
+- [Distributed Training](#distributed-training)
+- [Model Architecture](#model-architecture)
+- [Configuration](#configuration)
+- [Commands Reference](#commands-reference)
+- [Project Structure](#project-structure)
+- [Documentation](#documentation)
+- [Requirements](#requirements)
 
 ---
 
-## ✨ Features
+##  Features
 
-### 🎯 Core Capabilities
+###  Core Capabilities
 - **Single Unified Model**: All training contributes to one model (`models/finai_gpt.pt`)
 - **Continuous Learning**: Load and continue training from any checkpoint
 - **Modern Architecture**: GPT-style transformer with RoPE, SwiGLU, Flash Attention
 - **Optimized Training**: AdamW optimizer, cosine LR schedule, gradient accumulation
 - **Accurate ETA**: Exponential moving average for smooth, reliable time estimates
-- **Real-time Dashboard**: Beautiful web UI showing training metrics and progress
 
-### 🌐 Distributed Training
+###  Distributed Training
 - **Multi-Machine Training**: Train with friends across multiple computers
 - **Automatic Synchronization**: Workers pull/push model checkpoints automatically
-- **Web Dashboard**: Monitor all workers, tasks, and progress in real-time
-- **No External Packages**: Distributed dashboard uses only Python stdlib
+- **Task Queue Management**: Coordinate training across multiple workers
 
-### 📊 Training Modes
+###  Training Modes
 1. **Single Dataset** (`train_single.py`): Quick training on one dataset
 2. **Sequential** (`train_sequential.py`): Train datasets one-by-one with commits
 3. **Batch** (`train_all.py`): Combine all pending datasets into one training run
@@ -80,7 +77,7 @@ python main.py chat
 
 ---
 
-## 🎓 Training Modes
+##  Training Modes
 
 ### 1. Single Dataset Training
 
@@ -146,41 +143,11 @@ python dashboard.py --server http://server-ip:8765
 - Real-time monitoring dashboard
 - Task queue management
 
-📖 **[Full Distributed Training Guide](docs/QUICKSTART.md)**
+ **[Full Distributed Training Guide](docs/QUICKSTART.md)**
 
 ---
 
-## 📊 Training Dashboard
-
-Every local training session automatically launches a beautiful web dashboard:
-
-### Features
-- **Live Metrics**: Loss, learning rate, step progress
-- **Accurate ETA**: Exponential moving average for reliable estimates
-- **Loss Chart**: Visual graph of last 50 steps
-- **Configuration**: View all training parameters
-- **Auto-refresh**: Updates every 10 seconds
-
-### Access
-- Automatically opens at `http://localhost:8080`
-- Or run standalone: `python training_dashboard.py`
-
-### Screenshot
-```
-┌─────────────────────────────────────────┐
-│  🚀 FinAI Training Dashboard            │
-│  Status: TRAINING                       │
-├─────────────────────────────────────────┤
-│  Progress: 2,500 / 5,000 (50.0%)       │
-│  Elapsed: 0:15:30 | ETA: 0:15:30       │
-│  Loss: 2.1045 | LR: 6.00e-04           │
-│  Device: CUDA | Dataset: financebench   │
-└─────────────────────────────────────────┘
-```
-
----
-
-## 🌐 Distributed Training
+##  Distributed Training
 
 ### Architecture
 
@@ -216,25 +183,18 @@ python worker.py --server http://server-ip:8765
 python client.py submit PatronusAI/financebench
 ```
 
-4. **Monitor Progress**:
-```bash
-python dashboard.py --server http://server-ip:8765
-```
-
 ### Key Features
 
 - **Single Model**: All workers contribute to `models/finai_gpt.pt`
 - **Auto-sync**: Workers download latest model before training
 - **Fault Tolerant**: Failed tasks automatically reassigned
-- **No Flask**: Dashboard uses only Python stdlib (http.server)
 
-📖 **[Distributed Training Documentation](docs/README.md)**  
-📖 **[Dashboard Guide](docs/DASHBOARD_GUIDE.md)**  
-📖 **[Remote Access Setup](docs/REMOTE_ACCESS_SETUP.md)**
+ **[Distributed Training Documentation](docs/README.md)**  
+ **[Remote Access Setup](docs/REMOTE_ACCESS_SETUP.md)**
 
 ---
 
-## 🏗️ Model Architecture
+##  Model Architecture
 
 ### Transformer Specifications
 
@@ -266,7 +226,7 @@ Vocabulary: ~50,000 tokens (BPE)
 
 ---
 
-## ⚙️ Configuration
+##  Configuration
 
 All settings in `src/config.py`:
 
@@ -329,7 +289,7 @@ python main.py generate "Your prompt here"
 ### Training Scripts
 
 ```bash
-# Single dataset (with dashboard)
+# Single dataset
 python train_single.py <hf-dataset-name>
 
 # Sequential training
@@ -353,20 +313,6 @@ python worker.py --server http://server:8765 [--name worker-1]
 python client.py submit <dataset-name>
 python client.py status
 python client.py workers
-
-# Dashboard
-python dashboard.py --server http://server:8765 [--port 8081]
-```
-
-### Dashboards
-
-```bash
-# Local training dashboard
-python training_dashboard.py [--port 8080]
-
-# Distributed dashboard
-cd distributed
-python dashboard.py [--server http://localhost:8765] [--port 8081]
 ```
 
 ---
@@ -380,7 +326,6 @@ FinAI/
 ├── train_sequential.py          # Sequential training
 ├── train_all.py                 # Batch training
 ├── run_prompt.py                # Quick generation script
-├── training_dashboard.py        # Local training dashboard
 ├── requirements.txt             # Python dependencies
 ├── datasets.csv                 # Pending datasets
 ├── trained_datasets.csv         # Completed datasets
@@ -393,14 +338,12 @@ FinAI/
 │   │   └── language_model_pytorch.py  # GPT model implementation
 │   ├── data/
 │   │   └── tokenizer.py        # BPE tokenizer
-│   ├── config.py               # Configuration
-│   └── training_metrics.py     # Metrics tracking
+│   └── config.py               # Configuration
 │
 ├── distributed/                 # Distributed training system
 │   ├── server.py               # Coordination server
 │   ├── worker.py               # Training worker
 │   ├── client.py               # Task submission client
-│   ├── dashboard.py            # Monitoring dashboard (no Flask!)
 │   ├── server_config.json      # Server configuration
 │   └── worker_config.json      # Worker configuration
 │
@@ -418,15 +361,15 @@ FinAI/
 └── docs/                        # Documentation
     ├── README.md               # Distributed training docs
     ├── QUICKSTART.md           # Quick start guide
-    ├── DASHBOARD_GUIDE.md      # Dashboard documentation
     ├── REMOTE_ACCESS_SETUP.md  # Remote access guide
     ├── EFFICIENCY_ANALYSIS.md  # Performance analysis
+    ├── TRAINING_LOSS_EXPLAINED.md  # Loss behavior guide
     └── IMPLEMENTATION_COMPLETE.md  # Implementation notes
 ```
 
 ---
 
-## 📚 Documentation
+##  Documentation
 
 ### Core Documentation
 - **[README](README.md)** - This file
@@ -435,7 +378,6 @@ FinAI/
 ### Distributed Training
 - **[Distributed Training Overview](docs/README.md)** - Complete distributed system guide
 - **[Quick Start Guide](docs/QUICKSTART.md)** - Get started in 5 minutes
-- **[Dashboard Guide](docs/DASHBOARD_GUIDE.md)** - Monitoring and management
 - **[Remote Access Setup](docs/REMOTE_ACCESS_SETUP.md)** - Configure remote access
 - **[Efficiency Analysis](docs/EFFICIENCY_ANALYSIS.md)** - Performance benchmarks
 - **[Implementation Notes](docs/IMPLEMENTATION_COMPLETE.md)** - Technical details
@@ -449,7 +391,7 @@ FinAI/
 
 ---
 
-## 📦 Requirements
+##  Requirements
 
 ### Core Dependencies
 ```
@@ -497,7 +439,7 @@ pip install torch-directml
 
 ---
 
-## 🎯 Usage Examples
+##  Usage Examples
 
 ### Example 1: Quick Training
 
@@ -575,7 +517,7 @@ python run_prompt.py
 
 ---
 
-## 🤝 Contributing
+##  Contributing
 
 Contributions welcome! Please:
 
@@ -587,13 +529,13 @@ Contributions welcome! Please:
 
 ---
 
-## 📄 License
+##  License
 
 MIT License - see LICENSE file for details
 
 ---
 
-## 🙏 Acknowledgments
+##  Acknowledgments
 
 - **Hugging Face** - Transformers, Datasets, Accelerate
 - **PyTorch** - Deep learning framework
@@ -602,7 +544,7 @@ MIT License - see LICENSE file for details
 
 ---
 
-## 📞 Support
+##  Support
 
 - **Issues**: [GitHub Issues](https://github.com/yourusername/FinAI/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/yourusername/FinAI/discussions)
@@ -610,4 +552,4 @@ MIT License - see LICENSE file for details
 
 ---
 
-**Built with ❤️ for the financial AI community**
+**Built with  for the financial AI community**

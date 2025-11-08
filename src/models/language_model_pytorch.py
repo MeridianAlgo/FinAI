@@ -480,23 +480,6 @@ class LanguageModel(nn.Module):
         
         self.train()
         
-        # Initialize metrics tracker (main process only)
-        metrics = None
-        if accelerator.is_main_process:
-            try:
-                from src.training_metrics import get_metrics_tracker
-                metrics = get_metrics_tracker()
-                metrics.start_training(
-                    dataset_name=dataset_name or 'unknown',
-                    total_steps=steps,
-                    training_mode=training_mode,
-                    batch_size=batch_size,
-                    block_size=self.block_size,
-                    device=str(accelerator.device)
-                )
-            except:
-                pass
-        
         # AdamW optimizer with proper settings
         optimizer = torch.optim.AdamW(
             self.parameters(),
@@ -592,19 +575,6 @@ class LanguageModel(nn.Module):
                         print(f"Step {done}/{steps} | loss {loss.item():.4f} | lr {current_lr:.2e} | elapsed {elapsed_td} | ETA {eta}")
                     else:
                         print(f"Step {done}/{steps} | loss {loss.item():.4f} | lr {current_lr:.2e} | elapsed {elapsed_td} | ETA calculating...")
-                    
-                    # Update metrics tracker
-                    if metrics:
-                        try:
-                            metrics.update_step(
-                                step=done,
-                                loss=loss.item(),
-                                learning_rate=current_lr,
-                                step_time=step_time,
-                                eta_seconds=eta_seconds
-                            )
-                        except:
-                            pass
 
                     # Periodic checkpoint save to unified model path (main process only)
                     try:

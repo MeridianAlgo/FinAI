@@ -10,9 +10,6 @@ import time
 import csv
 import subprocess
 from datetime import datetime
-import threading
-import webbrowser
-import socket
 
 import torch
 from datasets import load_dataset
@@ -21,33 +18,6 @@ from src.config import Config
 
 # CSV file headers
 DATASET_HEADERS = ['name', 'config', 'split', 'date_trained', 'model_path', 'status']
-
-def ensure_dashboard(port: int = 8080):
-    """Start the training dashboard if not already running, and open browser."""
-    # Check if something is already listening on the port
-    try:
-        with socket.create_connection(("localhost", port), timeout=0.5):
-            print(f"Dashboard already running at: http://localhost:{port}")
-            try:
-                webbrowser.open(f"http://localhost:{port}")
-            except Exception:
-                pass
-            return
-    except Exception:
-        pass
-
-    print("\nStarting training dashboard...")
-    t = threading.Thread(
-        target=lambda: os.system(f"python training_dashboard.py --no-browser --port {port}"),
-        daemon=True,
-    )
-    t.start()
-    time.sleep(2)
-    try:
-        webbrowser.open(f"http://localhost:{port}")
-    except Exception:
-        pass
-    print(f"Dashboard available at: http://localhost:{port}")
 
 def get_hf_token() -> str | None:
     """Return a Hugging Face token if available via env or local store."""
@@ -294,8 +264,6 @@ def main():
     print("\n" + "="*80)
     print("FinAI - Sequential Training (One Dataset at a Time)")
     print("="*80 + "\n")
-    # Ensure the dashboard is running and open in the browser
-    ensure_dashboard(8080)
     
     # Load datasets
     datasets = load_datasets_csv("datasets.csv")

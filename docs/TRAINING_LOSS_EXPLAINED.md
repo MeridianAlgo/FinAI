@@ -2,7 +2,7 @@
 
 ## Why Loss Goes Up When Training on New Datasets
 
-### ✅ **This is COMPLETELY NORMAL and EXPECTED**
+###  **This is COMPLETELY NORMAL and EXPECTED**
 
 When you train on a new dataset after completing training on a previous one, you will see loss spike up initially. Here's why:
 
@@ -20,7 +20,7 @@ When you train on a new dataset after completing training on a previous one, you
 
 ### 3. **What You Should See**
 
-#### ✅ **Normal Training Pattern:**
+####  **Normal Training Pattern:**
 ```
 Dataset 1 (financial-sentiment):
 Step 1000: loss 1.08
@@ -39,7 +39,7 @@ Step 2000: loss 1.34   ← Still adjusting
 ...continues training...
 ```
 
-#### ❌ **Abnormal Pattern (Would Indicate a Problem):**
+####  **Abnormal Pattern (Would Indicate a Problem):**
 ```
 Step 1000: loss 0.50
 Step 2000: loss 0.45
@@ -92,20 +92,20 @@ Step 5000: loss 1.20  ← Still rising (BAD!)
 
 ## How to Monitor Training Health
 
-### ✅ **Healthy Training Signs:**
+###  **Healthy Training Signs:**
 1. **Overall downward trend** in loss over 1000+ steps
 2. **Loss stabilizes** in late training (steps 4000-5000)
 3. **ETA is reasonable** (1-2 hours for 5000 steps on CPU)
 4. **No error messages** or NaN losses
 5. **Learning rate decreases** smoothly over time
 
-### ⚠️ **Warning Signs:**
+###  **Warning Signs:**
 1. **Loss increases continuously** for 1000+ steps within same dataset
 2. **Loss becomes NaN or Inf**
 3. **Loss stuck at same value** for 1000+ steps (not learning)
 4. **Training crashes** or runs out of memory
 
-### 🚨 **Critical Issues:**
+###  **Critical Issues:**
 1. **Loss explodes** to very high values (>10.0) mid-training
 2. **Gradient overflow** errors
 3. **CUDA out of memory** (if using GPU)
@@ -179,14 +179,14 @@ After Dataset 4+ (more datasets):
 
 ## Summary: What You Should Expect
 
-### ✅ **Normal Behavior:**
+###  **Normal Behavior:**
 - Loss **spikes up** when starting a new dataset
 - Loss **trends down** over the course of training
 - Loss **may fluctuate** step-to-step
 - Final loss **0.2-0.5** is excellent
 - Training takes **1-2 hours** per dataset on CPU
 
-### ❌ **Abnormal Behavior:**
+###  **Abnormal Behavior:**
 - Loss **continuously increases** within same dataset
 - Loss becomes **NaN or Inf**
 - Loss **stuck** at same value for 1000+ steps
