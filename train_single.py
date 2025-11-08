@@ -4,11 +4,17 @@ Train FinAI on a single dataset
 Quick test script for training on one dataset
 """
 import sys
+import os
 import time
+import threading
+import webbrowser
 from datetime import timedelta
 from pathlib import Path
+from datasets import load_dataset
 from src.core.finai import FinAI
 from src.config import Config
+from scripts.manage_datasets import mark_dataset_as_trained, TRAINED_DATASETS_CSV, get_current_time
+import csv
 
 def train_single_dataset(dataset_name):
     """Train on a single dataset"""
@@ -44,24 +50,25 @@ def train_single_dataset(dataset_name):
         
         print(f"Saved to: {temp_file}")
         
-        # Train
+        # Start dashboard in background
+        print(f"\nStarting training dashboard...")
+        dashboard_thread = threading.Thread(
+            target=lambda: os.system('python training_dashboard.py --no-browser'),
+            daemon=True
+        )
+        dashboard_thread.start()
+        time.sleep(2)  # Give dashboard time to start
+        
+        # Open dashboard in browser
+        try:
+            webbrowser.open('http://localhost:8080')
+        except:
+            pass
+        
+        print(f"Dashboard available at: http://localhost:8080")
         print(f"\nStarting training...")
         finai = FinAI()
         cfg = Config()
-        # Coarse ETA before training (live ETA will appear from training loop)
-        try:
-            import torch
-            use_gpu = torch.cuda.is_available()
-        except Exception:
-            use_gpu = False
-        steps = cfg.TRAIN_STEPS
-        # Heuristic seconds-per-step; refined ETA will be printed by the trainer
-        secs_per_step = 0.05 if use_gpu else 0.15
-        total_sec = int(steps * secs_per_step)
-        eta_td = timedelta(seconds=total_sec)
-        finish_ts = time.strftime('%I:%M %p', time.localtime(time.time() + total_sec))
-        print(f"Planned steps: {steps} | Block size: {cfg.BLOCK_SIZE} | Batch: {cfg.BATCH_SIZE} (accum={cfg.GRADIENT_ACCUM_STEPS})")
-        print(f"Coarse ETA: ~{eta_td} (expected completion around {finish_ts}); live ETA updates will follow...")
         
         finai.train_from_file(
             temp_file,
@@ -73,16 +80,49 @@ def train_single_dataset(dataset_name):
             mixed_precision='auto',
             weight_decay=cfg.WEIGHT_DECAY,
             warmup_steps=cfg.WARMUP_STEPS,
-            max_grad_norm=cfg.MAX_GRAD_NORM
+            max_grad_norm=cfg.MAX_GRAD_NORM,
+            dataset_name=dataset_name,
+            training_mode='single'
         )
         
         # Clean up
         if os.path.exists(temp_file):
             os.remove(temp_file)
-        
+
         print(f"\n{'='*80}")
         print(f"Training completed successfully!")
         print(f"{'='*80}")
+        
+        # Update CSVs: move from datasets.csv to trained_datasets.csv (or add if not present)
+        try:
+            moved = mark_dataset_as_trained(dataset_name, cfg.LANGUAGE_MODEL_PATH)
+            if not moved:
+                # Append a new trained entry if it wasn't listed in datasets.csv
+                row = {
+                    'name': dataset_name,
+                    'config': '',
+                    'split': 'train',
+                    'date_trained': get_current_time(),
+                    'model_path': cfg.LANGUAGE_MODEL_PATH,
+                    'status': 'completed',
+                }
+                # Read existing rows if file exists to preserve header
+                try:
+                    with open(TRAINED_DATASETS_CSV, 'r', encoding='utf-8') as f:
+                        reader = csv.DictReader(f)
+                        fieldnames = reader.fieldnames or ['name','config','split','date_trained','model_path','status']
+                        rows = list(reader)
+                except FileNotFoundError:
+                    fieldnames = ['name','config','split','date_trained','model_path','status']
+                    rows = []
+                rows.append(row)
+                with open(TRAINED_DATASETS_CSV, 'w', newline='', encoding='utf-8') as f:
+                    writer = csv.DictWriter(f, fieldnames=fieldnames)
+                    writer.writeheader()
+                    writer.writerows(rows)
+                print(f"Recorded training in {TRAINED_DATASETS_CSV}")
+        except Exception as _e:
+            print(f"Warning: could not update CSV status: {_e}")
         return True
         
     except Exception as e:

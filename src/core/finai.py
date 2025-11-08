@@ -39,7 +39,7 @@ class FinAI:
                        learning_rate: float = None, block_size: int = None, use_gpu: bool | None = None, 
                        use_accelerate: bool | str = 'auto', grad_accum_steps: int = None, 
                        mixed_precision: str = 'auto', weight_decay: float = None, 
-                       warmup_steps: int = None, max_grad_norm: float = None):
+                       warmup_steps: int = None, max_grad_norm: float = None, dataset_name: str = None, training_mode: str = 'single'):
         """Train or continue training the SAME model (no new models created)"""
         if not PYTORCH_AVAILABLE:
             raise RuntimeError("PyTorch is required for GPT training")
@@ -132,6 +132,8 @@ class FinAI:
                     weight_decay=weight_decay,
                     warmup_steps=warmup_steps,
                     max_grad_norm=max_grad_norm,
+                    dataset_name=dataset_name,
+                    training_mode=training_mode,
                 )
                 if is_main:
                     self._save_models()
@@ -145,7 +147,9 @@ class FinAI:
                     weight_decay=weight_decay,
                     warmup_steps=warmup_steps,
                     grad_accum_steps=grad_accum_steps,
-                    max_grad_norm=max_grad_norm
+                    max_grad_norm=max_grad_norm,
+                    dataset_name=dataset_name,
+                    training_mode=training_mode,
                 )
                 self._save_models()
         else:
@@ -157,7 +161,9 @@ class FinAI:
                 weight_decay=weight_decay,
                 warmup_steps=warmup_steps,
                 grad_accum_steps=grad_accum_steps,
-                max_grad_norm=max_grad_norm
+                max_grad_norm=max_grad_norm,
+                dataset_name=dataset_name,
+                training_mode=training_mode,
             )
             self._save_models()
 

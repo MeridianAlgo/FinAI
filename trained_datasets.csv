@@ -1,2 +1,4 @@
 name,config,split,date_trained,model_path,status
-
+yukiarimo/english-vocabulary,,train,,,
+vumichien/financial-sentiment,,train,2025-11-08 16:14:03,models/finai_gpt.pt,completed
+TimKoornstra/financial-tweets-sentiment,,train,2025-11-08 17:45:39,models/finai_gpt.pt,completed

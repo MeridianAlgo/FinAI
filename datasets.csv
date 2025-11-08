@@ -1,7 +1,4 @@
 name,config,split,date_trained,model_path,status
-yukiarimo/english-vocabulary,,train,,,
-vumichien/financial-sentiment,,train,,,
-TimKoornstra/financial-tweets-sentiment,,train,,,
 sjyuxyz/financial-sentiment-analysis,,train,,,
 LLukas22/fiqa,,train,,,
 virattt/financial-qa-10K,,train,,,

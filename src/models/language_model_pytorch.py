@@ -279,9 +279,24 @@ class LanguageModel(nn.Module):
 
     def train_on_tokens(self, tokens: torch.Tensor, steps: int = 10000, batch_size: int = 32, 
                        learning_rate: float = 6e-4, weight_decay: float = 0.1, warmup_steps: int = 100,
-                       grad_accum_steps: int = 8, max_grad_norm: float = 1.0):
+                       grad_accum_steps: int = 8, max_grad_norm: float = 1.0, dataset_name: str = None, training_mode: str = 'single'):
         """Train with modern optimization: AdamW, cosine LR schedule, warmup, gradient accumulation"""
         self.train()
+        
+        # Initialize metrics tracker
+        try:
+            from src.training_metrics import get_metrics_tracker
+            metrics = get_metrics_tracker()
+            metrics.start_training(
+                dataset_name=dataset_name or 'unknown',
+                total_steps=steps,
+                training_mode=training_mode,
+                batch_size=batch_size,
+                block_size=self.block_size,
+                device=str(self.device)
+            )
+        except:
+            metrics = None
         
         # AdamW optimizer with proper betas
         optimizer = torch.optim.AdamW(
@@ -323,7 +338,9 @@ class LanguageModel(nn.Module):
 
         optimizer.zero_grad(set_to_none=True)
         step_times = deque(maxlen=100)
+        ema_step_time = None  # Exponential moving average
         last_tick = time.time()
+        last_step = 0  # Track last reported step
         for step in range(steps):
             # Gradient accumulation
             for micro_step in range(grad_accum_steps):
@@ -357,20 +374,61 @@ class LanguageModel(nn.Module):
             # Report progress
             if (step + 1) % max(1, steps // 20) == 0 or step == 0:
                 now = time.time()
-                step_times.append(now - last_tick)
+                time_elapsed_since_last = now - last_tick
+                steps_since_last = (step + 1) - last_step
+                
+                # Calculate per-step time
+                if steps_since_last > 0:
+                    per_step_time = time_elapsed_since_last / steps_since_last
+                    step_times.append(per_step_time)
+                    
+                    # Exponential moving average for smoother ETA (alpha=0.3)
+                    if ema_step_time is None:
+                        ema_step_time = per_step_time
+                    else:
+                        ema_step_time = 0.3 * per_step_time + 0.7 * ema_step_time
+                
                 last_tick = now
-                # Use moving average over recent steps for a more accurate ETA
-                avg_step = (sum(step_times) / len(step_times)) if step_times else (now - start_time) / (step + 1)
+                last_step = step + 1
+                
                 elapsed = now - start_time
                 done = step + 1
                 remaining = steps - done
-                eta = timedelta(seconds=int(avg_step * max(0, remaining)))
+                
+                # Use EMA for ETA if we have enough samples, otherwise use simple average
+                if len(step_times) >= 5 and ema_step_time is not None:
+                    eta_seconds = ema_step_time * remaining
+                else:
+                    # Not enough data yet, show "calculating..."
+                    eta_seconds = None
+                
                 elapsed_td = timedelta(seconds=int(elapsed))
                 current_lr = scheduler.get_last_lr()[0]
-                print(
-                    f"Step {done}/{steps} | loss {(loss.item() * grad_accum_steps):.4f} | "
-                    f"lr {current_lr:.2e} | elapsed {elapsed_td} | ETA {eta}"
-                )
+                
+                if eta_seconds is not None:
+                    eta = timedelta(seconds=int(eta_seconds))
+                    print(
+                        f"Step {done}/{steps} | loss {(loss.item() * grad_accum_steps):.4f} | "
+                        f"lr {current_lr:.2e} | elapsed {elapsed_td} | ETA {eta}"
+                    )
+                else:
+                    print(
+                        f"Step {done}/{steps} | loss {(loss.item() * grad_accum_steps):.4f} | "
+                        f"lr {current_lr:.2e} | elapsed {elapsed_td} | ETA calculating..."
+                    )
+                
+                # Update metrics tracker
+                if metrics:
+                    try:
+                        metrics.update_step(
+                            step=done,
+                            loss=(loss.item() * grad_accum_steps),
+                            learning_rate=current_lr,
+                            step_time=step_time,
+                            eta_seconds=eta_seconds
+                        )
+                    except:
+                        pass
 
                 # Periodic checkpoint save to unified model path
                 try:
@@ -381,6 +439,14 @@ class LanguageModel(nn.Module):
                     pass
         
         self.is_trained = True
+        
+        # Mark training complete
+        if metrics:
+            try:
+                metrics.end_training(success=True)
+            except:
+                pass
+        
         print(f"\n{'='*80}")
         print(f"Training completed in {timedelta(seconds=int(time.time() - start_time))}")
         print(f"{'='*80}\n")
@@ -396,6 +462,8 @@ class LanguageModel(nn.Module):
         weight_decay: float = 0.1,
         warmup_steps: int = 100,
         max_grad_norm: float = 1.0,
+        dataset_name: str = None,
+        training_mode: str = 'single',
     ) -> bool:
         """Train using HF Accelerate with modern optimization. Returns True if main process."""
         try:
@@ -411,6 +479,23 @@ class LanguageModel(nn.Module):
         )
         
         self.train()
+        
+        # Initialize metrics tracker (main process only)
+        metrics = None
+        if accelerator.is_main_process:
+            try:
+                from src.training_metrics import get_metrics_tracker
+                metrics = get_metrics_tracker()
+                metrics.start_training(
+                    dataset_name=dataset_name or 'unknown',
+                    total_steps=steps,
+                    training_mode=training_mode,
+                    batch_size=batch_size,
+                    block_size=self.block_size,
+                    device=str(accelerator.device)
+                )
+            except:
+                pass
         
         # AdamW optimizer with proper settings
         optimizer = torch.optim.AdamW(
@@ -447,7 +532,9 @@ class LanguageModel(nn.Module):
         # Define progress trackers (were missing before)
         from collections import deque as _deque
         step_times = _deque(maxlen=100)
+        ema_step_time = None  # Exponential moving average
         last_tick = time.time()
+        last_step = 0  # Track last reported step
 
         for step in range(steps):
             with accelerator.accumulate(model):
@@ -470,16 +557,54 @@ class LanguageModel(nn.Module):
             if (step + 1) % max(1, steps // 20) == 0 or step == 0:
                 if accelerator.is_main_process:
                     now = time.time()
-                    step_times.append(now - last_tick)
+                    time_elapsed_since_last = now - last_tick
+                    steps_since_last = (step + 1) - last_step
+                    
+                    # Calculate per-step time
+                    if steps_since_last > 0:
+                        per_step_time = time_elapsed_since_last / steps_since_last
+                        step_times.append(per_step_time)
+                        
+                        # Exponential moving average for smoother ETA (alpha=0.3)
+                        if ema_step_time is None:
+                            ema_step_time = per_step_time
+                        else:
+                            ema_step_time = 0.3 * per_step_time + 0.7 * ema_step_time
+                    
                     last_tick = now
-                    avg_step = (sum(step_times) / len(step_times)) if step_times else (now - start_time) / (step + 1)
+                    last_step = step + 1
+                    
                     elapsed = now - start_time
                     done = step + 1
                     remaining = steps - done
-                    eta = timedelta(seconds=int(avg_step * max(0, remaining)))
+                    
+                    # Use EMA for ETA if we have enough samples
+                    if len(step_times) >= 5 and ema_step_time is not None:
+                        eta_seconds = ema_step_time * remaining
+                    else:
+                        eta_seconds = None
+                    
                     elapsed_td = timedelta(seconds=int(elapsed))
                     current_lr = scheduler.get_last_lr()[0]
-                    print(f"Step {done}/{steps} | loss {loss.item():.4f} | lr {current_lr:.2e} | elapsed {elapsed_td} | ETA {eta}")
+                    
+                    if eta_seconds is not None:
+                        eta = timedelta(seconds=int(eta_seconds))
+                        print(f"Step {done}/{steps} | loss {loss.item():.4f} | lr {current_lr:.2e} | elapsed {elapsed_td} | ETA {eta}")
+                    else:
+                        print(f"Step {done}/{steps} | loss {loss.item():.4f} | lr {current_lr:.2e} | elapsed {elapsed_td} | ETA calculating...")
+                    
+                    # Update metrics tracker
+                    if metrics:
+                        try:
+                            metrics.update_step(
+                                step=done,
+                                loss=loss.item(),
+                                learning_rate=current_lr,
+                                step_time=step_time,
+                                eta_seconds=eta_seconds
+                            )
+                        except:
+                            pass
 
                     # Periodic checkpoint save to unified model path (main process only)
                     try:
@@ -490,6 +615,14 @@ class LanguageModel(nn.Module):
                         pass
 
         self.is_trained = True
+        
+        # Mark training complete
+        if metrics:
+            try:
+                metrics.end_training(success=True)
+            except:
+                pass
+        
         return accelerator.is_main_process
 
     def save(self, path: str, training_state: dict = None):

@@ -1,8 +1,373 @@
-# 🚀 FinAI - Modern GPT Language Model
+# 🚀 FinAI - Financial Language Model
 
-**Production-ready financial language model with ChatGPT/Gemini-like architecture**
+**A modern, production-ready GPT-style language model optimized for financial data and continuous learning.**
 
-FinAI is a local GPT-style language model optimized for financial text, featuring modern architecture (RoPE, SwiGLU, Flash Attention 2), continuous learning on a single unified model, and automatic training progress tracking with git commits.
+FinAI is a lightweight yet powerful transformer-based language model that trains on financial datasets with state-of-the-art optimization techniques. Features include distributed training, real-time dashboards, and a single unified model that continuously improves with each dataset.
+
+---
+
+## 📋 Table of Contents
+
+- [Features](#-features)
+- [Quick Start](#-quick-start)
+- [Training Modes](#-training-modes)
+- [Training Dashboard](#-training-dashboard)
+- [Distributed Training](#-distributed-training)
+- [Model Architecture](#-model-architecture)
+- [Configuration](#️-configuration)
+- [Commands Reference](#-commands-reference)
+- [Project Structure](#-project-structure)
+- [Documentation](#-documentation)
+- [Requirements](#-requirements)
+
+---
+
+## ✨ Features
+
+### 🎯 Core Capabilities
+- **Single Unified Model**: All training contributes to one model (`models/finai_gpt.pt`)
+- **Continuous Learning**: Load and continue training from any checkpoint
+- **Modern Architecture**: GPT-style transformer with RoPE, SwiGLU, Flash Attention
+- **Optimized Training**: AdamW optimizer, cosine LR schedule, gradient accumulation
+- **Accurate ETA**: Exponential moving average for smooth, reliable time estimates
+- **Real-time Dashboard**: Beautiful web UI showing training metrics and progress
+
+### 🌐 Distributed Training
+- **Multi-Machine Training**: Train with friends across multiple computers
+- **Automatic Synchronization**: Workers pull/push model checkpoints automatically
+- **Web Dashboard**: Monitor all workers, tasks, and progress in real-time
+- **No External Packages**: Distributed dashboard uses only Python stdlib
+
+### 📊 Training Modes
+1. **Single Dataset** (`train_single.py`): Quick training on one dataset
+2. **Sequential** (`train_sequential.py`): Train datasets one-by-one with commits
+3. **Batch** (`train_all.py`): Combine all pending datasets into one training run
+4. **Distributed** (`distributed/`): Coordinate training across multiple machines
+
+---
+
+## 🚀 Quick Start
+
+### Installation
+
+```bash
+# Clone the repository
+git clone <your-repo-url>
+cd FinAI
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+### Train Your First Model
+
+```bash
+# Option 1: Train from a text file
+python main.py train datasets/my_data.txt
+
+# Option 2: Train from Hugging Face dataset
+python main.py train_hf PatronusAI/financebench
+
+# Option 3: Train on a single dataset with dashboard
+python train_single.py <dataset-name>
+```
+
+### Chat with Your Model
+
+```bash
+python main.py chat
+```
+
+---
+
+## 🎓 Training Modes
+
+### 1. Single Dataset Training
+
+Train on one Hugging Face dataset with automatic dashboard:
+
+```bash
+python train_single.py PatronusAI/financebench
+```
+
+**Features:**
+- Automatic training dashboard at `http://localhost:8080`
+- Real-time metrics: loss, ETA, progress
+- Automatic CSV tracking (moves to `trained_datasets.csv`)
+- Opens browser automatically
+
+### 2. Sequential Training
+
+Train datasets one-by-one from `datasets.csv`:
+
+```bash
+python train_sequential.py
+```
+
+**Features:**
+- Processes each dataset individually
+- Git commit after each dataset
+- Skips already trained datasets
+- Updates CSV status automatically
+
+### 3. Batch Training
+
+Combine all pending datasets and train once:
+
+```bash
+python train_all.py
+```
+
+**Features:**
+- Merges all pending datasets into one file
+- Single training run for efficiency
+- Git commits for each dataset
+- Automatic cleanup
+
+### 4. Distributed Training
+
+Train across multiple machines:
+
+```bash
+# On server (Raspberry Pi or always-on machine)
+cd distributed
+python server.py
+
+# On each worker machine
+python worker.py --server http://server-ip:8765
+
+# Monitor with dashboard
+python dashboard.py --server http://server-ip:8765
+```
+
+**Features:**
+- Coordinate training across unlimited workers
+- Automatic model synchronization
+- Real-time monitoring dashboard
+- Task queue management
+
+📖 **[Full Distributed Training Guide](docs/QUICKSTART.md)**
+
+---
+
+## 📊 Training Dashboard
+
+Every local training session automatically launches a beautiful web dashboard:
+
+### Features
+- **Live Metrics**: Loss, learning rate, step progress
+- **Accurate ETA**: Exponential moving average for reliable estimates
+- **Loss Chart**: Visual graph of last 50 steps
+- **Configuration**: View all training parameters
+- **Auto-refresh**: Updates every 10 seconds
+
+### Access
+- Automatically opens at `http://localhost:8080`
+- Or run standalone: `python training_dashboard.py`
+
+### Screenshot
+```
+┌─────────────────────────────────────────┐
+│  🚀 FinAI Training Dashboard            │
+│  Status: TRAINING                       │
+├─────────────────────────────────────────┤
+│  Progress: 2,500 / 5,000 (50.0%)       │
+│  Elapsed: 0:15:30 | ETA: 0:15:30       │
+│  Loss: 2.1045 | LR: 6.00e-04           │
+│  Device: CUDA | Dataset: financebench   │
+└─────────────────────────────────────────┘
+```
+
+---
+
+## 🌐 Distributed Training
+
+### Architecture
+
+```
+┌──────────────┐
+│   Server     │  ← Coordinates tasks, stores model
+│ (Raspberry Pi)│
+└──────┬───────┘
+       │
+   ┌───┴────┬─────────┬─────────┐
+   │        │         │         │
+┌──▼──┐  ┌─▼───┐  ┌──▼──┐  ┌───▼──┐
+│Worker│  │Worker│  │Worker│  │Worker│
+│  #1  │  │  #2 │  │  #3 │  │  #4  │
+└──────┘  └─────┘  └─────┘  └──────┘
+```
+
+### Setup
+
+1. **Start Server** (on always-on machine):
+```bash
+cd distributed
+python server.py
+```
+
+2. **Start Workers** (on each training machine):
+```bash
+python worker.py --server http://server-ip:8765
+```
+
+3. **Submit Tasks** (from any machine):
+```bash
+python client.py submit PatronusAI/financebench
+```
+
+4. **Monitor Progress**:
+```bash
+python dashboard.py --server http://server-ip:8765
+```
+
+### Key Features
+
+- **Single Model**: All workers contribute to `models/finai_gpt.pt`
+- **Auto-sync**: Workers download latest model before training
+- **Fault Tolerant**: Failed tasks automatically reassigned
+- **No Flask**: Dashboard uses only Python stdlib (http.server)
+
+📖 **[Distributed Training Documentation](docs/README.md)**  
+📖 **[Dashboard Guide](docs/DASHBOARD_GUIDE.md)**  
+📖 **[Remote Access Setup](docs/REMOTE_ACCESS_SETUP.md)**
+
+---
+
+## 🏗️ Model Architecture
+
+### Transformer Specifications
+
+```python
+Architecture: GPT-style Decoder-only Transformer
+Parameters: ~15M (configurable)
+Layers: 4
+Attention Heads: 4
+Embedding Dimension: 256
+Context Window: 256 tokens
+Vocabulary: ~50,000 tokens (BPE)
+```
+
+### Modern Features
+
+- **RoPE (Rotary Position Embeddings)**: Better position encoding
+- **SwiGLU Activation**: Improved over ReLU/GELU
+- **Flash Attention**: 2-4x faster attention computation
+- **Gradient Checkpointing**: 40% memory savings
+- **Weight Tying**: Shared input/output embeddings
+
+### Training Optimizations
+
+- **AdamW Optimizer**: L2 regularization for better generalization
+- **Cosine LR Schedule**: Smooth learning rate decay
+- **Gradient Accumulation**: Simulate larger batch sizes
+- **Mixed Precision (bf16)**: 50% memory reduction, full accuracy
+- **Gradient Clipping**: Prevents training instability
+
+---
+
+## ⚙️ Configuration
+
+All settings in `src/config.py`:
+
+### Model Architecture
+```python
+N_LAYER = 4              # Transformer layers
+N_HEAD = 4               # Attention heads  
+N_EMBD = 256             # Embedding dimension
+BLOCK_SIZE = 256         # Context window
+DROPOUT = 0.05           # Dropout rate
+```
+
+### Training Parameters
+```python
+TRAIN_STEPS = 5000       # Training steps
+BATCH_SIZE = 16          # Batch size
+GRADIENT_ACCUM_STEPS = 4 # Gradient accumulation
+LEARNING_RATE = 6e-4     # Learning rate
+WEIGHT_DECAY = 0.1       # L2 regularization
+WARMUP_STEPS = 100       # LR warmup steps
+MAX_GRAD_NORM = 1.0      # Gradient clipping
+```
+
+### Generation Settings
+```python
+MAX_NEW_TOKENS = 512     # Max generation length
+TEMPERATURE = 0.7        # Sampling temperature
+TOP_K = 40               # Top-k sampling
+TOP_P = 0.9              # Nucleus sampling
+```
+
+### Paths
+```python
+MODEL_DIR = "models"
+LANGUAGE_MODEL_PATH = "models/finai_gpt.pt"  # Single unified model
+TOKENIZER_PATH = "models/tokenizer.pkl"
+DATASET_DIR = "datasets"
+```
+
+---
+
+## 📝 Commands Reference
+
+### Main CLI (`main.py`)
+
+```bash
+# Train from text file
+python main.py train <file.txt> [--steps N] [--batch-size N] [--lr RATE]
+
+# Train from Hugging Face dataset
+python main.py train_hf <dataset-id> [--split train] [--max N]
+
+# Interactive chat
+python main.py chat
+
+# Generate from prompt
+python main.py generate "Your prompt here"
+```
+
+### Training Scripts
+
+```bash
+# Single dataset (with dashboard)
+python train_single.py <hf-dataset-name>
+
+# Sequential training
+python train_sequential.py
+
+# Batch training
+python train_all.py
+```
+
+### Distributed Training
+
+```bash
+# Server
+cd distributed
+python server.py [--port 8765]
+
+# Worker
+python worker.py --server http://server:8765 [--name worker-1]
+
+# Client (submit tasks)
+python client.py submit <dataset-name>
+python client.py status
+python client.py workers
+
+# Dashboard
+python dashboard.py --server http://server:8765 [--port 8081]
+```
+
+### Dashboards
+
+```bash
+# Local training dashboard
+python training_dashboard.py [--port 8080]
+
+# Distributed dashboard
+cd distributed
+python dashboard.py [--server http://localhost:8765] [--port 8081]
+```
 
 ---
 
@@ -10,552 +375,215 @@ FinAI is a local GPT-style language model optimized for financial text, featurin
 
 ```
 FinAI/
-├── src/                          # Core source code
-│   ├── config.py                 # Model hyperparameters (~350M param config)
+├── main.py                      # Main CLI entry point
+├── train_single.py              # Single dataset training
+├── train_sequential.py          # Sequential training
+├── train_all.py                 # Batch training
+├── run_prompt.py                # Quick generation script
+├── training_dashboard.py        # Local training dashboard
+├── requirements.txt             # Python dependencies
+├── datasets.csv                 # Pending datasets
+├── trained_datasets.csv         # Completed datasets
+│
+├── src/                         # Core source code
 │   ├── core/
-│   │   ├── finai.py              # Main FinAI application class
-│   │   └── context.py            # Conversation context management
+│   │   ├── finai.py            # Main FinAI class
+│   │   └── context.py          # Conversation context
 │   ├── models/
-│   │   └── language_model_pytorch.py  # Modern GPT architecture
+│   │   └── language_model_pytorch.py  # GPT model implementation
 │   ├── data/
-│   │   ├── tokenizer.py          # Text tokenization
-│   │   └── data_loader.py        # Dataset loading utilities
-│   └── utils/
-│       └── device.py             # GPU/CPU detection
+│   │   └── tokenizer.py        # BPE tokenizer
+│   ├── config.py               # Configuration
+│   └── training_metrics.py     # Metrics tracking
 │
-├── models/                       # Trained model artifacts
-│   ├── finai_gpt.pt              # THE single model (all training goes here)
-│   └── tokenizer.pkl             # Tokenizer vocabulary
+├── distributed/                 # Distributed training system
+│   ├── server.py               # Coordination server
+│   ├── worker.py               # Training worker
+│   ├── client.py               # Task submission client
+│   ├── dashboard.py            # Monitoring dashboard (no Flask!)
+│   ├── server_config.json      # Server configuration
+│   └── worker_config.json      # Worker configuration
 │
-├── datasets/                     # Local dataset storage
-├── scripts/                      # Utility scripts
-│   ├── download_all_datasets.py  # Download financial datasets
-│   ├── manage_datasets.py        # Dataset tracking utilities
-│   ├── verify_gpu.py             # GPU setup verification
-│   └── sort_datasets_by_size_v2.py  # Sorts datasets.csv by size (HF Hub)
+├── scripts/                     # Utility scripts
+│   ├── manage_datasets.py      # Dataset CSV management
+│   └── export_hf_to_txt.py     # HF dataset export
 │
-├── distributed/                  # Distributed training system
-│   ├── server.py                 # Coordination server (Raspberry Pi)
-│   ├── worker.py                 # Worker node (laptop, PC, etc.)
-│   ├── client.py                 # Task submission client
-│   ├── README.md                 # Distributed training guide
-│   └── EFFICIENCY_ANALYSIS.md    # Performance analysis
+├── models/                      # Model checkpoints
+│   ├── finai_gpt.pt            # Unified model (single file)
+│   └── tokenizer.pkl           # Tokenizer
 │
-├── archive/                      # Archived old files
+├── datasets/                    # Training data
+│   └── temp_*.txt              # Temporary training files
 │
-├── main.py                       # CLI entrypoint
-├── train_all.py                  # **Main training script** (use this!)
-├── train_sequential.py           # Legacy sequential training
-├── cleanup_models.py             # Remove old model checkpoints
-│
-├── datasets.csv                  # Pending datasets to train
-├── trained_datasets.csv          # Completed datasets with timestamps
-├── requirements.txt              # Python dependencies
-├── README.md                     # Complete documentation (this file)
-├── QUICK_START.md                # Quick reference guide
-└── TRAINING_GUIDE.md             # Detailed training guide
+└── docs/                        # Documentation
+    ├── README.md               # Distributed training docs
+    ├── QUICKSTART.md           # Quick start guide
+    ├── DASHBOARD_GUIDE.md      # Dashboard documentation
+    ├── REMOTE_ACCESS_SETUP.md  # Remote access guide
+    ├── EFFICIENCY_ANALYSIS.md  # Performance analysis
+    └── IMPLEMENTATION_COMPLETE.md  # Implementation notes
 ```
 
 ---
 
-## ✨ Key Features
+## 📚 Documentation
 
-### 🏗️ **Modern GPT Architecture**
-- **~350M Parameters** (comparable to GPT-2 Large)
-- **RoPE** (Rotary Positional Embeddings) - better than learned embeddings
-- **SwiGLU** activation - 10% better than GELU (used in LLaMA, PaLM)
-- **Flash Attention 2** - 2-4x faster, 50% lower memory
-- **Gradient Checkpointing** - 40% memory savings
-- **24 Layers, 16 Heads, 1024 Context** - deep and capable
+### Core Documentation
+- **[README](README.md)** - This file
+- **[Configuration Guide](src/config.py)** - All configuration options
 
-### 🎯 **Single Model Training**
-- ✅ **ONE unified model** - all datasets train into `models/finai_gpt.pt`
-- ✅ **Continuous learning** - each training session improves the same model
-- ✅ **No model clutter** - never creates separate models per dataset
-- ✅ **Auto checkpoint** - automatically saves and loads progress
+### Distributed Training
+- **[Distributed Training Overview](docs/README.md)** - Complete distributed system guide
+- **[Quick Start Guide](docs/QUICKSTART.md)** - Get started in 5 minutes
+- **[Dashboard Guide](docs/DASHBOARD_GUIDE.md)** - Monitoring and management
+- **[Remote Access Setup](docs/REMOTE_ACCESS_SETUP.md)** - Configure remote access
+- **[Efficiency Analysis](docs/EFFICIENCY_ANALYSIS.md)** - Performance benchmarks
+- **[Implementation Notes](docs/IMPLEMENTATION_COMPLETE.md)** - Technical details
 
-### ⚡ **Optimized Training**
-- **AdamW Optimizer** with cosine LR schedule + warmup
-- **Gradient Accumulation** - effective batch size of 256
-- **Mixed Precision (bfloat16)** - 50% memory reduction, full accuracy
-- **Gradient Clipping** - stable training, no explosions
-- **Hugging Face Accelerate** - multi-GPU ready
+### Training Guides
+- **[Training Loss Explained](docs/TRAINING_LOSS_EXPLAINED.md)** - Why loss goes up/down, what's normal
 
-### 🤖 **Smart Generation**
-- **Top-k + Top-p (nucleus) sampling** - coherent, diverse outputs
-- **Temperature control** - balance creativity vs accuracy
-- **Long context** - 1024 tokens (4x more than before)
-- **Autoregressive sampling** - like ChatGPT
-
-### 📊 **Automatic Tracking**
-- **Git commits** after each dataset trains
-- **Timestamp tracking** in CSV files
-- **Progress persistence** - resume anytime
+### Scripts Documentation
+- **[Dataset Management](scripts/manage_datasets.py)** - CSV tracking system
+- **[HF Export](scripts/export_hf_to_txt.py)** - Export Hugging Face datasets
 
 ---
 
-## 🚀 Quick Start
+## 📦 Requirements
 
-> **📖 New to FinAI?** Check out [QUICK_START.md](QUICK_START.md) for a quick reference guide!
-> 
-> **🎓 Want training details?** See [TRAINING_GUIDE.md](TRAINING_GUIDE.md) for comprehensive training documentation!
+### Core Dependencies
+```
+torch>=2.0.0              # PyTorch (CUDA/ROCm/CPU)
+transformers>=4.30.0      # HF transformers (scheduler)
+datasets>=2.14.0          # HF datasets
+accelerate>=0.20.0        # Multi-GPU training (optional)
+requests>=2.28.0          # HTTP requests (distributed)
+```
 
-### 1️⃣ **Installation**
+### Optional Dependencies
+```
+torch-directml            # DirectML backend (AMD on Windows)
+flash-attn               # Flash Attention (NVIDIA only)
+```
+
+### System Requirements
+
+**Minimum:**
+- Python 3.8+
+- 8GB RAM
+- 2GB disk space
+
+**Recommended:**
+- Python 3.10+
+- 16GB+ RAM
+- NVIDIA GPU with 8GB+ VRAM (or AMD with ROCm)
+- 10GB disk space
+
+### Installation
 
 ```bash
-# Clone repository
-git clone https://github.com/your-username/FinAI.git
-cd FinAI
-
-# Install dependencies
+# Basic installation
 pip install -r requirements.txt
+
+# With CUDA (NVIDIA)
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+
+# With ROCm (AMD)
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/rocm5.6
+
+# With DirectML (AMD on Windows)
+pip install torch-directml
 ```
 
-**For AMD GPUs (Windows):**
+---
+
+## 🎯 Usage Examples
+
+### Example 1: Quick Training
+
 ```bash
-pip install torch --index-url https://download.pytorch.org/whl/rocm6.0
+# Train on a financial dataset
+python train_single.py PatronusAI/financebench
+
+# Dashboard opens automatically at http://localhost:8080
+# Watch real-time metrics: loss, ETA, progress
 ```
 
-**For NVIDIA GPUs:**
-```bash
-pip install torch --index-url https://download.pytorch.org/whl/cu118
-```
-
-**Verify GPU:**
-```bash
-python scripts/verify_gpu.py
-```
-
-### 2️⃣ **Train Your Model**
-
-#### **Option A: Sequential Training - One Dataset at a Time (Recommended)**
-
-Best for: Training on multiple datasets without long wait times
-
-1. Add datasets to `datasets.csv`:
-   ```csv
-   name,config,split,date_trained,model_path,status
-   virattt/financial-qa-10K,,train,,,
-   gbharti/finance-alpaca,,train,,,
-   ```
-
-2. Run sequential training:
-   ```bash
-   python train_sequential.py
-   ```
-
-**What happens:**
-- ✅ Trains on FIRST dataset only
-- ✅ Saves model checkpoint
-- ✅ Moves dataset to `trained_datasets.csv` with timestamp
-- ✅ **Auto-commits to git**: `"Model Dataset #1 Trained"`
-- ✅ Continues to NEXT dataset
-- ✅ Repeats until all datasets are trained
-- ✅ **Can resume** - if interrupted, picks up where it left off
-
-**Benefits:**
-- See progress after each dataset
-- Can stop/resume anytime
-- Git history shows each dataset trained
-- Faster feedback loop
-
-#### **Option B: Combined Training - All Datasets Together**
-
-Best for: Training on all datasets in one long session
+### Example 2: Batch Training
 
 ```bash
+# Add datasets to datasets.csv
+echo "PatronusAI/financebench,,train" >> datasets.csv
+echo "FinGPT/fingpt-sentiment-train,,train" >> datasets.csv
+
+# Train all at once
 python train_all.py
 ```
 
-**What happens:**
-- ✅ Loads ALL pending datasets
-- ✅ Combines them into one large corpus
-- ✅ Trains on combined data
-- ✅ **Shows ETA** during training
-- ✅ Auto-commits after completion
-
-**Note:** This can take hours for large datasets. Use `train_sequential.py` if you want incremental progress.
-
-#### **Option C: Train on Single Text File**
+### Example 3: Distributed Training
 
 ```bash
-python main.py train path/to/data.txt
+# On server (Raspberry Pi)
+cd distributed
+python server.py
+
+# On worker machines (your PC + friends' PCs)
+python worker.py --server http://raspberrypi.local:8765 --name my-pc
+
+# Submit tasks from anywhere
+python client.py submit PatronusAI/financebench
+python client.py submit FinGPT/fingpt-sentiment-train
+
+# Monitor at http://raspberrypi.local:8081
+python dashboard.py --server http://raspberrypi.local:8765
 ```
 
-### 3️⃣ **Chat with Your Model**
+### Example 4: Chat with Model
 
 ```bash
 python main.py chat
+
+# Or use the quick prompt script
+python run_prompt.py
 ```
-
-Example:
-```
-You: What is portfolio diversification?
-FinAI: Portfolio diversification is...
-```
-
-### 4️⃣ **Generate Text**
-
-```bash
-python main.py generate "The stock market is"
-```
-
----
-
-## ⚙️ Configuration
-
-Edit `src/config.py` to adjust hyperparameters:
-
-```python
-# Model Architecture (~350M parameters)
-BLOCK_SIZE = 1024          # Context window
-N_LAYER = 24               # Transformer layers  
-N_HEAD = 16                # Attention heads
-N_EMBD = 1024              # Embedding dimension
-DROPOUT = 0.05             # Dropout rate
-
-# Training Parameters
-TRAIN_STEPS = 10000        # Training steps
-BATCH_SIZE = 32            # Per-device batch size
-GRADIENT_ACCUM_STEPS = 8   # Effective batch = 32 × 8 = 256
-LEARNING_RATE = 6e-4       # Peak learning rate
-WEIGHT_DECAY = 0.1         # L2 regularization
-WARMUP_STEPS = 100         # LR warmup steps
-MAX_GRAD_NORM = 1.0        # Gradient clipping
-
-# Generation Parameters
-MAX_NEW_TOKENS = 512       # Max generation length
-TEMPERATURE = 0.7          # Sampling temperature (lower = more conservative)
-TOP_K = 40                 # Top-k sampling
-TOP_P = 0.9                # Nucleus sampling (top-p)
-```
-
-### 💡 **Reduce Memory Usage (8GB GPU)**
-
-If you have limited VRAM:
-
-```python
-# In src/config.py:
-N_LAYER = 12               # 12 instead of 24
-N_EMBD = 768               # 768 instead of 1024
-BATCH_SIZE = 16            # 16 instead of 32
-GRADIENT_ACCUM_STEPS = 16  # Compensate with more accumulation
-```
-
-This reduces model to ~120M parameters.
-
----
-
-## 📚 Architecture Details
-
-### **Comparison: Old vs New**
-
-| Feature | Old FinAI | **New FinAI** |
-|---------|-----------|---------------|
-| **Parameters** | 16M | **350M** (22x larger) |
-| **Layers** | 4 | **24** (6x deeper) |
-| **Context Length** | 256 | **1024** (4x longer) |
-| **Position Encoding** | Learned | **RoPE** (better for long context) |
-| **Activation** | GELU | **SwiGLU** (10% faster convergence) |
-| **Attention** | Standard | **Flash Attention 2** (2-4x faster) |
-| **Optimizer** | Basic Adam | **AdamW + Cosine + Warmup** |
-| **Batch Size** | 64 | **256 effective** (gradient accumulation) |
-| **Model Management** | Multiple models | **ONE model** (continuous learning) |
-| **Memory Usage** | High | **40% lower** (grad checkpointing + bf16) |
-| **Generation** | Top-k only | **Top-k + Top-p** (nucleus) |
-
-### **Architecture Components**
-
-#### **1. RoPE (Rotary Positional Embeddings)**
-- Better long-range dependencies than learned positional embeddings
-- Used in: LLaMA, GPT-NeoX, PaLM
-- Enables length extrapolation (trained on 1024, can generate longer)
-
-#### **2. SwiGLU Activation**
-```python
-SwiGLU(x) = Swish(xW) ⊙ (xV)
-```
-- 10% better performance than GELU/ReLU
-- Used in: LLaMA, PaLM, Chinchilla
-- Gated mechanism helps with gradient flow
-
-#### **3. Flash Attention 2**
-- IO-aware attention algorithm
-- 2-4x faster than standard attention
-- 50% lower memory usage
-- Mathematically equivalent (no approximation)
-
-#### **4. Weight Tying**
-- Input and output embeddings share parameters
-- Reduces model size by ~10%
-- Improves generalization
-
-#### **5. Gradient Checkpointing**
-- Trades 20% speed for 40% memory savings
-- Recomputes activations instead of storing them
-- Essential for training large models on consumer GPUs
-
----
-
-## 🎓 Advanced Usage
-
-### **Resume Training**
-
-Training automatically resumes from the last checkpoint:
-
-```bash
-# First training
-python train_sequential.py  # Creates models/finai_gpt.pt
-
-# Later training (continues from checkpoint)
-python train_sequential.py  # Loads and improves existing model
-```
-
-**The model tracks:**
-- ✅ Total steps completed across all training sessions
-- ✅ Model weights from previous training
-- ✅ Which datasets have been trained (in `trained_datasets.csv`)
-
-**Example:**
-```
-Session 1: Train on dataset #1 (10,000 steps) → Total: 10,000 steps
-Session 2: Train on dataset #2 (10,000 steps) → Total: 20,000 steps
-Session 3: Train on dataset #3 (10,000 steps) → Total: 30,000 steps
-```
-
-Each session loads the existing model and continues improving it!
-
-### **Training Progress & ETA**
-
-During training, you'll see:
-
-```
-Step 500/10000 | loss 2.3456 | lr 6.00e-04 | elapsed 0:05:23 | ETA 0:48:12
-Step 1000/10000 | loss 2.1234 | lr 5.95e-04 | elapsed 0:10:45 | ETA 0:42:30
-```
-
-**What it shows:**
-- **Step**: Current step / Total steps
-- **loss**: Training loss (lower is better, aim for <2.0)
-- **lr**: Current learning rate (decreases with cosine schedule)
-- **elapsed**: Time spent training so far
-- **ETA**: Estimated time remaining
-
-### **Training Arguments**
-
-```bash
-python train_all.py \
-  --steps 10000 \
-  --batch-size 32 \
-  --learning-rate 6e-4 \
-  --use-accelerate \
-  --mixed-precision bf16 \
-  --grad-accum 8
-```
-
-### **Multi-GPU Training**
-
-```bash
-accelerate launch --num_processes 2 train_all.py
-```
-
-### **Distributed Training (Multiple Machines)**
-
-Train across multiple machines for 2-3x speedup:
-
-**Server (Raspberry Pi or always-on machine):**
-```bash
-python distributed/server.py
-```
-
-**Workers (laptop, PC, friend's PC):**
-```bash
-python distributed/worker.py --server http://SERVER_IP:8765
-```
-
-**Submit tasks:**
-```bash
-python distributed/client.py --server http://SERVER_IP:8765 submit
-```
-
-See `distributed/README.md` for full documentation.
-
-### **Clean Up Old Models**
-
-If you have old model checkpoints:
-
-```bash
-python cleanup_models.py
-```
-
-Keeps only:
-- `models/finai_gpt.pt` (main model)
-- `models/tokenizer.pkl` (tokenizer)
-
----
-
-## 📈 Performance
-
-### **Training Speed (AMD RX 7600 XT, 16GB VRAM)**
-- **Tokens/sec**: ~2000-3000 (with gradient checkpointing)
-- **Time per 10k steps**: ~2-3 hours
-- **Memory usage**: ~12-14 GB
-
-### **Model Quality**
-- **Perplexity**: <15 on financial text after 10k steps
-- **Coherence**: Much better than 4-layer models
-- **Context**: Handles 1024 tokens (full documents)
-
-### **Comparison to GPT-2**
-- **GPT-2 Small**: 117M params
-- **GPT-2 Medium**: 345M params ← **FinAI is here**
-- **GPT-2 Large**: 774M params
-- **GPT-2 XL**: 1.5B params
 
 ---
 
 ## 🔧 Troubleshooting
 
-### **Out of Memory (OOM)**
+### Training Issues
 
-1. **Reduce batch size:**
-   ```python
-   # In src/config.py
-   BATCH_SIZE = 16  # or 8
-   ```
+**Problem**: Out of memory  
+**Solution**: Reduce `BATCH_SIZE` or enable `USE_GRAD_CHECKPOINTING` in config
 
-2. **Reduce model size:**
-   ```python
-   N_LAYER = 12     # instead of 24
-   N_EMBD = 768     # instead of 1024
-   ```
+**Problem**: Slow training  
+**Solution**: Enable GPU, use `--accelerate on`, increase `BATCH_SIZE`
 
-3. **Enable gradient checkpointing** (already on by default):
-   ```python
-   USE_GRAD_CHECKPOINTING = True
-   ```
+**Problem**: NaN loss  
+**Solution**: Reduce `LEARNING_RATE`, check `MAX_GRAD_NORM` is set
 
-### **GPU Not Detected**
+### Distributed Issues
 
-```bash
-python scripts/verify_gpu.py
-```
+**Problem**: Workers can't connect to server  
+**Solution**: Check firewall, use correct IP/port, verify `AUTH_PASSWORD`
 
-Check:
-- PyTorch with correct GPU support installed
-- GPU drivers up to date
-- CUDA/ROCm properly configured
+**Problem**: Model not syncing  
+**Solution**: Ensure `models/finai_gpt.pt` exists on server, check permissions
 
-### **Training Too Slow**
-
-1. **Use bfloat16 mixed precision** (already on by default)
-2. **Increase gradient accumulation** if you can't increase batch size
-3. **Use Flash Attention 2** (already enabled)
-4. **Multi-GPU with Accelerate**
-
-### **Model Not Generating Well**
-
-- **Train longer**: Try 20k-50k steps
-- **More data**: Add more diverse datasets
-- **Adjust temperature**: Lower = more conservative (0.5-0.7)
-- **Check perplexity**: Should be <20 for decent results
-
----
-
-## 📊 Dataset Tracking
-
-### **datasets.csv** (Pending)
-```csv
-name,config,split,date_trained,model_path,status
-virattt/financial-qa-10K,,train,,,
-gbharti/finance-alpaca,,train,,,
-```
-
-### **trained_datasets.csv** (Completed)
-```csv
-name,config,split,date_trained,model_path,status
-virattt/financial-qa-10K,,train,2024-11-05 17:30:42,models/finai_gpt.pt,completed
-gbharti/finance-alpaca,,train,2024-11-05 18:45:23,models/finai_gpt.pt,completed
-```
-
-After each dataset trains, `train_all.py`:
-1. Moves dataset from `datasets.csv` → `trained_datasets.csv`
-2. Adds timestamp
-3. **Commits to git** with message: `"Model Dataset #1 Trained"`
-
----
-
-## 🔒 Git Automation
-
-Training automatically commits progress:
-
-```bash
-# After dataset 1 trains:
-git add .
-git commit -m "Model Dataset #1 Trained"
-git push origin main
-
-# After dataset 2 trains:
-git add .
-git commit -m "Model Dataset #2 Trained"
-git push origin main
-```
-
-**Configure git** (first time only):
-```bash
-git config --global user.name "Your Name"
-git config --global user.email "your.email@example.com"
-```
-
-**Setup remote** (if not done):
-```bash
-git remote add origin https://github.com/your-username/FinAI.git
-```
-
----
-
-## 📦 Dependencies
-
-```txt
-torch>=2.0.0              # PyTorch (deep learning)
-transformers>=4.30.0      # Hugging Face transformers (scheduler)
-accelerate>=0.24.0        # Multi-GPU training
-datasets>=2.14.0          # Dataset loading
-numpy>=1.24.0             # Numerical operations
-tiktoken>=0.5.0           # GPT tokenization (optional)
-```
-
-Install all:
-```bash
-pip install -r requirements.txt
-```
-
----
-
-## 🎯 Roadmap
-
-- [x] Modern GPT architecture (RoPE, SwiGLU, Flash Attention)
-- [x] Single model continuous learning
-- [x] Automatic git commits
-- [x] CSV progress tracking
-- [x] Multi-GPU support (Accelerate)
-- [x] Mixed precision training
-- [ ] Hugging Face Hub integration
-- [ ] LoRA fine-tuning support
-- [ ] Quantization (4-bit, 8-bit)
-- [ ] Web UI for chat
-- [ ] API server mode
-- [ ] Evaluation benchmarks
+**Problem**: Dashboard shows "offline"  
+**Solution**: Verify server is running, check `SERVER_URL` in dashboard config
 
 ---
 
 ## 🤝 Contributing
 
+Contributions welcome! Please:
+
 1. Fork the repository
-2. Create feature branch: `git checkout -b feature/amazing-feature`
-3. Commit changes: `git commit -m "Add amazing feature"`
-4. Push to branch: `git push origin feature/amazing-feature`
-5. Open Pull Request
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
 
 ---
 
@@ -565,32 +593,21 @@ MIT License - see LICENSE file for details
 
 ---
 
-## ⚠️ Disclaimers
+## 🙏 Acknowledgments
 
-- **Not Financial Advice**: Models trained with FinAI are not financial advice and may contain inaccuracies.
-- **Dataset Licensing**: Ensure you have rights to use any datasets. Respect licensing and privacy.
-- **No Warranties**: Provided "as is" without warranties of any kind.
-- **Hardware Dependent**: GPU acceleration depends on drivers and hardware compatibility.
-
----
-
-## 🌟 Acknowledgments
-
-- **Architecture**: Inspired by GPT-2, LLaMA, PaLM
-- **Flash Attention**: [Tri Dao et al.](https://github.com/Dao-AILab/flash-attention)
-- **RoPE**: [Su et al., 2021](https://arxiv.org/abs/2104.09864)
-- **SwiGLU**: [Shazeer, 2020](https://arxiv.org/abs/2002.05202)
+- **Hugging Face** - Transformers, Datasets, Accelerate
+- **PyTorch** - Deep learning framework
+- **OpenAI** - GPT architecture inspiration
+- **Anthropic** - Modern training techniques
 
 ---
 
 ## 📞 Support
 
-- **Issues**: Open an issue on GitHub
-- **Discussions**: Use GitHub Discussions
+- **Issues**: [GitHub Issues](https://github.com/yourusername/FinAI/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/yourusername/FinAI/discussions)
 - **Email**: your.email@example.com
 
 ---
 
-**Made with ❤️ for the open-source community**
-
-**Star ⭐ the repo if FinAI helps you!**
+**Built with ❤️ for the financial AI community**

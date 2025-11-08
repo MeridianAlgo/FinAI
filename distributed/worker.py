@@ -143,16 +143,9 @@ class DistributedWorker:
         dataset_name = task['dataset']
         config = task.get('config', {})
         
-        # Estimate ETA (default 2 hours per dataset)
-        estimated_time = 7200  # 2 hours in seconds
-        eta_hours = estimated_time // 3600
-        eta_minutes = (estimated_time % 3600) // 60
-        
         print(f"\n{'='*80}")
         print(f"Processing task: {task_id}")
         print(f"Dataset: {dataset_name}")
-        print(f"Estimated time: {eta_hours}h {eta_minutes}m")
-        print(f"Expected completion: {time.strftime('%I:%M %p', time.localtime(time.time() + estimated_time))}")
         print(f"{'='*80}\n")
         
         start_time = time.time()

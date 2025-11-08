@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+
+# Environments
+.env
+.venv
+env/
+venv/
+
+# IDE/editor
+.vscode/
+.idea/
+*.code-workspace
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Notebooks
+.ipynb_checkpoints/
+*.ipynb
+
+# Logs
+*.log
+logs/
+
+# Checkpoints / large artifacts
+checkpoints/
+models/*.pt
+models/*.bin
+models/*.safetensors
+models/tokenizer.pkl
+
+# Datasets outputs / temps
+datasets/temp_*.txt
+datasets/hf_*.txt
+
+# Misc
+*.swp
+*.swo
+~$*

@@ -19,7 +19,7 @@ from urllib.parse import urlparse, parse_qs
 # Server configuration
 SERVER_PORT = 8765
 DATA_DIR = Path("distributed_data")
-MODELS_DIR = DATA_DIR / "models"
+MODELS_DIR = Path("models")  # Use unified root models folder for single model
 DATASETS_DIR = DATA_DIR / "datasets"
 LOGS_DIR = DATA_DIR / "logs"
 CONFIG_FILE = Path("distributed") / "server_config.json"
@@ -40,9 +40,10 @@ def load_config():
 
 config = load_config()
 
-# Create directories
-for d in [DATA_DIR, MODELS_DIR, DATASETS_DIR, LOGS_DIR]:
+# Create directories (models folder already exists at root)
+for d in [DATA_DIR, DATASETS_DIR, LOGS_DIR]:
     d.mkdir(parents=True, exist_ok=True)
+MODELS_DIR.mkdir(parents=True, exist_ok=True)  # Ensure root models folder exists
 
 # Global state
 workers = {}  # worker_id -> {last_seen, status, current_task, stats}
