@@ -1,5 +1,4 @@
 name,config,split,date_trained,model_path,status
-virattt/financial-qa-10K,,train,,,
 sujet-ai/Sujet-Finance-Instruct-177k,,train,,,
 Josephgflowers/Finance-Instruct-500k,,train,,,
 FinGPT/fingpt-forecaster-dow30-202305-202405,,train,,,
