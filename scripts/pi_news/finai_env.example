@@ -1,0 +1,5 @@
+# Copy this file to ~/.finai_env on the Raspberry Pi and fill in your token.
+# This allows cron to push over HTTPS without SSH.
+# Generate a token with repo access at https://github.com/settings/tokens (classic) or a fine-grained PAT.
+
+GITHUB_TOKEN=ghp_your_personal_access_token_here

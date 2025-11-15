@@ -416,18 +416,17 @@ class LanguageModel(nn.Module):
                         f"Step {done}/{steps} | loss {(loss.item() * grad_accum_steps):.4f} | "
                         f"lr {current_lr:.2e} | elapsed {elapsed_td} | ETA calculating..."
                     )
-                
                 # Update metrics tracker
                 if metrics:
                     try:
                         metrics.update_step(
                             step=done,
-                            loss=(loss.item() * grad_accum_steps),
+                            loss=loss.item(),
                             learning_rate=current_lr,
-                            step_time=step_time,
+                            step_time=per_step_time,
                             eta_seconds=eta_seconds
                         )
-                    except:
+                    except Exception:
                         pass
 
                 # Periodic checkpoint save to unified model path
@@ -480,6 +479,24 @@ class LanguageModel(nn.Module):
         
         self.train()
         
+        # Initialize metrics tracker (main process only)
+        metrics = None
+        try:
+            # Only start metrics on the main process to avoid duplicates
+            if accelerator.is_main_process:
+                from src.training_metrics import get_metrics_tracker
+                metrics = get_metrics_tracker()
+                metrics.start_training(
+                    dataset_name=dataset_name or 'unknown',
+                    total_steps=steps,
+                    training_mode=training_mode,
+                    batch_size=batch_size,
+                    block_size=self.block_size,
+                    device=str(accelerator.device)
+                )
+        except Exception:
+            metrics = None
+
         # AdamW optimizer with proper settings
         optimizer = torch.optim.AdamW(
             self.parameters(),
@@ -575,6 +592,19 @@ class LanguageModel(nn.Module):
                         print(f"Step {done}/{steps} | loss {loss.item():.4f} | lr {current_lr:.2e} | elapsed {elapsed_td} | ETA {eta}")
                     else:
                         print(f"Step {done}/{steps} | loss {loss.item():.4f} | lr {current_lr:.2e} | elapsed {elapsed_td} | ETA calculating...")
+
+                    # Update metrics tracker
+                    if metrics:
+                        try:
+                            metrics.update_step(
+                                step=done,
+                                loss=loss.item(),
+                                learning_rate=current_lr,
+                                step_time=per_step_time,
+                                eta_seconds=eta_seconds
+                            )
+                        except Exception:
+                            pass
 
                     # Periodic checkpoint save to unified model path (main process only)
                     try:
