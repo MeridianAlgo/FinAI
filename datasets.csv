@@ -1,5 +1,4 @@
 name,config,split,date_trained,model_path,status
-Josephgflowers/Finance-Instruct-500k,,train,,,
 FinGPT/fingpt-forecaster-dow30-202305-202405,,train,,,
 nickmuchi/trade-the-event-finance,,train,,,
 emilpartow/reddit_finance_posts_sp500,,train,,,

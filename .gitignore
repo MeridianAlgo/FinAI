@@ -28,12 +28,6 @@ Thumbs.db
 *.log
 logs/
 
-# Checkpoints / large artifacts
-checkpoints/
-models/*.pt
-models/*.bin
-models/*.safetensors
-models/tokenizer.pkl
 
 # Datasets outputs / temps
 datasets/temp_*.txt
