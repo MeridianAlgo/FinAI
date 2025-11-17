@@ -10,9 +10,9 @@ import time
 import csv
 import subprocess
 from datetime import datetime
-
 import torch
 from datasets import load_dataset
+from google_sheets_tracker import update_google_sheets
 from src.core.finai import FinAI
 from src.config import Config
 
@@ -62,64 +62,72 @@ def update_dataset_status(dataset_name, status, model_path=None):
                 # Move to trained_datasets.csv
                 trained_datasets.append(dataset)
                 datasets.remove(dataset)
+                # Update Google Sheets
+                update_google_sheets(dataset_name, status)
                 break
     
     save_datasets_csv("datasets.csv", datasets)
     save_datasets_csv("trained_datasets.csv", trained_datasets)
 
 def git_commit_and_push(dataset_number):
-    """Commit and push to git after dataset training"""
+    """Commit and push to git after dataset training with force commands"""
     try:
         print(f"\n{'='*80}")
         print("Committing to Git...")
         print("="*80)
-        
-        # Git add all changes
+
+        # Get current branch
+        try:
+            result = subprocess.run(['git', 'branch', '--show-current'], 
+                                   capture_output=True, text=True, check=False)
+            current_branch = result.stdout.strip() if result.returncode == 0 else 'master'
+            if not current_branch:
+                current_branch = 'master'
+        except:
+            current_branch = 'master'
+
+        print(f"Current branch: {current_branch}")
+
+        # Git add all changes (respects .gitignore)
         result = subprocess.run(['git', 'add', '.'], 
-                              capture_output=True, text=True, check=False)
+                               capture_output=True, text=True, check=False)
         if result.returncode != 0:
             print(f"Git add failed: {result.stderr}")
             return False
-        
+
         # Git commit with message
-        commit_msg = f"Model Dataset #{dataset_number} Trained"
-        result = subprocess.run(['git', 'commit', '-m', commit_msg],
-                              capture_output=True, text=True, check=False)
-        
+        commit_msg = f"Model Dataset #{dataset_number} Trained - Auto-push"
+        result = subprocess.run(['git', 'commit', '-m', commit_msg], 
+                               capture_output=True, text=True, check=False)
         if result.returncode != 0:
-            if 'nothing to commit' in result.stdout:
+            if 'nothing to commit' in result.stdout.lower() or 'nothing staged' in result.stdout.lower():
                 print("No changes to commit")
                 return True
             else:
                 print(f"Git commit failed: {result.stderr}")
                 return False
-        
+
         print(f"Committed: {commit_msg}")
-        
-        # Git push
-        result = subprocess.run(['git', 'push', 'origin', 'main'],
-                              capture_output=True, text=True, check=False)
-        
+
+        # Git push with force (as requested)
+        print(f"Pushing to {current_branch} branch with force...")
+        result = subprocess.run(['git', 'push', 'origin', current_branch, '--force'], 
+                               capture_output=True, text=True, check=False)
         if result.returncode != 0:
-            # Try 'master' if 'main' fails
-            result = subprocess.run(['git', 'push', 'origin', 'master'],
-                                  capture_output=True, text=True, check=False)
-            
-            if result.returncode != 0:
-                print(f"Git push failed: {result.stderr}")
-                print("Tip: Commit was successful, but push failed.")
-                print("      Check your remote configuration and network.")
-                return False
-        
-        print("Pushed to remote repository")
+            print(f"Git push failed: {result.stderr}")
+            print("Tip: Commit was successful, but push failed.")
+            print("      Check your remote configuration and network.")
+            return False
+
+        print("Successfully pushed to remote repository with force!")
         print("="*80 + "\n")
         return True
-        
+
     except FileNotFoundError:
         print("Git not found. Please install git or commit manually.")
         return False
     except Exception as e:
-        print(f"Git operation failed: {e}")
+        print(f"Unexpected git error: {str(e)}")
         return False
 
 def extract_text_from_dataset(dataset, split="train"):

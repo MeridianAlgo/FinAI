@@ -37,3 +37,6 @@ datasets/hf_*.txt
 *.swp
 *.swo
 ~$*
+
+# Google Sheets credentials
+credentials.json
