@@ -106,7 +106,28 @@ class FinAI:
             training_state = {'total_steps_completed': 0}
 
         # Send tokens to device
-        tokens_tensor = tokens_tensor.to(self.model.device)
+        try:
+            # Clear GPU cache before moving tensors
+            if hasattr(torch, 'cuda') and torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            
+            tokens_tensor = tokens_tensor.to(self.model.device)
+        except RuntimeError as e:
+            if "GPU device instance has been suspended" in str(e):
+                print("[FinAI] DirectML GPU suspended, falling back to CPU...")
+                # Fallback to CPU
+                self.model = GPTModel(
+                    vocab_size=self.tokenizer.vocab_size,
+                    block_size=self.config.BLOCK_SIZE,
+                    n_layer=self.config.N_LAYER,
+                    n_head=self.config.N_HEAD,
+                    n_embd=self.config.N_EMBD,
+                    use_gpu=False,
+                    use_grad_checkpointing=self.config.USE_GRAD_CHECKPOINTING
+                )
+                tokens_tensor = tokens_tensor.to(self.model.device)
+            else:
+                raise
 
         # Accelerate training (recommended for multi-GPU)
         accel_enabled = False

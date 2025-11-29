@@ -13,88 +13,88 @@ SPREADSHEET_ID = '1TMiX9YDSH7ifm5MizBEYRcTaojBCrnWF1roqI8qulDI'
 RANGE_NAME = 'Sheet1!A1'
 
 def update_google_sheets(dataset_name, status="completed"):
-    """Update Google Sheets when a dataset status changes"""
-    try:
-        # Check if credentials file exists
-        if not os.path.exists(SERVICE_ACCOUNT_FILE):
-            print(f"Warning: {SERVICE_ACCOUNT_FILE} not found. Skipping Google Sheets update.")
-            return False
+"""Update Google Sheets when a dataset status changes"""
+try:
+# Check if credentials file exists
+if not os.path.exists(SERVICE_ACCOUNT_FILE):
+print(f"Warning: {SERVICE_ACCOUNT_FILE} not found. Skipping Google Sheets update.")
+return False
 
-        # Authenticate and build service
-        creds = service_account.Credentials.from_service_account_file(
-            SERVICE_ACCOUNT_FILE, scopes=SCOPES)
-        
-        service = build('sheets', 'v4', credentials=creds)
+# Authenticate and build service
+creds = service_account.Credentials.from_service_account_file(
+SERVICE_ACCOUNT_FILE, scopes=SCOPES)
 
-        # Get current timestamp
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+service = build('sheets', 'v4', credentials=creds)
 
-        # Prepare the row data
-        values = [
-            [dataset_name, status, timestamp]
-        ]
+# Get current timestamp
+timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        body = {'values': values}
+# Prepare the row data
+values = [
+[dataset_name, status, timestamp]
+]
 
-        # Append to the sheet (adds new row)
-        result = service.spreadsheets().values().append(
-            spreadsheetId=SPREADSHEET_ID,
-            range=RANGE_NAME,
-            valueInputOption="RAW",
-            body=body
-        ).execute()
+body = {'values': values}
 
-        updated_cells = result.get('updates', {}).get('updatedCells', 0)
-        print(f"Google Sheets updated: {updated_cells} cells added for dataset '{dataset_name}'")
-        return True
+# Append to the sheet (adds new row)
+result = service.spreadsheets().values().append(
+spreadsheetId=SPREADSHEET_ID,
+range=RANGE_NAME,
+valueInputOption="RAW",
+body=body
+).execute()
 
-    except Exception as e:
-        print(f"Error updating Google Sheets: {str(e)}")
-        return False
+updated_cells = result.get('updates', {}).get('updatedCells', 0)
+print(f"Google Sheets updated: {updated_cells} cells added for dataset '{dataset_name}'")
+return True
+
+except Exception as e:
+print(f"Error updating Google Sheets: {str(e)}")
+return False
 
 def initialize_sheet():
-    """Initialize the Google Sheet with headers if it's empty"""
-    try:
-        if not os.path.exists(SERVICE_ACCOUNT_FILE):
-            print(f"Warning: {SERVICE_ACCOUNT_FILE} not found. Cannot initialize sheet.")
-            return False
+"""Initialize the Google Sheet with headers if it's empty"""
+try:
+if not os.path.exists(SERVICE_ACCOUNT_FILE):
+print(f"Warning: {SERVICE_ACCOUNT_FILE} not found. Cannot initialize sheet.")
+return False
 
-        # Authenticate and build service
-        creds = service_account.Credentials.from_service_account_file(
-            SERVICE_ACCOUNT_FILE, scopes=SCOPES)
-        
-        service = build('sheets', 'v4', credentials=creds)
+# Authenticate and build service
+creds = service_account.Credentials.from_service_account_file(
+SERVICE_ACCOUNT_FILE, scopes=SCOPES)
 
-        # Check if sheet has data
-        result = service.spreadsheets().values().get(
-            spreadsheetId=SPREADSHEET_ID,
-            range=RANGE_NAME
-        ).execute()
+service = build('sheets', 'v4', credentials=creds)
 
-        # If sheet is empty, add headers
-        if not result.get('values', []):
-            headers = [["Dataset Name", "Status", "Timestamp"]]
-            body = {'values': headers}
-            
-            result = service.spreadsheets().values().update(
-                spreadsheetId=SPREADSHEET_ID,
-                range=RANGE_NAME,
-                valueInputOption="RAW",
-                body=body
-            ).execute()
-            
-            print("Google Sheets initialized with headers")
-            return True
-        else:
-            print("Google Sheets already has data")
-            return True
+# Check if sheet has data
+result = service.spreadsheets().values().get(
+spreadsheetId=SPREADSHEET_ID,
+range=RANGE_NAME
+).execute()
 
-    except Exception as e:
-        print(f"Error initializing Google Sheets: {str(e)}")
-        return False
+# If sheet is empty, add headers
+if not result.get('values', []):
+headers = [["Dataset Name", "Status", "Timestamp"]]
+body = {'values': headers}
+
+result = service.spreadsheets().values().update(
+spreadsheetId=SPREADSHEET_ID,
+range=RANGE_NAME,
+valueInputOption="RAW",
+body=body
+).execute()
+
+print("Google Sheets initialized with headers")
+return True
+else:
+print("Google Sheets already has data")
+return True
+
+except Exception as e:
+print(f"Error initializing Google Sheets: {str(e)}")
+return False
 
 if __name__ == "__main__":
-    # Test the functions
-    print("Testing Google Sheets integration...")
-    initialize_sheet()
-    update_google_sheets("test_dataset", "testing")
+# Test the functions
+print("Testing Google Sheets integration...")
+initialize_sheet()
+update_google_sheets("test_dataset", "testing")

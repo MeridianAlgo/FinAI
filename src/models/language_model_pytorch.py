@@ -204,15 +204,26 @@ class LanguageModel(nn.Module):
 
     def _get_device(self, use_gpu: bool):
         if not use_gpu:
+            print("[FinAI] Using CPU for training.")
             return torch.device('cpu')
         if torch.cuda.is_available():
+            print("[FinAI] Using CUDA (NVIDIA GPU) for training.")
             return torch.device('cuda')
         try:
             import torch_directml
             if torch_directml.is_available():
-                return torch_directml.device()
-        except Exception:
-            pass
+                print("[FinAI] Using DirectML (AMD GPU/Windows) for training.")
+                # Create fresh device instance to avoid suspension
+                device = torch_directml.device()
+                # Test device with small tensor
+                test_tensor = torch.tensor([1.0]).to(device)
+                del test_tensor
+                return device
+        except Exception as e:
+            print(f"[FinAI] DirectML device creation failed: {e}")
+            print("[FinAI] Falling back to CPU.")
+            return torch.device('cpu')
+        print("[FinAI] No GPU found. Falling back to CPU.")
         return torch.device('cpu')
 
     def forward(self, idx: torch.Tensor, targets: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
