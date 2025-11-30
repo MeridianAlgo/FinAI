@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   train:
@@ -34,9 +35,23 @@ jobs:
         python scripts/train_daily_gh.py
 
     - name: Commit and Push Model
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         git config --global user.name "FinAI Bot"
         git config --global user.email "finai-bot@users.noreply.github.com"
+        
+        # Create a new branch for the update
+        git checkout -B daily-training
+        
         git add models/finai_gpt.pt models/tokenizer.pkl src/config.py
         git commit -m "Daily training update [skip ci]" || echo "No changes to commit"
-        git push
+        
+        # Push to the new branch (force to overwrite previous daily runs if not merged)
+        git push -f origin daily-training
+        
+        # Create a Pull Request
+        gh pr create --title "Daily Training Update" \
+                     --body "Automated daily training update. \n\nDataset: Randomly selected finance dataset." \
+                     --base master \
+                     --head daily-training || echo "PR might already exist"
