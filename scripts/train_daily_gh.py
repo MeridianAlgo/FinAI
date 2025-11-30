@@ -19,6 +19,8 @@ except ImportError:
     from src.config import Config
 
 # List of finance datasets on Hugging Face
+# List of finance datasets on Hugging Face
+# Add new datasets here!
 DATASETS = [
     "financial_phrasebank",
     "zeroshot/twitter-financial-news-sentiment",
@@ -27,6 +29,11 @@ DATASETS = [
     "dair-ai/emotion", # Not finance but good for sentiment
     "shawhin/imdb-financial-aspect",
     "takala/financial_phrasebank",
+    "nickmuchi/trade-the-event-finance",
+    "emilpartow/reddit_finance_posts_sp500",
+    "sweatSmile/FinanceQA",
+    "PatronusAI/financebench",
+    "lumalik/Quant-Trading-Instruct",
 ]
 
 def get_random_dataset():
@@ -50,7 +57,7 @@ def extract_text(dataset):
     data = dataset[split]
     
     # Common text fields
-    fields = ['text', 'sentence', 'input', 'instruction', 'content', 'headline']
+    fields = ['text', 'sentence', 'input', 'instruction', 'content', 'headline', 'question', 'answer']
     
     for item in data:
         text = ""
@@ -100,16 +107,16 @@ def main():
     finai = FinAI()
     
     # Train for limited steps to fit in GH Actions time limits
-    # 1M param model is fast, but CPU is slow.
-    # 500 steps should be doable in < 20 mins on CPU for this size.
-    steps = 500 
+    # 14M param model (Mini-GPT) is smarter but slower.
+    # 100 steps should take ~45-60 mins on CPU.
+    steps = 100 
     
     print(f"Training for {steps} steps...")
     finai.train_from_file(
         temp_file,
         steps=steps,
         batch_size=8, # Small batch for CPU
-        learning_rate=1e-3,
+        learning_rate=6e-4, # Adjusted for new model size
         dataset_name=ds_name,
         training_mode='daily_gh'
     )

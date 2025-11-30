@@ -1,4 +1,4 @@
-"""Optimized Configuration for 1M Parameter FinAI (Nano-GPT)"""
+"""Optimized Configuration for FinAI (Smart & Efficient ~14M Params)"""
 
 import torch
 
@@ -13,21 +13,20 @@ class Config:
     BLOCK_SIZE = 256  # Context window
     MAX_DATA_TOKENS = float('inf')
 
-    # Transformer architecture (~1M parameters - "Hella Smart & Fast")
-    # Vocab (259) * 128 = 33k
-    # Layers (5) * (12 * 128^2) = 983k
-    # Total ≈ 1.05M params
-    N_LAYER = 5
-    N_HEAD = 4    # head_dim = 32
-    N_EMBD = 128
-    DROPOUT = 0.05
+    # Transformer architecture (~14M parameters - "Smart & Efficient")
+    # A significant upgrade from the previous 1M param model.
+    # Capable of understanding more complex financial contexts.
+    N_LAYER = 8
+    N_HEAD = 8
+    N_EMBD = 384
+    DROPOUT = 0.1
 
     # Training
     TRAIN_EPOCHS = 1
-    TRAIN_STEPS = 2000  # Faster cycles for daily training
-    BATCH_SIZE = 32     # Higher batch size for smaller model
-    GRADIENT_ACCUM_STEPS = 4
-    LEARNING_RATE = 1e-3  # Higher LR for smaller model
+    TRAIN_STEPS = 1000  # Adjusted for larger model/slower steps
+    BATCH_SIZE = 16     # Lower batch size for larger model
+    GRADIENT_ACCUM_STEPS = 8 # Higher accumulation to maintain effective batch size
+    LEARNING_RATE = 6e-4  # Standard LR for this scale
     WEIGHT_DECAY = 0.1
     WARMUP_STEPS = 100
     MAX_GRAD_NORM = 1.0
@@ -39,8 +38,8 @@ class Config:
     EPSILON = 1e-8
 
     # Precision
-    PRECISION = torch.float32  # Use fp32 for such a small model (better stability), or bf16 if available
-    USE_GRAD_CHECKPOINTING = False  # Not needed for 1M params
+    PRECISION = torch.float32  # Keep fp32 for stability on CPU/MPS
+    USE_GRAD_CHECKPOINTING = False
 
     # Generation
     MAX_NEW_TOKENS = 256
