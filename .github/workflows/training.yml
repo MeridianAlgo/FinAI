@@ -45,7 +45,7 @@ jobs:
     - name: Run Training Script
       run: |
         echo "Starting daily training..."
-        python scripts/train_daily_gh.py
+        python scripts/train_daily_gh.py --new-model
 
     - name: Run Post-Training Tests
       run: |
@@ -66,7 +66,7 @@ jobs:
         else
           git lfs track "*.pt" "*.pkl" "*.pth" "*.bin"
           git add .gitattributes
-          git add models/finai_gpt.pt models/tokenizer.pkl src/config.py
+          git add models/finai_gpt.pt models/tokenizer.pkl src/config.py trained_datasets.csv
           
           MODEL_SIZE=$(du -h models/finai_gpt.pt | cut -f1)
           
