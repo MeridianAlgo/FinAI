@@ -1,0 +1,101 @@
+name: Training
+
+on:
+  schedule:
+    # Run at 8 PM CST (02:00 UTC)
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  train-model:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+        lfs: true
+
+    - name: Install and Setup Git LFS
+      run: |
+        curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | sudo bash
+        sudo apt-get install git-lfs
+        git lfs install
+        git lfs pull
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install torch --index-url https://download.pytorch.org/whl/cpu
+        pip install datasets transformers accelerate
+
+    - name: Run Training Script
+      run: |
+        echo "Starting daily training..."
+        python scripts/train_daily_gh.py --new-model
+
+    - name: Run Post-Training Tests
+      run: |
+        echo "Verifying model integrity..."
+        python tests/test_model.py
+
+    - name: Create Pull Request
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        git config --global user.name "FinAI Bot"
+        git config --global user.email "finai-bot@users.noreply.github.com"
+        
+        git checkout -B daily-training
+        
+        if git diff --quiet && git diff --cached --quiet; then
+          echo "No changes detected"
+        else
+          git lfs track "*.pt" "*.pkl" "*.pth" "*.bin"
+          git add .gitattributes
+          git add models/finai_gpt.pt models/tokenizer.pkl src/config.py trained_datasets.csv
+          
+          MODEL_SIZE=$(du -h models/finai_gpt.pt | cut -f1)
+          
+          git commit -m "Daily training update [skip ci] - $(date -u +%Y-%m-%d_%H:%M:%S_UTC)"
+          
+          git lfs push origin daily-training --all
+          git push -f origin daily-training
+          
+          gh pr create --title "each day i do better - $(date -u +%Y-%m-%d)" \
+                       --body "Automated daily training update.\n\nModel size: $MODEL_SIZE\nCompleted at: $(date -u)" \
+                       --base master \
+                       --head daily-training || echo "PR might already exist"
+        fi
+
+    - name: Send Notification
+      if: always()
+      uses: dawidd6/action-send-mail@v3
+      with:
+        server_address: smtp.gmail.com
+        server_port: 587
+        username: ${{ secrets.EMAIL_USERNAME }}
+        password: ${{ secrets.EMAIL_PASSWORD }}
+        subject: "FinAI Training: ${{ job.status }} - ${{ github.run_number }}"
+        to: ${{ secrets.EMAIL_TO }}
+        from: FinAI Maintenance Bot
+        body: |
+          FinAI Training Workflow Completed.
+          
+          Status: ${{ job.status }}
+          Run Number: ${{ github.run_number }}
+          
+          View run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

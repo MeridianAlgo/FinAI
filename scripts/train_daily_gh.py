@@ -70,9 +70,48 @@ def extract_text(dataset):
             
     return texts
 
+import csv
+from datetime import datetime
+import argparse
+
+# ... (imports remain the same)
+
+def log_training(ds_name, config_name):
+    """Log the training run to CSV"""
+    csv_file = "trained_datasets.csv"
+    file_exists = os.path.isfile(csv_file)
+    
+    with open(csv_file, mode='a', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        if not file_exists:
+            writer.writerow(["name", "config", "split", "date_trained", "model_path", "status"])
+            
+        writer.writerow([
+            ds_name,
+            config_name if config_name else "default",
+            "train",
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "models/finai_gpt.pt",
+            "success"
+        ])
+    print(f"Logged training to {csv_file}")
+
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--new-model", action="store_true", help="Force training a new model from scratch")
+    args = parser.parse_args()
+
     print("Starting Daily FinAI Training...")
     
+    # Handle New Model Flag
+    if args.new_model:
+        print("⚠️  --new-model flag detected! Deleting existing model to start fresh...")
+        if os.path.exists("models/finai_gpt.pt"):
+            os.remove("models/finai_gpt.pt")
+        if os.path.exists("models/tokenizer.pkl"):
+            os.remove("models/tokenizer.pkl")
+        print("Existing model files removed.")
+
     # 1. Select Dataset
     ds_name, config_name = get_random_dataset()
     print(f"Selected Dataset: {ds_name} (config: {config_name})")
@@ -120,6 +159,9 @@ def main():
         dataset_name=ds_name,
         training_mode='daily_gh'
     )
+    
+    # 4. Log Training
+    log_training(ds_name, config_name)
     
     # Cleanup
     if os.path.exists(temp_file):

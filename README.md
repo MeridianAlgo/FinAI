@@ -7,7 +7,7 @@
 
 **FinAI** is a specialized, high-efficiency Large Language Model (LLM) designed for financial analysis, sentiment detection, and market understanding. 
 
-Built to be **"Smart"** while remaining **cost-effective**, FinAI leverages a highly optimized ~14M parameter architecture ("Mini-GPT") that punches well above its weight class. It is trained daily on a diverse range of financial datasets to continuously improve its understanding of market dynamics.
+Built to be **"smart"** while remaining **cost-effective**, FinAI leverages a highly optimized ~14M parameter architecture ("Mini-GPT") that punches well above its weight class. It is trained daily on a diverse range of financial datasets to continuously improve its understanding of market dynamics.
 
 ## 🚀 Key Features
 
