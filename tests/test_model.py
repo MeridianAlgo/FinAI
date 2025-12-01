@@ -74,7 +74,7 @@ def main():
         sys.path.insert(0, str(base_path))
         from src.config import Config
         config = Config()
-        print(f"  ✓ Config loaded (vocab={config.vocab_size}, layers={config.n_layer})")
+        print(f"  ✓ Config loaded (embd={config.N_EMBD}, layers={config.N_LAYER})")
     except Exception as e:
         print(f"  ✗ Config error: {e}")
         all_passed = False
