@@ -45,7 +45,7 @@ jobs:
     - name: Run Training Script
       run: |
         echo "Starting daily training..."
-        python scripts/train_daily_gh.py --new-model
+        python scripts/train_daily_gh.py
 
     - name: Run Post-Training Tests
       run: |
