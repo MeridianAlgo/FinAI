@@ -1,0 +1,15 @@
+dataset,total_samples,steps_completed,steps_remaining,last_trained,status,error,success_count,fail_count
+gbharti/finance-alpaca,68912,0,68912,2025-12-12T13:21:03.443015,failed,Training failed with code 1,0,9
+PatronusAI/financebench,150,0,150,2025-12-12T13:21:07.300400,failed,Training failed with code 1,0,9
+nickmuchi/trade-the-event-finance,258309,0,258309,2025-12-12T13:21:35.127939,failed,Training failed with code 1,0,9
+FinanceInc/auditor_sentiment,3877,0,3877,2025-12-12T13:21:40.251434,failed,Training failed with code 1,0,9
+FinGPT/fingpt-forecaster-dow30-202305-202405,1230,0,1230,2025-12-12T13:21:45.181791,failed,Not enough valid examples,0,9
+emilpartow/reddit_finance_posts_sp500,431923,0,431923,2025-12-12T13:24:38.909914,failed,Not enough valid examples,0,9
+zeroshot/twitter-financial-news-sentiment,9543,0,9543,2025-12-12T18:39:59.961806,failed,Training failed with code 256,0,8
+sweatSmile/FinanceQA,0,0,0,2025-12-12T18:40:00.106435,failed,Dataset 'sweatSmile/FinanceQA' is a gated dataset on the Hub. You must be authenticated to access it.,0,8
+lumalik/Quant-Trading-Instruct,386,0,386,2025-12-12T18:40:01.001476,failed,Not enough valid examples,0,8
+gtfintechlab/finer-ord,80531,0,80531,2025-12-12T18:40:02.754858,failed,Not enough valid examples,0,8
+Anurich/finance_dataset,8045,0,8045,2025-12-12T18:40:03.938132,failed,Not enough valid examples,0,8
+Abirate/english_quotes,2508,0,2508,2025-12-12T18:40:06.857796,failed,Training failed with code 256,0,8
+fka/awesome-chatgpt-prompts,203,0,203,2025-12-12T18:40:09.071441,failed,Training failed with code 256,0,8
+snorkelai/agent-finance-reasoning,357,0,357,2025-12-12T18:40:10.871885,failed,Not enough valid examples,0,8

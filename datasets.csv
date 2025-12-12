@@ -1,0 +1,15 @@
+name,split,question_field,answer_field,enabled
+gbharti/finance-alpaca,train,instruction,output,true
+PatronusAI/financebench,train,question,answer,true
+nickmuchi/trade-the-event-finance,train,text,text,true
+FinanceInc/auditor_sentiment,train,sentence,sentence,true
+FinGPT/fingpt-forecaster-dow30-202305-202405,train,instruction,output,true
+emilpartow/reddit_finance_posts_sp500,train,title,selftext,true
+zeroshot/twitter-financial-news-sentiment,train,text,text,true
+sweatSmile/FinanceQA,train,question,answer,true
+lumalik/Quant-Trading-Instruct,train,instruction,output,true
+gtfintechlab/finer-ord,train,text,text,true
+Anurich/finance_dataset,train,question,answer,true
+Abirate/english_quotes,train,quote,quote,true
+fka/awesome-chatgpt-prompts,train,prompt,prompt,true
+snorkelai/agent-finance-reasoning,train,question,answer,true

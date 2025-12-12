@@ -1,0 +1,83 @@
+name: Train FinAI
+
+on:
+  schedule:
+    - cron: '0 4,6,8,10,12,14,16,18,20,22 * * *'
+  workflow_dispatch:
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    permissions:
+      contents: write
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        lfs: true
+    
+    - name: Set up Git LFS
+      run: |
+        git lfs install
+        git lfs pull
+    
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+    
+    - name: Cache pip
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+    
+    - name: Install dependencies
+      run: |
+        pip install torch --index-url https://download.pytorch.org/whl/cpu
+        pip install numpy datasets huggingface_hub accelerate
+    
+    - name: Run training
+      run: python train_cycle.py
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        HF_TOKEN: ${{ secrets.HF_TOKEN }}
+    
+    - name: Commit and push with LFS
+      run: |
+        git config user.email "action@github.com"
+        git config user.name "GitHub Action"
+        
+        git lfs track "*.pt" "*.pkl" "*.pth" "*.bin" 2>/dev/null || true
+        git add .gitattributes
+        git add -A
+        
+        if ! git diff --quiet || ! git diff --cached --quiet; then
+          git commit -m "Training update - $(date +'%Y-%m-%d %H:%M')"
+          git push origin master
+        fi
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Send Training Notification
+      if: always()
+      uses: dawidd6/action-send-mail@v3
+      with:
+        server_address: smtp.gmail.com
+        server_port: 587
+        username: ${{ secrets.EMAIL_USERNAME }}
+        password: ${{ secrets.EMAIL_PASSWORD }}
+        subject: "FinAI Training: ${{ job.status }} - ${{ github.run_number }}"
+        to: ${{ secrets.EMAIL_TO }}
+        from: FinAI Bot
+        body: |
+          FinAI Training Completed
+
+          Status: ${{ job.status }}
+          Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          
+          Training State:
+          - Total Steps: $(jq -r '.total_steps' training_state.json || echo 'N/A')
+          - Cycles: $(jq -r '.cycle_count' training_state.json || echo 'N/A')
+          - Version: $(jq -r '.version' training_state.json || echo 'N/A')
