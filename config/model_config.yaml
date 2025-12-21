@@ -1,27 +1,28 @@
 # Fin.AI Model Configuration
+# Optimized for GitHub Actions free tier (CPU)
 
 model:
-  size_preset: "small"
+  size_preset: "tiny"  # Smaller model for faster CPU training
 
 training:
-  batch_size: 8
-  gradient_accumulation_steps: 4
-  learning_rate: 3.0e-4
+  batch_size: 4
+  gradient_accumulation_steps: 2
+  learning_rate: 5.0e-4
   weight_decay: 0.1
-  warmup_steps: 1000
-  max_steps: 100000
-  eval_steps: 500
-  save_steps: 1000
+  warmup_steps: 100
+  max_steps: 500  # ~2 hours on CPU
+  eval_steps: 100
+  save_steps: 100
   max_grad_norm: 1.0
-  fp16: true
+  fp16: false  # CPU doesn't support fp16
   optimizer: "adamw"
   adam_beta1: 0.9
   adam_beta2: 0.95
   adam_epsilon: 1.0e-8
 
 data:
-  max_seq_len: 1024
-  num_workers: 4
+  max_seq_len: 512  # Shorter sequences for speed
+  num_workers: 0
 
 checkpointing:
   output_dir: "./checkpoints"
@@ -32,4 +33,4 @@ logging:
   log_steps: 10
   use_wandb: true
   wandb_project: "fin-ai"
-  plot_steps: 500
+  plot_steps: 100

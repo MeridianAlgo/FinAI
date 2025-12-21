@@ -1,19 +1,9 @@
 name: Train Fin.AI
 
 on:
-  # Daily training at midnight UTC
+  # Daily training at 6 AM UTC
   schedule:
-    - cron: '0 0 * * *'
-  
-  # Train on push to main
-  push:
-    branches:
-      - main
-    paths:
-      - 'config/**'
-      - 'fin_ai/**'
-      - 'train.py'
-      - '.github/workflows/train.yml'
+    - cron: '0 6 * * *'
   
   # Manual trigger
   workflow_dispatch:
@@ -21,7 +11,7 @@ on:
       max_steps:
         description: 'Maximum training steps'
         required: false
-        default: '10000'
+        default: '500'
 
 env:
   PYTHON_VERSION: '3.10'
@@ -29,7 +19,7 @@ env:
 jobs:
   train:
     runs-on: ubuntu-latest
-    timeout-minutes: 360
+    timeout-minutes: 180  # 3 hour limit to stay safe
     permissions:
       contents: write
     
@@ -72,19 +62,15 @@ jobs:
         run: |
           if [ -n "$WANDB_API_KEY" ]; then
             wandb login $WANDB_API_KEY
-            echo "WANDB_ENABLED=true" >> $GITHUB_ENV
-          else
-            echo "WANDB_ENABLED=false" >> $GITHUB_ENV
-            echo "No WANDB_API_KEY found, training without wandb logging"
           fi
       
       - name: Train model
         env:
           WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
           WANDB_PROJECT: "fin-ai"
-          WANDB_RUN_NAME: "run-${{ github.run_number }}"
+          TOKENIZERS_PARALLELISM: "false"
         run: |
-          MAX_STEPS="${{ github.event.inputs.max_steps || '10000' }}"
+          MAX_STEPS="${{ github.event.inputs.max_steps || '500' }}"
           
           python train.py \
             --config config/model_config.yaml \
@@ -103,12 +89,10 @@ jobs:
           git config user.email "action@github.com"
           git config user.name "GitHub Action"
           
-          # Add metrics and plots
-          git add checkpoints/metrics.json checkpoints/plots/ 2>/dev/null || true
-          git add checkpoints/dataset_state.json 2>/dev/null || true
+          git add checkpoints/ 2>/dev/null || true
           
           if ! git diff --quiet --cached; then
-            git commit -m "Training update - $(date +'%Y-%m-%d %H:%M:%S UTC') - Run ${{ github.run_number }}"
+            git commit -m "🤖 Training update $(date +'%Y-%m-%d') - Run ${{ github.run_number }}"
             git push origin main
           else
             echo "No changes to commit"

@@ -1,27 +1,62 @@
 # Hugging Face Datasets Configuration
-# Fin.AI will cycle through these datasets, training on each in order
+# Each day trains on a different dataset
 
 datasets:
+  # Monday - Wikipedia
+  - name: "wikitext"
+    subset: "wikitext-2-raw-v1"
+    split: "train"
+    text_column: "text"
+    day: 1
+    
+  # Tuesday - TinyStories (good for learning)
+  - name: "roneneldan/TinyStories"
+    subset: null
+    split: "train"
+    text_column: "text"
+    max_samples: 50000
+    day: 2
+    
+  # Wednesday - CNN News
+  - name: "cnn_dailymail"
+    subset: "3.0.0"
+    split: "train"
+    text_column: "article"
+    max_samples: 30000
+    day: 3
+    
+  # Thursday - Dolly instructions
+  - name: "databricks/databricks-dolly-15k"
+    subset: null
+    split: "train"
+    text_column: "context"
+    day: 4
+    
+  # Friday - Scientific papers
+  - name: "scientific_papers"
+    subset: "arxiv"
+    split: "train"
+    text_column: "article"
+    max_samples: 20000
+    day: 5
+    
+  # Saturday - Q&A
+  - name: "squad_v2"
+    subset: null
+    split: "train"
+    text_column: "context"
+    max_samples: 30000
+    day: 6
+    
+  # Sunday - More Wikipedia
   - name: "wikitext"
     subset: "wikitext-103-raw-v1"
     split: "train"
     text_column: "text"
-    
-  - name: "bookcorpus"
-    subset: null
-    split: "train"
-    text_column: "text"
-    max_samples: 500000
-    
-  - name: "openwebtext"
-    subset: null
-    split: "train"
-    text_column: "text"
-    max_samples: 500000
+    max_samples: 100000
+    day: 0
 
 cycle:
-  epochs_per_dataset: 1
-  shuffle_order: false
   state_file: "checkpoints/dataset_state.json"
 
 tokenizer:
@@ -30,6 +65,3 @@ tokenizer:
 preprocessing:
   concat_texts: true
   min_length: 20
-  clean_text: true
-  remove_urls: true
-  remove_emails: true

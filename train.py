@@ -19,11 +19,18 @@ from fin_ai.data import load_datasets_from_config, create_dataloader
 from fin_ai.training import FinAITrainer, TrainingConfig, DatasetCycler
 
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    level=logging.WARNING,
+    format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[logging.StreamHandler(sys.stdout)],
 )
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+# Suppress verbose warnings
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore", category=FutureWarning)
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
 def main():
@@ -61,7 +68,7 @@ def main():
     args = parser.parse_args()
     
     # Load configs
-    logger.info("Loading configurations...")
+    print("⚙️  Loading configurations...")
     model_config = FinAIConfig.from_yaml(args.config)
     training_config = TrainingConfig.from_yaml(args.config)
     
@@ -71,13 +78,9 @@ def main():
     if args.max_steps:
         training_config.max_steps = args.max_steps
     
-    # Log model info
-    logger.info(f"Model config: {model_config.to_dict()}")
-    logger.info(f"Estimated parameters: {model_config.num_parameters:,}")
-    
     # Load tokenizer
-    logger.info("Loading tokenizer...")
-    tokenizer = AutoTokenizer.from_pretrained("gpt2")
+    print("🔤 Loading tokenizer...")
+    tokenizer = AutoTokenizer.from_pretrained("gpt2", verbose=False)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     model_config.vocab_size = len(tokenizer)
@@ -88,10 +91,10 @@ def main():
         state_file=os.path.join(training_config.output_dir, "dataset_state.json")
     )
     
-    logger.info(f"Starting with dataset: {dataset_cycler.current_dataset_name}")
+    print(f"📚 Dataset: {dataset_cycler.current_dataset_name}")
     
     # Load datasets
-    logger.info("Loading datasets...")
+    print("📥 Loading datasets...")
     dataset = load_datasets_from_config(
         args.datasets,
         tokenizer=tokenizer,
@@ -104,18 +107,15 @@ def main():
         dataset,
         batch_size=training_config.batch_size,
         shuffle=True,
-        num_workers=4,
+        num_workers=0 if os.name == 'nt' else 4,  # Windows compatibility
     )
     
     # Create model
-    logger.info("Creating model...")
+    print("🤖 Creating model...")
     model = FinAIModel(model_config)
     
-    # Log parameter count
     total_params = sum(p.numel() for p in model.parameters())
-    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    logger.info(f"Total parameters: {total_params:,}")
-    logger.info(f"Trainable parameters: {trainable_params:,}")
+    print(f"✨ Model ready: {total_params:,} parameters")
     
     # Create trainer
     trainer = FinAITrainer(
@@ -126,10 +126,7 @@ def main():
     )
     
     # Train
-    logger.info("Starting training...")
     trainer.train()
-    
-    logger.info("Training complete!")
 
 
 if __name__ == "__main__":

@@ -138,7 +138,10 @@ class FinAITrainer:
         return torch.optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda)
     
     def train(self):
-        logger.info(f"Starting training on {self.device}")
+        print(f"\n🚀 Starting Fin.AI training on {self.device}")
+        print(f"📊 Model: {self.model.config.num_parameters:,} parameters")
+        print(f"🎯 Target steps: {self.config.max_steps:,}")
+        print(f"💾 Checkpoints: {self.config.output_dir}\n")
         
         if self.config.resume_from_checkpoint:
             self._load_checkpoint()
@@ -160,7 +163,7 @@ class FinAITrainer:
             
             batch = {k: v.to(self.device) for k, v in batch.items()}
             
-            with autocast(enabled=self.config.fp16 and self.device.type == "cuda"):
+            with torch.amp.autocast('cuda', enabled=self.config.fp16 and self.device.type == "cuda"):
                 outputs = self.model(
                     input_ids=batch["input_ids"],
                     attention_mask=batch["attention_mask"],
@@ -218,7 +221,7 @@ class FinAITrainer:
         
         pbar.close()
         self._save_checkpoint()
-        logger.info("Training complete!")
+        print(f"\n✅ Training complete! Final step: {self.global_step}")
     
     def _save_checkpoint(self):
         os.makedirs(self.config.output_dir, exist_ok=True)
@@ -235,7 +238,8 @@ class FinAITrainer:
         checkpoint_path = os.path.join(self.config.output_dir, f"checkpoint-{self.global_step}.pt")
         torch.save(checkpoint, checkpoint_path)
         self.model.save_pretrained(os.path.join(self.config.output_dir, "model"))
-        logger.info(f"Saved checkpoint: {checkpoint_path}")
+        if self.global_step % (self.config.save_steps * 5) == 0:  # Only log every 5th save
+            print(f"💾 Checkpoint saved at step {self.global_step}")
     
     def _load_checkpoint(self):
         if not os.path.exists(self.config.output_dir):
@@ -246,7 +250,7 @@ class FinAITrainer:
         checkpoints.sort(key=lambda x: int(x.split("-")[1].split(".")[0]))
         latest = checkpoints[-1]
         checkpoint_path = os.path.join(self.config.output_dir, latest)
-        logger.info(f"Loading checkpoint: {checkpoint_path}")
+        print(f"📂 Resuming from checkpoint: {latest}")
         checkpoint = torch.load(checkpoint_path, map_location=self.device)
         self.model.load_state_dict(checkpoint["model_state_dict"])
         self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
