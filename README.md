@@ -1,220 +1,271 @@
-<div align="center">
+# Fin.AI 🤖
 
-# 🤖 FinAI
+A lightweight, trainable transformer-based language model with automated daily training via GitHub Actions.
 
-### *A Self-Training Financial Language Model*
-### *Powered by EfficientFinAI Architecture*
+## Features
 
-<br>
+- **Scalable Architecture**: GPT-style transformer, easily adjustable from tiny (10M) to large (350M+) parameters
+- **Automated Training**: Daily training on different Hugging Face datasets via GitHub Actions
+- **Day-based Dataset Rotation**: Different dataset trains each day (Monday-Sunday)
+- **Checkpoint Management**: Automatic model saving and resumption
+- **Wandb Integration**: Real-time training metrics and visualization
+- **CPU-Optimized**: Runs efficiently on GitHub Actions free tier (Ubuntu CPU)
+- **Easy Configuration**: YAML-based model and dataset configuration
 
-[![Training](https://github.com/MeridianAlgo/FinAI/actions/workflows/train.yml/badge.svg)](https://github.com/MeridianAlgo/FinAI/actions/workflows/train.yml)
-[![Release](https://img.shields.io/github/v/release/MeridianAlgo/FinAI?include_prereleases&label=latest)](https://github.com/MeridianAlgo/FinAI/releases)
-[![License](https://img.shields.io/github/license/MeridianAlgo/FinAI)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://python.org)
-[![Model](https://img.shields.io/badge/model-~12M_params-blueviolet)](https://github.com/MeridianAlgo/FinAI)
+## Quick Start
 
-<br>
-
-**⚠️ UNDER ACTIVE DEVELOPMENT ⚠️**
-
-*This model is continuously training and improving. Expect frequent updates.*
-
-<br>
-
-[**Getting Started**](#-quick-start) • [**Releases**](https://github.com/MeridianAlgo/FinAI/releases) • [**Training Status**](#-live-training-status)
-
----
-
-<br>
-
-## 📊 Live Training Status
-
-<br>
-
-| Metric | Status |
-|:------:|:------:|
-| 🔄 **Training** | ![Status](https://img.shields.io/badge/status-active-brightgreen) |
-| 📈 **Total Steps** | ![Steps](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/MeridianAlgo/FinAI/master/training_state.json&query=$.total_steps&label=&color=blue) |
-| 🔁 **Cycles** | ![Cycles](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/MeridianAlgo/FinAI/master/training_state.json&query=$.cycle_count&label=&color=purple) |
-| 🏷️ **Version** | ![Version](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/MeridianAlgo/FinAI/master/training_state.json&query=$.version&label=v&color=orange) |
-| 📦 **Releases** | ![Releases](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/MeridianAlgo/FinAI/master/training_state.json&query=$.releases_created&label=&color=red) |
-| 📚 **Datasets** | ![Datasets](https://img.shields.io/badge/14-datasets-green) |
-
-<br>
-
-### ⏰ Training Schedule (UTC)
-
-| 04:00 | 06:00 | 08:00 | 10:00 | 12:00 | 14:00 | 16:00 | 18:00 | 20:00 | 22:00 | 23:00-04:00 |
-|:-----:|:-----:|:-----:|:-----:|:-----:|:-----:|:-----:|:-----:|:-----:|:-----:|:-----------:|
-| 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🔴 Paused |
-
-<br>
-
----
-
-<br>
-
-## 🚀 Quick Start
+### Local Training
 
 ```bash
-git clone https://github.com/MeridianAlgo/FinAI.git
-cd FinAI
+# Install dependencies
 pip install -r requirements.txt
-python main.py
+
+# Train the model
+python train.py --config config/model_config.yaml --datasets config/datasets.yaml
+
+# Generate text
+python generate.py --model checkpoints/model --prompt "Once upon a time"
 ```
 
-<br>
+### GitHub Actions (Automated)
 
----
+The model trains automatically every day at 6 AM UTC. Each day uses a different dataset:
 
-<br>
+- **Monday**: WikiText-2 (encyclopedia text)
+- **Tuesday**: TinyStories (short stories)
+- **Wednesday**: CNN News (news articles)
+- **Thursday**: Dolly (instruction data)
+- **Friday**: arXiv (scientific papers)
+- **Saturday**: SQuAD (Q&A data)
+- **Sunday**: WikiText-103 (large encyclopedia)
 
-## 🏗️ Model Architecture
+Checkpoints are automatically committed back to the main branch.
 
-**EfficientFinAI** - Optimized for CPU training on GitHub Actions
+## Configuration
 
-| Component | Technology | Benefit |
-|:---------:|:----------:|:-------:|
-| **Positional Encoding** | RoPE (Rotary) | Better long-context understanding |
-| **Activation** | SwiGLU | 10% more efficient than GELU |
-| **Normalization** | RMSNorm | Faster than LayerNorm |
-| **Attention** | Flash Attention 2 | Memory-efficient |
-| **Weight Tying** | Embeddings ↔ Output | Reduced parameters |
+### Model Sizes
 
-**Model Specs:**
-- 📊 ~12M parameters
-- 🧠 6 layers, 6 heads
-- 📏 384 embedding dimensions
-- 📖 512 token context window
+| Size | Parameters | Layers | Heads | Embed Dim | Speed |
+|------|-----------|--------|-------|-----------|-------|
+| tiny | ~10M | 4 | 4 | 256 | ⚡ Fast |
+| small | ~25M | 6 | 6 | 384 | 🚀 Medium |
+| medium | ~85M | 12 | 8 | 512 | 🐢 Slow |
+| large | ~350M | 24 | 12 | 768 | 🐌 Very Slow |
 
-<br>
+Edit `config/model_config.yaml` to change model size:
 
----
-
-<br>
-
-## 📚 Training Datasets
-
-| Dataset | Type | Status |
-|:-------:|:----:|:------:|
-| `finance-alpaca` | Q&A | ✅ |
-| `financebench` | Financial Q&A | ✅ |
-| `fingpt-forecaster` | Forecasting | ✅ |
-| `reddit_finance_posts` | Reddit | ✅ |
-| `twitter-financial-news` | Sentiment | ✅ |
-| `FinanceQA` | Q&A | ✅ |
-| `Quant-Trading-Instruct` | Trading | ✅ |
-| `finer-ord` | NER | ✅ |
-| `trade-the-event` | Events | ✅ |
-| `auditor_sentiment` | Sentiment | ✅ |
-| `finance_dataset` | General | ✅ |
-| `chatgpt-prompts` | Prompts | ✅ |
-| `agent-finance-reasoning` | Reasoning | ✅ |
-| `english_quotes` | Quotes | ✅ |
-
-**14 datasets • Auto-cycles after completion • Tracks success/failure**
-
-<br>
-
----
-
-<br>
-
-## ⚙️ How It Works
-
-```
-┌────────────────────────────────────────────────────────────────┐
-│                      TRAINING CYCLE                            │
-├────────────────────────────────────────────────────────────────┤
-│                                                                │
-│  Dataset 1 ──► Dataset 2 ──► ... ──► Dataset 14 ──► Cycle!    │
-│  (5k steps)    (5k steps)           (5k steps)                │
-│                                                                │
-│  ✅ Success → Track progress → Continue next run              │
-│  ❌ Failure → Log error → Skip to next dataset                │
-│                                                                │
-│  Every 3 cycles ──► New Release (v1.0.x) + Test Results       │
-│                                                                │
-│  After all datasets complete ──► Recycle from beginning       │
-│                                                                │
-└────────────────────────────────────────────────────────────────┘
+```yaml
+model:
+  size_preset: "tiny"  # or small, medium, large
 ```
 
-<br>
+### Datasets
 
----
+Edit `config/datasets.yaml` to customize datasets for each day:
 
-<br>
-
-## 📦 Releases
-
-Every **3 training cycles**, a new release is created:
-
-- 📥 Model weights (`finai_gpt.pt`)
-- 📊 Training statistics
-- 🧪 10 sample Q&A test results
-- 📈 Per-dataset progress
-
-<br>
-
-[**➡️ View All Releases**](https://github.com/MeridianAlgo/FinAI/releases)
-
-<br>
-
----
-
-<br>
-
-## 📁 Structure
-
-```
-FinAI/
-├── main.py               # Model & chat
-├── train_cycle.py        # Training loop
-├── training_state.json   # Global state
-├── datasets.csv          # Dataset config
-├── trained_datasets.csv  # Per-dataset progress
-├── models/               # Saved weights
-└── src/                  # Source code
+```yaml
+datasets:
+  - name: "wikitext"
+    subset: "wikitext-2-raw-v1"
+    split: "train"
+    text_column: "text"
+    day: 1  # Monday
+    max_samples: 100000
 ```
 
-<br>
+### Training Parameters
+
+Adjust in `config/model_config.yaml`:
+
+```yaml
+training:
+  batch_size: 4
+  learning_rate: 5.0e-4
+  max_steps: 500
+  warmup_steps: 100
+  eval_steps: 100
+```
+
+## Project Structure
+
+```
+fin-ai/
+├── fin_ai/                 # Main package
+│   ├── model/             # Transformer architecture
+│   │   ├── config.py      # Model configuration
+│   │   └── transformer.py # GPT-style model
+│   ├── data/              # Dataset loading
+│   │   └── dataset.py     # HF dataset utilities
+│   └── training/          # Training loop
+│       └── trainer.py     # Trainer with checkpointing
+├── config/                # Configuration files
+│   ├── model_config.yaml  # Model & training config
+│   └── datasets.yaml      # Dataset configuration
+├── train.py               # Main training script
+├── generate.py            # Text generation script
+├── requirements.txt       # Python dependencies
+└── .github/workflows/     # GitHub Actions
+    └── train.yml          # Daily training workflow
+```
+
+## Usage
+
+### Training
+
+```bash
+# Train with default config
+python train.py
+
+# Override max steps
+python train.py --max-steps 1000
+
+# Limit dataset samples (for testing)
+python train.py --max-samples 10000
+
+# Custom output directory
+python train.py --output-dir ./my_checkpoints
+```
+
+### Generation
+
+```bash
+# Generate from prompt
+python generate.py --prompt "The future of AI"
+
+# Customize generation
+python generate.py \
+  --model checkpoints/model \
+  --prompt "Hello world" \
+  --max-tokens 200 \
+  --temperature 0.8 \
+  --top-k 50 \
+  --top-p 0.9
+```
+
+## Monitoring Training
+
+### Wandb Dashboard
+
+If you have a Wandb account, add your API key as a GitHub secret:
+
+1. Get your API key from [wandb.ai](https://wandb.ai)
+2. Add `WANDB_API_KEY` to GitHub repo secrets
+3. View live training at [wandb.ai/your-username/fin-ai](https://wandb.ai)
+
+### Local Checkpoints
+
+Checkpoints are saved to `checkpoints/`:
+
+```
+checkpoints/
+├── model/                 # Latest model
+│   ├── config.json
+│   └── model.pt
+├── checkpoint-100.pt      # Intermediate checkpoints
+├── checkpoint-200.pt
+└── best_model.pt          # Best evaluation checkpoint
+```
+
+## Performance
+
+On GitHub Actions free tier (Ubuntu CPU):
+
+- **Tiny model**: ~16 seconds per step
+- **500 steps**: ~2.2 hours (fits in 3-hour limit)
+- **Daily training**: ~500 steps per day
+- **Monthly**: ~15,000 steps (~7.5M tokens)
+
+## Architecture
+
+Fin.AI uses a GPT-2 style transformer with:
+
+- Multi-head self-attention with rotary positional embeddings
+- Feed-forward layers with SwiGLU activation
+- Pre-norm architecture for stable training
+- Gradient accumulation for larger effective batch sizes
+- Mixed precision training (when GPU available)
+
+## Customization
+
+### Add New Datasets
+
+Edit `config/datasets.yaml`:
+
+```yaml
+datasets:
+  - name: "your-dataset"
+    subset: null
+    split: "train"
+    text_column: "text"
+    day: 1
+    max_samples: 50000
+```
+
+### Change Training Schedule
+
+Edit `.github/workflows/train.yml`:
+
+```yaml
+schedule:
+  - cron: '0 6 * * *'  # Daily at 6 AM UTC
+```
+
+### Adjust Model Size
+
+Edit `config/model_config.yaml`:
+
+```yaml
+model:
+  size_preset: "small"  # Larger model
+```
+
+## Troubleshooting
+
+### Training too slow
+
+- Reduce `batch_size` in config
+- Use smaller `size_preset` (tiny)
+- Reduce `max_seq_len` to 256
+
+### Out of memory
+
+- Reduce `batch_size`
+- Reduce `max_seq_len`
+- Use `gradient_accumulation_steps` to simulate larger batches
+
+### Dataset loading fails
+
+- Check dataset name on [Hugging Face](https://huggingface.co/datasets)
+- Verify `text_column` matches dataset schema
+- Try with `max_samples` limit first
+
+## Contributing
+
+Improvements welcome! Areas for enhancement:
+
+- [ ] GPU support for faster training
+- [ ] Distributed training across multiple machines
+- [ ] Model quantization for inference
+- [ ] Web UI for generation
+- [ ] Fine-tuning on custom data
+
+## License
+
+MIT License - see LICENSE file
+
+## Acknowledgments
+
+- Built with [PyTorch](https://pytorch.org)
+- Models from [Hugging Face Transformers](https://huggingface.co/transformers)
+- Datasets from [Hugging Face Datasets](https://huggingface.co/datasets)
+- Monitoring with [Weights & Biases](https://wandb.ai)
+
+## Status
+
+🚀 **Active Development** - Daily training on GitHub Actions
+
+Latest training: Check [GitHub Actions](https://github.com/MeridianAlgo/FinAI/actions)
 
 ---
 
-<br>
-
-## 🛠️ Development Status
-
-| Component | Status |
-|:---------:|:------:|
-| Core Model | 🟡 In Progress |
-| Training Loop | ✅ Complete |
-| Auto Releases | ✅ Complete |
-| Dataset Cycling | ✅ Complete |
-| Error Recovery | ✅ Complete |
-| Progress Tracking | ✅ Complete |
-| Chat Interface | 🟡 In Progress |
-| API | 🔴 Planned |
-
-<br>
-
----
-
-<br>
-
-## 📄 License
-
-MIT License - see [LICENSE](LICENSE)
-
-<br>
-
----
-
-<br>
-
-**Built with 🤖 by [MeridianAlgo](https://github.com/MeridianAlgo)**
-
-*Continuously training on GitHub Actions*
-
-</div>
+**Questions?** Open an issue on GitHub!
