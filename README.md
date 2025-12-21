@@ -2,15 +2,43 @@
 
 A lightweight, trainable transformer-based language model with automated daily training via GitHub Actions.
 
+[![Hugging Face](https://img.shields.io/badge/🤗%20Model-Fin.AI-yellow)](https://huggingface.co/MeridianAlgo/Fin.AI)
+[![GitHub Actions](https://github.com/MeridianAlgo/FinAI/actions/workflows/train.yml/badge.svg)](https://github.com/MeridianAlgo/FinAI/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 ## Features
 
 - **Scalable Architecture**: GPT-style transformer, easily adjustable from tiny (10M) to large (350M+) parameters
 - **Automated Training**: Daily training on different Hugging Face datasets via GitHub Actions
 - **Day-based Dataset Rotation**: Different dataset trains each day (Monday-Sunday)
-- **Checkpoint Management**: Automatic model saving and resumption
+- **Hugging Face Integration**: Model automatically uploaded to [HuggingFace Hub](https://huggingface.co/MeridianAlgo/Fin.AI)
 - **Wandb Integration**: Real-time training metrics and visualization
 - **CPU-Optimized**: Runs efficiently on GitHub Actions free tier (Ubuntu CPU)
 - **Easy Configuration**: YAML-based model and dataset configuration
+
+## 🤗 Model
+
+The trained model is available on Hugging Face:
+
+**[MeridianAlgo/Fin.AI](https://huggingface.co/MeridianAlgo/Fin.AI)**
+
+### Download Model
+
+```python
+from huggingface_hub import hf_hub_download
+
+# Download model files
+hf_hub_download("MeridianAlgo/Fin.AI", "model.pt", local_dir="./model")
+hf_hub_download("MeridianAlgo/Fin.AI", "config.json", local_dir="./model")
+```
+
+### Use with Fin.AI
+
+```python
+from fin_ai.model import FinAIModel
+
+model = FinAIModel.from_pretrained("./model")
+```
 
 ## Quick Start
 
@@ -39,7 +67,7 @@ The model trains automatically every day at 6 AM UTC. Each day uses a different 
 - **Saturday**: SQuAD (Q&A data)
 - **Sunday**: WikiText-103 (large encyclopedia)
 
-Checkpoints are automatically committed back to the main branch.
+After training, the model is automatically uploaded to Hugging Face.
 
 ## Configuration
 
@@ -274,7 +302,9 @@ MIT License - see [LICENSE](LICENSE) file
 
 🚀 **Active Development** - Daily training on GitHub Actions
 
-Latest training: Check [GitHub Actions](https://github.com/MeridianAlgo/FinAI/actions)
+- **Model**: [huggingface.co/MeridianAlgo/Fin.AI](https://huggingface.co/MeridianAlgo/Fin.AI)
+- **Training Logs**: [GitHub Actions](https://github.com/MeridianAlgo/FinAI/actions)
+- **Metrics**: [Wandb Dashboard](https://wandb.ai/meridianalgo-meridianalgo/fin-ai)
 
 ---
 

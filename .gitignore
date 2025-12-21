@@ -4,19 +4,39 @@ __pycache__/
 *$py.class
 *.pyo
 *.pyd
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
 # Environments
 .env
 .venv
 env/
 venv/
+ENV/
 
 # IDE/editor
 .vscode/
 .idea/
 *.code-workspace
+*.swp
+*.swo
+~$*
 
-# OS junk
+# OS
 .DS_Store
 Thumbs.db
 
@@ -27,13 +47,29 @@ Thumbs.db
 # Logs
 *.log
 logs/
+wandb/
 
+# Model files (stored on Hugging Face, not GitHub)
+checkpoints/*.pt
+checkpoints/*.pth
+checkpoints/*.bin
+checkpoints/*.safetensors
+checkpoints/model/
+*.pt
+*.pth
+*.bin
+*.safetensors
 
-# Datasets outputs / temps
-datasets/temp_*.txt
-datasets/hf_*.txt
+# Keep version.json (small metadata file)
+!checkpoints/version.json
+
+# Datasets
+datasets/
+*.csv
+
+# Training outputs
+training_output.txt
 
 # Misc
-*.swp
-*.swo
-~$*
+*.tmp
+*.temp
