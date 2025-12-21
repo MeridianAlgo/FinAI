@@ -1,0 +1,35 @@
+# Hugging Face Datasets Configuration
+# Fin.AI will cycle through these datasets, training on each in order
+
+datasets:
+  - name: "wikitext"
+    subset: "wikitext-103-raw-v1"
+    split: "train"
+    text_column: "text"
+    
+  - name: "bookcorpus"
+    subset: null
+    split: "train"
+    text_column: "text"
+    max_samples: 500000
+    
+  - name: "openwebtext"
+    subset: null
+    split: "train"
+    text_column: "text"
+    max_samples: 500000
+
+cycle:
+  epochs_per_dataset: 1
+  shuffle_order: false
+  state_file: "checkpoints/dataset_state.json"
+
+tokenizer:
+  pretrained: "gpt2"
+
+preprocessing:
+  concat_texts: true
+  min_length: 20
+  clean_text: true
+  remove_urls: true
+  remove_emails: true
