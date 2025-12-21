@@ -108,9 +108,7 @@ jobs:
           git add checkpoints/dataset_state.json 2>/dev/null || true
           
           if ! git diff --quiet --cached; then
-            git commit -m "Training update - $(date +'%Y-%m-%d %H:%M:%S UTC')'
-            
-Training metrics and plots from run ${{ github.run_number }}"
+            git commit -m "Training update - $(date +'%Y-%m-%d %H:%M:%S UTC') - Run ${{ github.run_number }}"
             git push origin main
           else
             echo "No changes to commit"
