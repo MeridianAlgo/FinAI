@@ -19,7 +19,7 @@ env:
 jobs:
   train:
     runs-on: ubuntu-latest
-    timeout-minutes: 180  # 3 hour limit to stay safe
+    timeout-minutes: 180
     permissions:
       contents: write
     
@@ -65,6 +65,7 @@ jobs:
           fi
       
       - name: Train model
+        id: train
         env:
           WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
           WANDB_PROJECT: "fin-ai"
@@ -76,7 +77,12 @@ jobs:
             --config config/model_config.yaml \
             --datasets config/datasets.yaml \
             --max-steps $MAX_STEPS \
-            --output-dir checkpoints
+            --output-dir checkpoints 2>&1 | tee training_output.txt
+          
+          # Extract training info for release notes
+          echo "TRAINING_OUTPUT<<EOF" >> $GITHUB_OUTPUT
+          tail -50 training_output.txt >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
       
       - name: Update checkpoint cache
         uses: actions/cache/save@v4
@@ -84,7 +90,49 @@ jobs:
           path: checkpoints
           key: checkpoint-${{ github.sha }}
       
-      - name: Commit and push to main
+      - name: Get or create version
+        id: version
+        run: |
+          # Get latest tag or start at v1.0.0
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v1.0.0")
+          echo "Latest tag: $LATEST_TAG"
+          
+          # Parse version (v1.0.1 -> 1 0 1)
+          VERSION=${LATEST_TAG#v}
+          MAJOR=$(echo $VERSION | cut -d. -f1)
+          MINOR=$(echo $VERSION | cut -d. -f2)
+          PATCH=$(echo $VERSION | cut -d. -f3)
+          
+          # Increment patch version
+          PATCH=$((PATCH + 1))
+          NEW_VERSION="v${MAJOR}.${MINOR}.${PATCH}"
+          
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "New version: $NEW_VERSION"
+          
+          # Get day of week (0=Sunday, 6=Saturday)
+          DAY_OF_WEEK=$(date +%u)
+          echo "DAY_OF_WEEK=$DAY_OF_WEEK" >> $GITHUB_OUTPUT
+          
+          # Get week number for weekly release
+          WEEK_NUM=$(date +%V)
+          echo "WEEK_NUM=$WEEK_NUM" >> $GITHUB_OUTPUT
+      
+      - name: Update version file
+        run: |
+          mkdir -p checkpoints
+          cat > checkpoints/version.json << EOF
+          {
+            "version": "${{ steps.version.outputs.NEW_VERSION }}",
+            "trained_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "run_number": ${{ github.run_number }},
+            "dataset": "$(date +%A)",
+            "steps": ${{ github.event.inputs.max_steps || '500' }}
+          }
+          EOF
+          cat checkpoints/version.json
+      
+      - name: Commit and tag
         run: |
           git config user.email "action@github.com"
           git config user.name "GitHub Action"
@@ -92,10 +140,66 @@ jobs:
           git add checkpoints/ 2>/dev/null || true
           
           if ! git diff --quiet --cached; then
-            git commit -m "🤖 Training update $(date +'%Y-%m-%d') - Run ${{ github.run_number }}"
-            git push origin main
+            git commit -m "🤖 Training ${{ steps.version.outputs.NEW_VERSION }} - $(date +'%Y-%m-%d')"
+            git tag -a "${{ steps.version.outputs.NEW_VERSION }}" -m "Training run ${{ github.run_number }} - $(date +'%Y-%m-%d')"
+            git push origin main --tags
           else
             echo "No changes to commit"
           fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Create weekly release (Sundays only)
+        if: steps.version.outputs.DAY_OF_WEEK == '7'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.version.outputs.NEW_VERSION }}
+          name: "Fin.AI Weekly Release ${{ steps.version.outputs.NEW_VERSION }}"
+          body: |
+            ## 🤖 Fin.AI Weekly Training Summary
+            
+            **Week ${{ steps.version.outputs.WEEK_NUM }} Training Complete!**
+            
+            ### 📊 Training Stats
+            - **Version**: ${{ steps.version.outputs.NEW_VERSION }}
+            - **Run Number**: ${{ github.run_number }}
+            - **Date**: $(date +'%Y-%m-%d')
+            - **Steps per day**: ${{ github.event.inputs.max_steps || '500' }}
+            
+            ### 📚 Datasets Trained This Week
+            - Monday: WikiText-2 (encyclopedia)
+            - Tuesday: TinyStories (short stories)
+            - Wednesday: CNN News (articles)
+            - Thursday: Dolly (instructions)
+            - Friday: arXiv (scientific papers)
+            - Saturday: SQuAD (Q&A)
+            - Sunday: WikiText-103 (large encyclopedia)
+            
+            ### 🔧 Model Configuration
+            - **Architecture**: GPT-2 style transformer
+            - **Size**: Tiny (~10M parameters)
+            - **Sequence Length**: 512 tokens
+            - **Batch Size**: 4
+            
+            ### 📈 Latest Training Output
+            ```
+            ${{ steps.train.outputs.TRAINING_OUTPUT }}
+            ```
+            
+            ### 🚀 Usage
+            ```python
+            from fin_ai.model import FinAIModel
+            model = FinAIModel.from_pretrained("checkpoints/model")
+            ```
+            
+            ### 📦 What's Included
+            - Trained model weights
+            - Model configuration
+            - Training checkpoints
+            
+            ---
+            *Automatically generated by Fin.AI training pipeline*
+          draft: false
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
