@@ -1,83 +1,119 @@
-name: Train FinAI
+name: Train Fin.AI
 
 on:
+  # Daily training at midnight UTC
   schedule:
-    - cron: '0 4,6,8,10,12,14,16,18,20,22 * * *'
+    - cron: '0 0 * * *'
+  
+  # Train on push to main
+  push:
+    branches:
+      - main
+    paths:
+      - 'config/**'
+      - 'fin_ai/**'
+      - 'train.py'
+      - '.github/workflows/train.yml'
+  
+  # Manual trigger
   workflow_dispatch:
+    inputs:
+      max_steps:
+        description: 'Maximum training steps'
+        required: false
+        default: '10000'
+
+env:
+  PYTHON_VERSION: '3.10'
 
 jobs:
   train:
     runs-on: ubuntu-latest
-    timeout-minutes: 150
+    timeout-minutes: 360
     permissions:
       contents: write
     
     steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-        lfs: true
-    
-    - name: Set up Git LFS
-      run: |
-        git lfs install
-        git lfs pull
-    
-    - uses: actions/setup-python@v5
-      with:
-        python-version: '3.10'
-    
-    - name: Cache pip
-      uses: actions/cache@v3
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
-    
-    - name: Install dependencies
-      run: |
-        pip install torch --index-url https://download.pytorch.org/whl/cpu
-        pip install numpy datasets huggingface_hub accelerate
-    
-    - name: Run training
-      run: python train_cycle.py
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        HF_TOKEN: ${{ secrets.HF_TOKEN }}
-    
-    - name: Commit and push with LFS
-      run: |
-        git config user.email "action@github.com"
-        git config user.name "GitHub Action"
-        
-        git lfs track "*.pt" "*.pkl" "*.pth" "*.bin" 2>/dev/null || true
-        git add .gitattributes
-        git add -A
-        
-        if ! git diff --quiet || ! git diff --cached --quiet; then
-          git commit -m "Training update - $(date +'%Y-%m-%d %H:%M')"
-          git push origin master
-        fi
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    
-    - name: Send Training Notification
-      if: always()
-      uses: dawidd6/action-send-mail@v3
-      with:
-        server_address: smtp.gmail.com
-        server_port: 587
-        username: ${{ secrets.EMAIL_USERNAME }}
-        password: ${{ secrets.EMAIL_PASSWORD }}
-        subject: "FinAI Training: ${{ job.status }} - ${{ github.run_number }}"
-        to: ${{ secrets.EMAIL_TO }}
-        from: FinAI Bot
-        body: |
-          FinAI Training Completed
-
-          Status: ${{ job.status }}
-          Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Cache Hugging Face datasets
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-cache-${{ hashFiles('config/datasets.yaml') }}
+          restore-keys: |
+            hf-cache-
+      
+      - name: Download previous checkpoint
+        uses: actions/cache@v4
+        with:
+          path: checkpoints
+          key: checkpoint-${{ github.sha }}
+          restore-keys: |
+            checkpoint-
+      
+      - name: Setup Wandb
+        env:
+          WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
+        run: |
+          if [ -n "$WANDB_API_KEY" ]; then
+            wandb login $WANDB_API_KEY
+            echo "WANDB_ENABLED=true" >> $GITHUB_ENV
+          else
+            echo "WANDB_ENABLED=false" >> $GITHUB_ENV
+            echo "No WANDB_API_KEY found, training without wandb logging"
+          fi
+      
+      - name: Train model
+        env:
+          WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
+          WANDB_PROJECT: "fin-ai"
+          WANDB_RUN_NAME: "run-${{ github.run_number }}"
+        run: |
+          MAX_STEPS="${{ github.event.inputs.max_steps || '10000' }}"
           
-          Training State:
-          - Total Steps: $(jq -r '.total_steps' training_state.json || echo 'N/A')
-          - Cycles: $(jq -r '.cycle_count' training_state.json || echo 'N/A')
-          - Version: $(jq -r '.version' training_state.json || echo 'N/A')
+          python train.py \
+            --config config/model_config.yaml \
+            --datasets config/datasets.yaml \
+            --max-steps $MAX_STEPS \
+            --output-dir checkpoints
+      
+      - name: Update checkpoint cache
+        uses: actions/cache/save@v4
+        with:
+          path: checkpoints
+          key: checkpoint-${{ github.sha }}
+      
+      - name: Commit and push to main
+        run: |
+          git config user.email "action@github.com"
+          git config user.name "GitHub Action"
+          
+          # Add metrics and plots
+          git add checkpoints/metrics.json checkpoints/plots/ 2>/dev/null || true
+          git add checkpoints/dataset_state.json 2>/dev/null || true
+          
+          if ! git diff --quiet --cached; then
+            git commit -m "Training update - $(date +'%Y-%m-%d %H:%M:%S UTC')'
+            
+Training metrics and plots from run ${{ github.run_number }}"
+            git push origin main
+          else
+            echo "No changes to commit"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
