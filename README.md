@@ -241,7 +241,9 @@ model:
 
 ## Contributing
 
-Improvements welcome! Areas for enhancement:
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+Areas for enhancement:
 
 - [ ] GPU support for faster training
 - [ ] Distributed training across multiple machines
@@ -249,9 +251,17 @@ Improvements welcome! Areas for enhancement:
 - [ ] Web UI for generation
 - [ ] Fine-tuning on custom data
 
+## Security
+
+For security concerns, please see [SECURITY.md](SECURITY.md).
+
+## Code of Conduct
+
+This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md).
+
 ## License
 
-MIT License - see LICENSE file
+MIT License - see [LICENSE](LICENSE) file
 
 ## Acknowledgments
 
