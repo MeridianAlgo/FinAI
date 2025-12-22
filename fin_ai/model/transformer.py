@@ -97,6 +97,6 @@ class FinAIModel(nn.Module):
             config_dict = json.load(f)
         config = FinAIConfig(**config_dict)
         model = cls(config)
-        state_dict = torch.load(os.path.join(path, "model.pt"), map_location=device)
+        state_dict = torch.load(os.path.join(path, "model.pt"), map_location=device, weights_only=False)
         model.load_state_dict(state_dict)
         return model
