@@ -74,18 +74,22 @@ jobs:
               
               # Download model files
               for f in files:
-                  if f.endswith(('.pt', '.json', '.bin', '.safetensors')):
+                  if f.endswith(('.pt', '.json')):
                       print(f"Downloading {f}...")
-                      hf_hub_download(
-                          repo_id=repo_id,
-                          filename=f,
-                          local_dir="checkpoints/model",
-                          token=token
-                      )
+                      try:
+                          hf_hub_download(
+                              repo_id=repo_id,
+                              filename=f,
+                              local_dir="checkpoints/model",
+                              token=token
+                          )
+                          print(f"✓ Downloaded {f}")
+                      except Exception as e:
+                          print(f"✗ Failed to download {f}: {e}")
               
-              print("Model downloaded successfully!")
+              print("Model download complete!")
           except Exception as e:
-              print(f"Could not download model (may not exist yet): {e}")
+              print(f"Could not download model: {e}")
               print("Starting fresh training...")
           EOF
       

@@ -251,11 +251,19 @@ class FinAITrainer:
         latest = checkpoints[-1]
         checkpoint_path = os.path.join(self.config.output_dir, latest)
         print(f"📂 Resuming from checkpoint: {latest}")
-        checkpoint = torch.load(checkpoint_path, map_location=self.device, weights_only=False)
-        self.model.load_state_dict(checkpoint["model_state_dict"])
-        self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-        self.scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
-        self.global_step = checkpoint["global_step"]
-        self.epoch = checkpoint["epoch"]
-        if self.scaler and "scaler_state_dict" in checkpoint:
-            self.scaler.load_state_dict(checkpoint["scaler_state_dict"])
+        
+        try:
+            checkpoint = torch.load(checkpoint_path, map_location=self.device, weights_only=False)
+            self.model.load_state_dict(checkpoint["model_state_dict"])
+            self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+            self.scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
+            self.global_step = checkpoint["global_step"]
+            self.epoch = checkpoint["epoch"]
+            if self.scaler and "scaler_state_dict" in checkpoint:
+                self.scaler.load_state_dict(checkpoint["scaler_state_dict"])
+            print(f"✅ Resumed from step {self.global_step}")
+        except Exception as e:
+            print(f"⚠️ Failed to load checkpoint: {e}")
+            print("Starting fresh training...")
+            self.global_step = 0
+            self.epoch = 0
