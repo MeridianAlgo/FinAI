@@ -1,6 +1,6 @@
 {
-  "version": "v1.0.1",
-  "trained_at": "2025-12-22T06:23:28Z",
-  "run_number": 1,
+  "version": "v1.0.3",
+  "trained_at": "2025-12-23T06:23:36Z",
+  "run_number": 26,
   "hf_repo": "MeridianAlgo/Fin.AI"
 }
