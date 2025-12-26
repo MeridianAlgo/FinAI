@@ -45,19 +45,25 @@ class FinAIDataset(Dataset):
         }
 
 
-def get_todays_dataset(datasets: List[Dict]) -> Dict:
-    """Get the dataset for today based on day of week (0=Sunday, 6=Saturday)."""
-    today = datetime.now().weekday()  # 0=Monday in Python
+def get_prioritized_datasets(datasets: List[Dict]) -> List[Dict]:
+    """Get list of datasets, starting with today's dataset."""
+    today = datetime.now().weekday()  # 0=Monday
     # Convert to our format: 0=Sunday, 1=Monday, etc.
     day_map = {0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 0}
     our_day = day_map[today]
     
-    for ds in datasets:
-        if ds.get("day") == our_day:
-            return ds
+    if not datasets:
+        return []
     
-    # Fallback to first dataset
-    return datasets[0] if datasets else None
+    # Find today's dataset index
+    start_idx = 0
+    for i, ds in enumerate(datasets):
+        if ds.get("day") == our_day:
+            start_idx = i
+            break
+            
+    # Rotate list so today's is first
+    return datasets[start_idx:] + datasets[:start_idx]
 
 
 def load_datasets_from_config(
@@ -77,44 +83,60 @@ def load_datasets_from_config(
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
     
-    # Get today's dataset
-    datasets = config.get("datasets", [])
-    ds_config = get_todays_dataset(datasets)
+    # Get datasets list
+    datasets_config_list = config.get("datasets", [])
+    prioritized_list = get_prioritized_datasets(datasets_config_list)
     
-    if not ds_config:
-        raise ValueError("No dataset configured for today!")
+    if not prioritized_list:
+        raise ValueError("No datasets configured!")
     
-    name = ds_config["name"]
-    subset = ds_config.get("subset")
-    split = ds_config.get("split", "train")
-    text_column = ds_config.get("text_column", "text")
-    ds_max_samples = ds_config.get("max_samples")
+    # Try datasets in order
+    texts = []
+    loaded_name = None
+    last_error = None
     
-    print(f"📅 Today's dataset: {name}")
-    
-    try:
-        if subset:
-            dataset = load_dataset(name, subset, split=split)
-        else:
-            dataset = load_dataset(name, split=split)
+    for ds_config in prioritized_list:
+        name = ds_config["name"]
+        subset = ds_config.get("subset")
+        split = ds_config.get("split", "train")
+        text_column = ds_config.get("text_column", "text")
+        ds_max_samples = ds_config.get("max_samples")
         
-        if ds_max_samples:
-            dataset = dataset.select(range(min(ds_max_samples, len(dataset))))
+        print(f"🔄 Attempting dataset: {name}")
         
-        texts = []
-        for item in dataset:
-            text = item.get(text_column, "")
-            if text and len(str(text).strip()) > 10:
-                texts.append(str(text))
-        
-        print(f"📊 Loaded {len(texts):,} samples")
-        
-    except Exception as e:
-        print(f"⚠️ Failed to load {name}: {e}")
-        raise
+        try:
+            if subset:
+                dataset = load_dataset(name, subset, split=split, trust_remote_code=True)
+            else:
+                dataset = load_dataset(name, split=split, trust_remote_code=True)
+            
+            if ds_max_samples:
+                dataset = dataset.select(range(min(ds_max_samples, len(dataset))))
+            
+            # Extract texts
+            current_texts = []
+            for item in dataset:
+                text = item.get(text_column, "")
+                if text and len(str(text).strip()) > 10:
+                    current_texts.append(str(text))
+            
+            if current_texts:
+                texts = current_texts
+                loaded_name = name
+                print(f"✅ Successfully loaded {name} with {len(texts):,} samples")
+                break
+            else:
+                print(f"⚠️ Loaded {name} but found no valid texts, trying next...")
+                
+        except Exception as e:
+            print(f"⚠️ Failed to load {name}: {e}")
+            last_error = e
+            continue
     
     if not texts:
-        raise ValueError("No texts loaded!")
+        raise ValueError(f"All datasets failed! Last error: {last_error}")
+    
+    print(f"📅 Training on: {loaded_name}")
     
     if max_samples and len(texts) > max_samples:
         texts = texts[:max_samples]
