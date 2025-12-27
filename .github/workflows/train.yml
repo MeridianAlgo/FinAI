@@ -213,9 +213,19 @@ jobs:
           print(f"Model uploaded to https://huggingface.co/{repo_id}")
           EOF
       
-      - name: Get version
+      - name: Update version and push
         id: version
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          git config user.email "action@github.com"
+          git config user.name "GitHub Action"
+          
+          # Pull latest changes to avoid conflicts
+          git fetch origin main --tags
+          git pull --rebase origin main
+          
+          # Calculate version based on latest tags
           LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v1.0.0")
           VERSION=${LATEST_TAG#v}
           MAJOR=$(echo $VERSION | cut -d. -f1)
@@ -223,22 +233,19 @@ jobs:
           PATCH=$(echo $VERSION | cut -d. -f3)
           PATCH=$((PATCH + 1))
           NEW_VERSION="v${MAJOR}.${MINOR}.${PATCH}"
+          
+          # Output for other steps
           echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_OUTPUT
           DAY_OF_WEEK=$(date +%u)
           echo "DAY_OF_WEEK=$DAY_OF_WEEK" >> $GITHUB_OUTPUT
           WEEK_NUM=$(date +%V)
           echo "WEEK_NUM=$WEEK_NUM" >> $GITHUB_OUTPUT
-      
-      - name: Update version and commit
-        run: |
-          git config user.email "action@github.com"
-          git config user.name "GitHub Action"
           
-          # Save version info (small file, no LFS needed)
+          # Save version info
           mkdir -p checkpoints
           cat > checkpoints/version.json << EOF
           {
-            "version": "${{ steps.version.outputs.NEW_VERSION }}",
+            "version": "$NEW_VERSION",
             "trained_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
             "run_number": ${{ github.run_number }},
             "hf_repo": "${{ env.HF_REPO_ID }}"
@@ -249,12 +256,10 @@ jobs:
           git add checkpoints/dataset_state.json || true
           
           if ! git diff --quiet --cached; then
-            git commit -m "🤖 Training ${{ steps.version.outputs.NEW_VERSION }} - $(date +'%Y-%m-%d') [skip ci]"
-            git tag -a "${{ steps.version.outputs.NEW_VERSION }}" -m "Training run ${{ github.run_number }}"
+            git commit -m "🤖 Training $NEW_VERSION - $(date +'%Y-%m-%d') [skip ci]"
+            git tag -a "$NEW_VERSION" -m "Training run ${{ github.run_number }}"
             git push origin main --tags
           fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Create weekly release (Sundays)
         if: steps.version.outputs.DAY_OF_WEEK == '7'
