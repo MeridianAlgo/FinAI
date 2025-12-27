@@ -1,7 +1,9 @@
 name: Train Fin.AI
 
 on:
-  # Daily training at 6 AM UTC
+  push:
+    branches: [ "main" ]
+  # Hourly training
   schedule:
     - cron: '0 * * * *'
   
@@ -246,7 +248,7 @@ jobs:
           git add checkpoints/version.json
           
           if ! git diff --quiet --cached; then
-            git commit -m "🤖 Training ${{ steps.version.outputs.NEW_VERSION }} - $(date +'%Y-%m-%d')"
+            git commit -m "🤖 Training ${{ steps.version.outputs.NEW_VERSION }} - $(date +'%Y-%m-%d') [skip ci]"
             git tag -a "${{ steps.version.outputs.NEW_VERSION }}" -m "Training run ${{ github.run_number }}"
             git push origin main --tags
           fi
