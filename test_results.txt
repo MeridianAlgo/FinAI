@@ -1,0 +1,74 @@
+`trust_remote_code` is not supported anymore.
+Please check that the Hugging Face dataset 'wikitext' isn't based on a loading script and remove `trust_remote_code`.
+If the dataset is based on a loading script, please ask the dataset author to remove it and convert it to a standard format like Parquet.
+`trust_remote_code` is not supported anymore.
+Please check that the Hugging Face dataset 'roneneldan/TinyStories' isn't based on a loading script and remove `trust_remote_code`.
+If the dataset is based on a loading script, please ask the dataset author to remove it and convert it to a standard format like Parquet.
+`trust_remote_code` is not supported anymore.
+Please check that the Hugging Face dataset 'cnn_dailymail' isn't based on a loading script and remove `trust_remote_code`.
+If the dataset is based on a loading script, please ask the dataset author to remove it and convert it to a standard format like Parquet.
+`trust_remote_code` is not supported anymore.
+Please check that the Hugging Face dataset 'databricks/databricks-dolly-15k' isn't based on a loading script and remove `trust_remote_code`.
+If the dataset is based on a loading script, please ask the dataset author to remove it and convert it to a standard format like Parquet.
+`trust_remote_code` is not supported anymore.
+Please check that the Hugging Face dataset 'squad_v2' isn't based on a loading script and remove `trust_remote_code`.
+If the dataset is based on a loading script, please ask the dataset author to remove it and convert it to a standard format like Parquet.
+`trust_remote_code` is not supported anymore.
+Please check that the Hugging Face dataset 'HuggingFaceFW/fineweb-edu' isn't based on a loading script and remove `trust_remote_code`.
+If the dataset is based on a loading script, please ask the dataset author to remove it and convert it to a standard format like Parquet.
+`trust_remote_code` is not supported anymore.
+Please check that the Hugging Face dataset 'HuggingFaceFW/fineweb' isn't based on a loading script and remove `trust_remote_code`.
+If the dataset is based on a loading script, please ask the dataset author to remove it and convert it to a standard format like Parquet.
+`trust_remote_code` is not supported anymore.
+Please check that the Hugging Face dataset 'codeparrot/codeparrot-clean-train' isn't based on a loading script and remove `trust_remote_code`.
+If the dataset is based on a loading script, please ask the dataset author to remove it and convert it to a standard format like Parquet.
+C:\Users\Ishaan\AppData\Local\Programs\Python\Python312\Lib\site-packages\huggingface_hub\file_download.py:143: UserWarning: `huggingface_hub` cache-system uses symlinks by default to efficiently store duplicated files but your machine does not support them in C:\Users\Ishaan\.cache\huggingface\hub\datasets--codeparrot--codeparrot-clean-train. Caching files will still work but in a degraded version that might require more space on your disk. This warning can be disabled by setting the `HF_HUB_DISABLE_SYMLINKS_WARNING` environment variable. For more details, see https://huggingface.co/docs/huggingface_hub/how-to-cache#limitations.
+To support symlinks on Windows, you either need to activate Developer Mode or to run Python as an administrator. In order to activate developer mode, see this article: https://docs.microsoft.com/en-us/windows/apps/get-started/enable-your-device-for-development
+  warnings.warn(message)
+Repo card metadata block was not found. Setting CardData to empty.
+`trust_remote_code` is not supported anymore.
+Please check that the Hugging Face dataset 'OpenAssistant/oasst1' isn't based on a loading script and remove `trust_remote_code`.
+If the dataset is based on a loading script, please ask the dataset author to remove it and convert it to a standard format like Parquet.
+`trust_remote_code` is not supported anymore.
+Please check that the Hugging Face dataset 'Anthropic/hh-rlhf' isn't based on a loading script and remove `trust_remote_code`.
+If the dataset is based on a loading script, please ask the dataset author to remove it and convert it to a standard format like Parquet.
+C:\Users\Ishaan\AppData\Local\Programs\Python\Python312\Lib\site-packages\huggingface_hub\file_download.py:143: UserWarning: `huggingface_hub` cache-system uses symlinks by default to efficiently store duplicated files but your machine does not support them in C:\Users\Ishaan\.cache\huggingface\hub\datasets--Anthropic--hh-rlhf. Caching files will still work but in a degraded version that might require more space on your disk. This warning can be disabled by setting the `HF_HUB_DISABLE_SYMLINKS_WARNING` environment variable. For more details, see https://huggingface.co/docs/huggingface_hub/how-to-cache#limitations.
+To support symlinks on Windows, you either need to activate Developer Mode or to run Python as an administrator. In order to activate developer mode, see this article: https://docs.microsoft.com/en-us/windows/apps/get-started/enable-your-device-for-development
+  warnings.warn(message)
+Starting dataset verification...
+Testing wikitext (subset: wikitext-2-raw-v1, split: train)...
+  OK - Found column 'text'
+Testing roneneldan/TinyStories (subset: None, split: train)...
+  OK - Found column 'text'
+Testing cnn_dailymail (subset: 3.0.0, split: train)...
+  OK - Found column 'article'
+Testing databricks/databricks-dolly-15k (subset: None, split: train)...
+  OK - Found column 'context'
+Testing squad_v2 (subset: None, split: train)...
+  OK - Found column 'context'
+Testing HuggingFaceFW/fineweb-edu (subset: sample-10BT, split: train)...
+  OK - Found column 'text'
+Testing HuggingFaceFW/fineweb (subset: sample-10BT, split: train)...
+  OK - Found column 'text'
+Testing codeparrot/codeparrot-clean-train (subset: None, split: train)...
+  OK - Found column 'content'
+Testing OpenAssistant/oasst1 (subset: None, split: train)...
+  OK - Found column 'text'
+Testing Anthropic/hh-rlhf (subset: helpful-base, split: train)...
+  FAIL: BuilderConfig 'helpful-base' not found. Available: ['default']
+
+==================================================
+DATASET VERIFICATION SUMMARY
+==================================================
+OK | wikitext
+OK | roneneldan/TinyStories
+OK | cnn_dailymail
+OK | databricks/databricks-dolly-15k
+OK | squad_v2
+OK | HuggingFaceFW/fineweb-edu
+OK | HuggingFaceFW/fineweb
+OK | codeparrot/codeparrot-clean-train
+OK | OpenAssistant/oasst1
+FAIL | Anthropic/hh-rlhf - BuilderConfig 'helpful-base' not found. Available: ['default']
+
+Some datasets failed to load!

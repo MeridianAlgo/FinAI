@@ -9,6 +9,8 @@ from datetime import datetime
 import yaml
 import logging
 import warnings
+import json
+import os
 
 logger = logging.getLogger(__name__)
 warnings.filterwarnings("ignore", category=UserWarning, module="transformers")
@@ -45,24 +47,55 @@ class FinAIDataset(Dataset):
         }
 
 
-def get_prioritized_datasets(datasets: List[Dict]) -> List[Dict]:
-    """Get list of datasets, starting with today's dataset."""
-    today = datetime.now().weekday()  # 0=Monday
-    # Convert to our format: 0=Sunday, 1=Monday, etc.
-    day_map = {0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 0}
-    our_day = day_map[today]
-    
+def get_prioritized_datasets(datasets: List[Dict], cycle_config: Optional[Dict] = None) -> List[Dict]:
+    """Get list of datasets, starting with today's dataset or next in cycle."""
     if not datasets:
         return []
     
-    # Find today's dataset index
     start_idx = 0
-    for i, ds in enumerate(datasets):
-        if ds.get("day") == our_day:
-            start_idx = i
-            break
+    use_day_rotation = True
+    
+    # Check if we should use per-run rotation cycle
+    if cycle_config and cycle_config.get("rotate_on_run"):
+        state_file = cycle_config.get("state_file", "checkpoints/dataset_state.json")
+        try:
+            current_index = 0
+            if os.path.exists(state_file):
+                with open(state_file, "r") as f:
+                    state = json.load(f)
+                    current_index = state.get("last_index", -1) + 1
             
-    # Rotate list so today's is first
+            start_idx = current_index % len(datasets)
+            
+            # Save new state
+            os.makedirs(os.path.dirname(state_file), exist_ok=True)
+            with open(state_file, "w") as f:
+                json.dump({
+                    "last_index": start_idx,
+                    "dataset_name": datasets[start_idx]["name"],
+                    "updated_at": datetime.now().isoformat()
+                }, f, indent=2)
+            
+            print(f"🔄 Cycle rotation: Selected index {start_idx} ({datasets[start_idx]['name']})")
+            use_day_rotation = False
+        except Exception as e:
+            print(f"⚠️ Failed to manage dataset cycle state: {e}. Falling back to day-based rotation.")
+            use_day_rotation = True
+
+    if use_day_rotation:
+        today = datetime.now().weekday()  # 0=Monday
+        # Convert to our format: 0=Sunday, 1=Monday, etc.
+        day_map = {0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 0}
+        our_day = day_map[today]
+        
+        # Find today's dataset index
+        for i, ds in enumerate(datasets):
+            if ds.get("day") == our_day:
+                start_idx = i
+                break
+        print(f"📅 Day-based rotation: Selected {datasets[start_idx]['name']} for day {our_day}")
+            
+    # Rotate list so the selected one is first
     return datasets[start_idx:] + datasets[:start_idx]
 
 
@@ -83,9 +116,10 @@ def load_datasets_from_config(
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
     
-    # Get datasets list
+    # Get datasets list & cycle config
     datasets_config_list = config.get("datasets", [])
-    prioritized_list = get_prioritized_datasets(datasets_config_list)
+    cycle_config = config.get("cycle", {})
+    prioritized_list = get_prioritized_datasets(datasets_config_list, cycle_config)
     
     if not prioritized_list:
         raise ValueError("No datasets configured!")

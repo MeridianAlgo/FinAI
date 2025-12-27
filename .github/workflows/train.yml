@@ -246,6 +246,7 @@ jobs:
           EOF
           
           git add checkpoints/version.json
+          git add checkpoints/dataset_state.json || true
           
           if ! git diff --quiet --cached; then
             git commit -m "🤖 Training ${{ steps.version.outputs.NEW_VERSION }} - $(date +'%Y-%m-%d') [skip ci]"
