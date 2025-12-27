@@ -151,7 +151,10 @@ class FinAITrainer:
         accumulation_loss = 0.0
         start_time = time.time()
         
-        pbar = tqdm(total=self.config.max_steps, initial=self.global_step, desc="Training")
+        # Detect CI environment
+        is_ci = os.environ.get("CI", "false").lower() == "true" or os.environ.get("GITHUB_ACTIONS", "false").lower() == "true"
+        
+        pbar = tqdm(total=self.config.max_steps, initial=self.global_step, desc="Training", disable=is_ci)
         
         while self.global_step < self.config.max_steps:
             try:
@@ -193,16 +196,20 @@ class FinAITrainer:
                 self.optimizer.zero_grad()
             
             self.global_step += 1
-            pbar.update(1)
+            if not is_ci:
+                pbar.update(1)
             
             if self.global_step % self.config.log_steps == 0:
                 elapsed = time.time() - start_time
                 current_lr = self.scheduler.get_last_lr()[0]
                 
-                pbar.set_postfix({
-                    "loss": f"{accumulation_loss:.4f}",
-                    "lr": f"{current_lr:.2e}",
-                })
+                if not is_ci:
+                    pbar.set_postfix({
+                        "loss": f"{accumulation_loss:.4f}",
+                        "lr": f"{current_lr:.2e}",
+                    })
+                else:
+                    print(f"Items processed: {self.global_step * self.config.batch_size} | Step {self.global_step}/{self.config.max_steps} | Loss: {accumulation_loss:.4f} | LR: {current_lr:.2e}")
                 
                 try:
                     import wandb
