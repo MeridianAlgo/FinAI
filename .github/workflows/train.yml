@@ -221,9 +221,16 @@ jobs:
           git config user.email "action@github.com"
           git config user.name "GitHub Action"
           
+          # Stash local changes (like dataset_state.json) before pulling
+          git add .
+          git stash
+          
           # Pull latest changes to avoid conflicts
           git fetch origin main --tags
           git pull --rebase origin main
+          
+          # Restore local changes
+          git stash pop || echo "No changes to restore"
           
           # Calculate version based on latest tags
           LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v1.0.0")

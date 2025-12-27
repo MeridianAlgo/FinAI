@@ -140,9 +140,9 @@ def load_datasets_from_config(
         
         try:
             if subset:
-                dataset = load_dataset(name, subset, split=split, trust_remote_code=True)
+                dataset = load_dataset(name, subset, split=split)
             else:
-                dataset = load_dataset(name, split=split, trust_remote_code=True)
+                dataset = load_dataset(name, split=split)
             
             if ds_max_samples:
                 dataset = dataset.select(range(min(ds_max_samples, len(dataset))))
