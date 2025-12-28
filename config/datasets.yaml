@@ -14,7 +14,7 @@ datasets:
     subset: null
     split: "train"
     text_column: "text"
-    max_samples: 50000
+    max_samples: 20000
     
   # Hour 2 - CNN News
   - name: "cnn_dailymail"
@@ -34,7 +34,7 @@ datasets:
     subset: null
     split: "train"
     text_column: "text"
-    max_samples: 50000
+    max_samples: 10000
     
   # Hour 5 - SQuAD Q&A
   - name: "squad_v2"
@@ -48,7 +48,7 @@ datasets:
     subset: "wikitext-103-raw-v1"
     split: "train"
     text_column: "text"
-    max_samples: 100000
+    max_samples: 50000
     
   # Hour 7 - AG News
   - name: "ag_news"
@@ -68,14 +68,14 @@ datasets:
     subset: null
     split: "train"
     text_column: "text"
-    max_samples: 50000
+    max_samples: 20000
     
   # Hour 10 - Amazon Reviews
   - name: "amazon_polarity"
     subset: null
     split: "train"
     text_column: "content"
-    max_samples: 50000
+    max_samples: 20000
     
   # Hour 11 - Common Crawl News
   - name: "cc_news"
@@ -96,7 +96,7 @@ datasets:
     subset: null
     split: "train"
     text_column: "text"
-    max_samples: 50000
+    max_samples: 20000
     
   # Hour 14 - CNN News (repeat)
   - name: "cnn_dailymail"
@@ -110,7 +110,7 @@ datasets:
     subset: null
     split: "train"
     text_column: "text"
-    max_samples: 50000
+    max_samples: 10000
     
   # Hour 16 - SQuAD Q&A (repeat)
   - name: "squad_v2"
@@ -124,7 +124,7 @@ datasets:
     subset: "wikitext-103-raw-v1"
     split: "train"
     text_column: "text"
-    max_samples: 100000
+    max_samples: 50000
     
   # Hour 18 - AG News (repeat)
   - name: "ag_news"
@@ -144,14 +144,14 @@ datasets:
     subset: null
     split: "train"
     text_column: "text"
-    max_samples: 50000
+    max_samples: 20000
     
   # Hour 21 - Amazon Reviews (repeat)
   - name: "amazon_polarity"
     subset: null
     split: "train"
     text_column: "content"
-    max_samples: 50000
+    max_samples: 20000
     
   # Hour 22 - Common Crawl News (repeat)
   - name: "cc_news"
