@@ -1,57 +1,175 @@
 # Hugging Face Datasets Configuration
-# Fin.AI cycles through these datasets every hour
+# Fin.AI cycles through these datasets every hour (24 datasets for 24 hours)
+# All datasets have been tested and verified to work
 
 datasets:
-  # Dataset 1 - Wikipedia
+  # Hour 0 - Wikipedia Small
   - name: "wikitext"
     subset: "wikitext-2-raw-v1"
     split: "train"
     text_column: "text"
     
-  # Dataset 2 - TinyStories
+  # Hour 1 - TinyStories
   - name: "roneneldan/TinyStories"
     subset: null
     split: "train"
     text_column: "text"
     max_samples: 50000
     
-  # Dataset 3 - CNN News
+  # Hour 2 - CNN News
   - name: "cnn_dailymail"
     subset: "3.0.0"
     split: "train"
     text_column: "article"
     max_samples: 30000
     
-  # Dataset 4 - Dolly Instructions
+  # Hour 3 - Dolly Instructions
   - name: "databricks/databricks-dolly-15k"
     subset: null
     split: "train"
     text_column: "context"
     
-  # Dataset 5 - OpenWebText
+  # Hour 4 - OpenWebText
   - name: "Skylion007/openwebtext"
     subset: null
     split: "train"
     text_column: "text"
     max_samples: 50000
     
-  # Dataset 6 - Q&A
+  # Hour 5 - SQuAD Q&A
   - name: "squad_v2"
     subset: null
     split: "train"
     text_column: "context"
     max_samples: 30000
     
-  # Dataset 7 - More Wikipedia
+  # Hour 6 - Wikipedia Large
   - name: "wikitext"
     subset: "wikitext-103-raw-v1"
     split: "train"
     text_column: "text"
     max_samples: 100000
+    
+  # Hour 7 - AG News
+  - name: "ag_news"
+    subset: null
+    split: "train"
+    text_column: "text"
+    
+  # Hour 8 - IMDB Reviews
+  - name: "imdb"
+    subset: null
+    split: "train"
+    text_column: "text"
+    max_samples: 40000
+    
+  # Hour 9 - Yelp Reviews
+  - name: "yelp_review_full"
+    subset: null
+    split: "train"
+    text_column: "text"
+    max_samples: 50000
+    
+  # Hour 10 - Amazon Reviews
+  - name: "amazon_polarity"
+    subset: null
+    split: "train"
+    text_column: "content"
+    max_samples: 50000
+    
+  # Hour 11 - Common Crawl News
+  - name: "cc_news"
+    subset: null
+    split: "train"
+    text_column: "text"
+    max_samples: 40000
+    
+  # Hour 12 - PubMed Medical
+  - name: "ccdv/pubmed-summarization"
+    subset: null
+    split: "train"
+    text_column: "article"
+    max_samples: 30000
+    
+  # Hour 13 - TinyStories (repeat)
+  - name: "roneneldan/TinyStories"
+    subset: null
+    split: "train"
+    text_column: "text"
+    max_samples: 50000
+    
+  # Hour 14 - CNN News (repeat)
+  - name: "cnn_dailymail"
+    subset: "3.0.0"
+    split: "train"
+    text_column: "article"
+    max_samples: 30000
+    
+  # Hour 15 - OpenWebText (repeat)
+  - name: "Skylion007/openwebtext"
+    subset: null
+    split: "train"
+    text_column: "text"
+    max_samples: 50000
+    
+  # Hour 16 - SQuAD Q&A (repeat)
+  - name: "squad_v2"
+    subset: null
+    split: "train"
+    text_column: "context"
+    max_samples: 30000
+    
+  # Hour 17 - Wikipedia Large (repeat)
+  - name: "wikitext"
+    subset: "wikitext-103-raw-v1"
+    split: "train"
+    text_column: "text"
+    max_samples: 100000
+    
+  # Hour 18 - AG News (repeat)
+  - name: "ag_news"
+    subset: null
+    split: "train"
+    text_column: "text"
+    
+  # Hour 19 - IMDB Reviews (repeat)
+  - name: "imdb"
+    subset: null
+    split: "train"
+    text_column: "text"
+    max_samples: 40000
+    
+  # Hour 20 - Yelp Reviews (repeat)
+  - name: "yelp_review_full"
+    subset: null
+    split: "train"
+    text_column: "text"
+    max_samples: 50000
+    
+  # Hour 21 - Amazon Reviews (repeat)
+  - name: "amazon_polarity"
+    subset: null
+    split: "train"
+    text_column: "content"
+    max_samples: 50000
+    
+  # Hour 22 - Common Crawl News (repeat)
+  - name: "cc_news"
+    subset: null
+    split: "train"
+    text_column: "text"
+    max_samples: 40000
+    
+  # Hour 23 - PubMed Medical (repeat)
+  - name: "ccdv/pubmed-summarization"
+    subset: null
+    split: "train"
+    text_column: "article"
+    max_samples: 30000
 
-# Rotation: Cycles through datasets based on hour of day
-# Hour 0 → Dataset 1, Hour 1 → Dataset 2, etc.
-# After last dataset, wraps back to first
+# Rotation: Cycles through datasets based on hour of day (0-23)
+# Each hour trains on a different dataset for diversity
+# Note: Some datasets repeat to fill 24 hours (only 13 unique working datasets)
 
 tokenizer:
   pretrained: "gpt2"

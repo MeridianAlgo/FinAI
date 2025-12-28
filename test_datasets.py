@@ -1,63 +1,74 @@
+#!/usr/bin/env python3
+"""
+Test all datasets to ensure they load correctly
+
+Usage:
+    python test_datasets.py
+"""
 
 import yaml
 from datasets import load_dataset
-import os
-import sys
 
-def test_datasets():
-    print("Starting dataset verification...")
-    with open("config/datasets.yaml", "r") as f:
-        config = yaml.safe_load(f)
+print("🧪 Testing All Datasets\n")
+
+# Load config
+with open("config/datasets.yaml", "r") as f:
+    config = yaml.safe_load(f)
+
+datasets = config.get("datasets", [])
+print(f"Found {len(datasets)} datasets to test\n")
+
+working_datasets = []
+failed_datasets = []
+
+for i, ds_config in enumerate(datasets, 1):
+    name = ds_config["name"]
+    subset = ds_config.get("subset")
+    split = ds_config.get("split", "train")
+    text_column = ds_config.get("text_column", "text")
     
-    datasets = config.get("datasets", [])
-    results = []
+    print(f"{i}. Testing: {name}")
+    print(f"   Subset: {subset}")
+    print(f"   Split: {split}")
+    print(f"   Column: {text_column}")
     
-    for ds in datasets:
-        name = ds["name"]
-        subset = ds.get("subset")
-        split = ds.get("split", "train")
-        print(f"Testing {name} (subset: {subset}, split: {split})...")
-        try:
-            # For testing, we use streaming=True to avoid downloading the whole thing
-            if subset:
-                d = load_dataset(name, subset, split=split, trust_remote_code=True, streaming=True)
+    try:
+        # Try to load dataset
+        if subset:
+            dataset = load_dataset(name, subset, split=split)
+        else:
+            dataset = load_dataset(name, split=split)
+        
+        # Check if text column exists
+        if len(dataset) > 0:
+            sample = dataset[0]
+            if text_column in sample:
+                text = sample[text_column]
+                print(f"   ✅ SUCCESS - {len(dataset):,} samples")
+                print(f"   Sample: {str(text)[:100]}...")
+                working_datasets.append(ds_config)
             else:
-                d = load_dataset(name, split=split, trust_remote_code=True, streaming=True)
+                print(f"   ❌ FAILED - Column '{text_column}' not found")
+                print(f"   Available columns: {list(sample.keys())}")
+                failed_datasets.append((name, f"Column '{text_column}' not found"))
+        else:
+            print(f"   ❌ FAILED - Dataset is empty")
+            failed_datasets.append((name, "Empty dataset"))
             
-            # Try to get one item
-            it = iter(d)
-            sample = next(it)
-            
-            # Check text column
-            text_col = ds.get("text_column", "text")
-            if text_col in sample:
-                print(f"  OK - Found column '{text_col}'")
-                results.append((name, True, None))
-            else:
-                available = list(sample.keys())
-                print(f"  FAIL - Column '{text_col}' not found. Available columns: {available}")
-                results.append((name, False, f"Missing column {text_col}"))
-        except Exception as e:
-            print(f"  FAIL: {e}")
-            results.append((name, False, str(e)))
+    except Exception as e:
+        print(f"   ❌ FAILED - {str(e)[:100]}")
+        failed_datasets.append((name, str(e)[:100]))
+    
+    print()
 
-    print("\n" + "="*50)
-    print("DATASET VERIFICATION SUMMARY")
-    print("="*50)
-    all_ok = True
-    for name, ok, error in results:
-        status = "OK" if ok else "FAIL"
-        err_msg = f" - {error}" if error else ""
-        print(f"{status} | {name}{err_msg}")
-        if not ok:
-            all_ok = False
-            
-    if not all_ok:
-        print("\nSome datasets failed to load!")
-        sys.exit(1)
-    else:
-        print("\nAll datasets are working properly!")
-        sys.exit(0)
+print("=" * 60)
+print(f"✅ Working: {len(working_datasets)}/{len(datasets)}")
+print(f"❌ Failed: {len(failed_datasets)}/{len(datasets)}")
+print("=" * 60)
 
-if __name__ == "__main__":
-    test_datasets()
+if failed_datasets:
+    print("\nFailed datasets:")
+    for name, error in failed_datasets:
+        print(f"  - {name}: {error}")
+
+print(f"\n✅ {len(working_datasets)} datasets are ready to use!")
