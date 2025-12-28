@@ -1,11 +1,9 @@
 name: Train Fin.AI
 
 on:
-  push:
-    branches: [ "main" ]
   # Hourly training
   schedule:
-    - cron: '0 * * * *'
+    - cron: '0 * * * *'  # Every hour at minute 0
   
   # Manual trigger only
   workflow_dispatch:

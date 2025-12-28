@@ -9,8 +9,6 @@ from datetime import datetime
 import yaml
 import logging
 import warnings
-import json
-import os
 
 logger = logging.getLogger(__name__)
 warnings.filterwarnings("ignore", category=UserWarning, module="transformers")
@@ -47,56 +45,22 @@ class FinAIDataset(Dataset):
         }
 
 
-def get_prioritized_datasets(datasets: List[Dict], cycle_config: Optional[Dict] = None) -> List[Dict]:
-    """Get list of datasets, starting with today's dataset or next in cycle."""
+def get_todays_dataset(datasets: List[Dict]) -> Dict:
+    """Get the dataset based on current hour (cycles through datasets every hour)."""
     if not datasets:
-        return []
+        return None
     
-    start_idx = 0
-    use_day_rotation = True
+    # Get current hour (0-23)
+    current_hour = datetime.now().hour
     
-    # Check if we should use per-run rotation cycle
-    if cycle_config and cycle_config.get("rotate_on_run"):
-        state_file = cycle_config.get("state_file", "checkpoints/dataset_state.json")
-        try:
-            current_index = 0
-            if os.path.exists(state_file):
-                with open(state_file, "r") as f:
-                    state = json.load(f)
-                    current_index = state.get("last_index", -1) + 1
-            
-            start_idx = current_index % len(datasets)
-            
-            # Save new state
-            os.makedirs(os.path.dirname(state_file), exist_ok=True)
-            with open(state_file, "w") as f:
-                json.dump({
-                    "last_index": start_idx,
-                    "dataset_name": datasets[start_idx]["name"],
-                    "updated_at": datetime.now().isoformat()
-                }, f, indent=2)
-            
-            print(f"🔄 Cycle rotation: Selected index {start_idx} ({datasets[start_idx]['name']})")
-            use_day_rotation = False
-        except Exception as e:
-            print(f"⚠️ Failed to manage dataset cycle state: {e}. Falling back to day-based rotation.")
-            use_day_rotation = True
-
-    if use_day_rotation:
-        today = datetime.now().weekday()  # 0=Monday
-        # Convert to our format: 0=Sunday, 1=Monday, etc.
-        day_map = {0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 0}
-        our_day = day_map[today]
-        
-        # Find today's dataset index
-        for i, ds in enumerate(datasets):
-            if ds.get("day") == our_day:
-                start_idx = i
-                break
-        print(f"📅 Day-based rotation: Selected {datasets[start_idx]['name']} for day {our_day}")
-            
-    # Rotate list so the selected one is first
-    return datasets[start_idx:] + datasets[:start_idx]
+    # Cycle through datasets based on hour
+    dataset_idx = current_hour % len(datasets)
+    
+    selected = datasets[dataset_idx]
+    
+    print(f"📅 Hour: {current_hour:02d}:00 → Dataset #{dataset_idx + 1}/{len(datasets)}: {selected['name']}")
+    
+    return selected
 
 
 def load_datasets_from_config(
@@ -116,61 +80,44 @@ def load_datasets_from_config(
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
     
-    # Get datasets list & cycle config
-    datasets_config_list = config.get("datasets", [])
-    cycle_config = config.get("cycle", {})
-    prioritized_list = get_prioritized_datasets(datasets_config_list, cycle_config)
+    # Get today's dataset
+    datasets = config.get("datasets", [])
+    ds_config = get_todays_dataset(datasets)
     
-    if not prioritized_list:
-        raise ValueError("No datasets configured!")
+    if not ds_config:
+        raise ValueError("No dataset configured!")
     
-    # Try datasets in order
-    texts = []
-    loaded_name = None
-    last_error = None
+    name = ds_config["name"]
+    subset = ds_config.get("subset")
+    split = ds_config.get("split", "train")
+    text_column = ds_config.get("text_column", "text")
+    ds_max_samples = ds_config.get("max_samples")
     
-    for ds_config in prioritized_list:
-        name = ds_config["name"]
-        subset = ds_config.get("subset")
-        split = ds_config.get("split", "train")
-        text_column = ds_config.get("text_column", "text")
-        ds_max_samples = ds_config.get("max_samples")
+    print(f"📚 Loading: {name}")
+    
+    try:
+        if subset:
+            dataset = load_dataset(name, subset, split=split)
+        else:
+            dataset = load_dataset(name, split=split)
         
-        print(f"🔄 Attempting dataset: {name}")
+        if ds_max_samples:
+            dataset = dataset.select(range(min(ds_max_samples, len(dataset))))
         
-        try:
-            if subset:
-                dataset = load_dataset(name, subset, split=split)
-            else:
-                dataset = load_dataset(name, split=split)
-            
-            if ds_max_samples:
-                dataset = dataset.select(range(min(ds_max_samples, len(dataset))))
-            
-            # Extract texts
-            current_texts = []
-            for item in dataset:
-                text = item.get(text_column, "")
-                if text and len(str(text).strip()) > 10:
-                    current_texts.append(str(text))
-            
-            if current_texts:
-                texts = current_texts
-                loaded_name = name
-                print(f"✅ Successfully loaded {name} with {len(texts):,} samples")
-                break
-            else:
-                print(f"⚠️ Loaded {name} but found no valid texts, trying next...")
-                
-        except Exception as e:
-            print(f"⚠️ Failed to load {name}: {e}")
-            last_error = e
-            continue
+        texts = []
+        for item in dataset:
+            text = item.get(text_column, "")
+            if text and len(str(text).strip()) > 10:
+                texts.append(str(text))
+        
+        print(f"📊 Loaded {len(texts):,} samples")
+        
+    except Exception as e:
+        print(f"❌ Failed to load {name}: {e}")
+        raise
     
     if not texts:
-        raise ValueError(f"All datasets failed! Last error: {last_error}")
-    
-    print(f"📅 Training on: {loaded_name}")
+        raise ValueError("No texts loaded!")
     
     if max_samples and len(texts) > max_samples:
         texts = texts[:max_samples]

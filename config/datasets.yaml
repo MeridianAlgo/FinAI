@@ -1,80 +1,57 @@
 # Hugging Face Datasets Configuration
-# Each day or run trains on a different dataset
+# Fin.AI cycles through these datasets every hour
 
 datasets:
-  # General Knowledge (Wikipedia)
+  # Dataset 1 - Wikipedia
   - name: "wikitext"
     subset: "wikitext-2-raw-v1"
     split: "train"
     text_column: "text"
-    day: 1
     
-  # Natural Language / Storytelling
+  # Dataset 2 - TinyStories
   - name: "roneneldan/TinyStories"
     subset: null
     split: "train"
     text_column: "text"
     max_samples: 50000
-    day: 2
     
-  # News & Summarization
+  # Dataset 3 - CNN News
   - name: "cnn_dailymail"
     subset: "3.0.0"
     split: "train"
     text_column: "article"
     max_samples: 30000
-    day: 3
     
-  # Instruction Following
+  # Dataset 4 - Dolly Instructions
   - name: "databricks/databricks-dolly-15k"
     subset: null
     split: "train"
     text_column: "context"
-    day: 4
     
-  # Q&A Context
+  # Dataset 5 - Scientific Papers
+  - name: "scientific_papers"
+    subset: "arxiv"
+    split: "train"
+    text_column: "article"
+    max_samples: 20000
+    
+  # Dataset 6 - Q&A
   - name: "squad_v2"
     subset: null
     split: "train"
     text_column: "context"
     max_samples: 30000
-    day: 6
     
-  # High Quality Web Content (FineWeb-Edu)
-  - name: "HuggingFaceFW/fineweb-edu"
-    subset: "sample-10BT"
+  # Dataset 7 - More Wikipedia
+  - name: "wikitext"
+    subset: "wikitext-103-raw-v1"
     split: "train"
     text_column: "text"
-    max_samples: 50000
-    day: 0
+    max_samples: 100000
 
-  # High Quality Web Content (FineWeb)
-  - name: "HuggingFaceFW/fineweb"
-    subset: "sample-10BT"
-    split: "train"
-    text_column: "text"
-    max_samples: 50000
-    day: 7
-
-  # Code & Programming (Clean Python subset)
-  - name: "codeparrot/codeparrot-clean-train"
-    subset: null
-    split: "train"
-    text_column: "content"
-    max_samples: 10000
-    day: 8
-
-  # General Dialogue (OpenAssistant)
-  - name: "OpenAssistant/oasst1"
-    subset: null
-    split: "train"
-    text_column: "text"
-    max_samples: 20000
-    day: 9
-
-cycle:
-  state_file: "checkpoints/dataset_state.json"
-  rotate_on_run: true # Enable rotation per run instead of per day
+# Rotation: Cycles through datasets based on hour of day
+# Hour 0 → Dataset 1, Hour 1 → Dataset 2, etc.
+# After last dataset, wraps back to first
 
 tokenizer:
   pretrained: "gpt2"

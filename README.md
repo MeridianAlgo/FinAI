@@ -57,15 +57,15 @@ python generate.py --model checkpoints/model --prompt "Once upon a time"
 
 ### GitHub Actions (Automated)
 
-The model trains automatically every day at 6 AM UTC. Each day uses a different dataset:
+The model trains automatically **every hour**. Datasets rotate based on the hour:
 
-- **Monday**: WikiText-2 (encyclopedia text)
-- **Tuesday**: TinyStories (short stories)
-- **Wednesday**: CNN News (news articles)
-- **Thursday**: Dolly (instruction data)
-- **Friday**: arXiv (scientific papers)
-- **Saturday**: SQuAD (Q&A data)
-- **Sunday**: WikiText-103 (large encyclopedia)
+- **Hour 0, 7, 14, 21**: WikiText-2 (encyclopedia)
+- **Hour 1, 8, 15, 22**: TinyStories (short stories)
+- **Hour 2, 9, 16, 23**: CNN News (articles)
+- **Hour 3, 10, 17**: Dolly (instructions)
+- **Hour 4, 11, 18**: arXiv (scientific papers)
+- **Hour 5, 12, 19**: SQuAD (Q&A)
+- **Hour 6, 13, 20**: WikiText-103 (large encyclopedia)
 
 After training, the model is automatically uploaded to Hugging Face.
 
@@ -200,8 +200,9 @@ On GitHub Actions free tier (Ubuntu CPU):
 
 - **Tiny model**: ~16 seconds per step
 - **500 steps**: ~2.2 hours (fits in 3-hour limit)
-- **Daily training**: ~500 steps per day
-- **Monthly**: ~15,000 steps (~7.5M tokens)
+- **Hourly training**: ~500 steps per hour
+- **Daily**: ~12,000 steps (~6M tokens)
+- **Monthly**: ~360,000 steps (~180M tokens)
 
 ## Architecture
 
@@ -235,7 +236,10 @@ Edit `.github/workflows/train.yml`:
 
 ```yaml
 schedule:
-  - cron: '0 6 * * *'  # Daily at 6 AM UTC
+  - cron: '0 * * * *'  # Every hour
+  # Or change to:
+  # - cron: '0 */2 * * *'  # Every 2 hours
+  # - cron: '0 0,6,12,18 * * *'  # 4 times per day
 ```
 
 ### Adjust Model Size
