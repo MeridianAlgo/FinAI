@@ -28,12 +28,12 @@ datasets:
     split: "train"
     text_column: "context"
     
-  # Dataset 5 - Scientific Papers
-  - name: "scientific_papers"
-    subset: "arxiv"
+  # Dataset 5 - OpenWebText
+  - name: "Skylion007/openwebtext"
+    subset: null
     split: "train"
-    text_column: "article"
-    max_samples: 20000
+    text_column: "text"
+    max_samples: 50000
     
   # Dataset 6 - Q&A
   - name: "squad_v2"
