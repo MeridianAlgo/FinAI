@@ -16,7 +16,7 @@ on:
       max_steps:
         description: 'Maximum training steps'
         required: false
-        default: '600'
+        default: '800'
 
 env:
   PYTHON_VERSION: '3.10'
@@ -125,8 +125,9 @@ jobs:
           HF_DATASETS_CACHE: "/tmp/hf_cache"
           HF_HOME: "/tmp/hf_home"
           HF_DATASETS_TRUST_REMOTE_CODE: "1"
+          HF_DATASETS_OFFLINE: "0"
         run: |
-          MAX_STEPS="${{ github.event.inputs.max_steps || '600' }}"
+          MAX_STEPS="${{ github.event.inputs.max_steps || '800' }}"
           
           # Create temp cache directories
           mkdir -p /tmp/hf_cache
