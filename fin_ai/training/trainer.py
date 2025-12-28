@@ -132,8 +132,10 @@ class FinAITrainer:
     def _create_scheduler(self):
         def lr_lambda(step):
             if step < self.config.warmup_steps:
-                return step / max(1, self.config.warmup_steps)
-            progress = (step - self.config.warmup_steps) / max(1, self.config.max_steps - self.config.warmup_steps)
+                # Linear warmup
+                return float(step) / float(max(1, self.config.warmup_steps))
+            # Cosine decay after warmup
+            progress = float(step - self.config.warmup_steps) / float(max(1, self.config.max_steps - self.config.warmup_steps))
             return max(0.1, 0.5 * (1.0 + math.cos(math.pi * progress)))
         return torch.optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda)
     

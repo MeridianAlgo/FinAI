@@ -20,7 +20,7 @@ env:
 jobs:
   train:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 240
     permissions:
       contents: write
     

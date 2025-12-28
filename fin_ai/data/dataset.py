@@ -20,7 +20,7 @@ class FinAIDataset(Dataset):
     def __init__(
         self,
         tokenized_data: List[List[int]],
-        max_seq_len: int = 1024,
+        max_seq_len: int = 512,
     ):
         self.data = tokenized_data
         self.max_seq_len = max_seq_len
@@ -66,7 +66,7 @@ def get_todays_dataset(datasets: List[Dict]) -> Dict:
 def load_datasets_from_config(
     config_path: str,
     tokenizer: Optional[AutoTokenizer] = None,
-    max_seq_len: int = 1024,
+    max_seq_len: int = 512,
     max_samples: Optional[int] = None,
 ) -> FinAIDataset:
     """Load today's dataset from YAML configuration."""
@@ -147,17 +147,26 @@ def tokenize_and_chunk(
     """Tokenize texts and create fixed-length chunks."""
     texts = [t for t in texts if len(t.strip()) >= min_length]
     
-    # Concatenate all texts
-    eos_token = tokenizer.eos_token or ""
-    full_text = eos_token.join(texts[:10000])  # Limit to avoid memory issues
+    # Tokenize each text individually to avoid memory issues
+    all_tokens = []
+    eos_token_id = tokenizer.eos_token_id
     
-    # Tokenize
-    all_tokens = tokenizer.encode(full_text, add_special_tokens=False)
+    for text in texts[:5000]:  # Limit number of texts
+        try:
+            tokens = tokenizer.encode(text, add_special_tokens=False, truncation=True, max_length=max_seq_len * 2)
+            if len(tokens) > 0:
+                all_tokens.extend(tokens)
+                if eos_token_id:
+                    all_tokens.append(eos_token_id)
+        except Exception as e:
+            continue
     
-    # Create chunks
+    # Create fixed-length chunks
     chunks = []
     for i in range(0, len(all_tokens) - max_seq_len + 1, max_seq_len):
-        chunks.append(all_tokens[i:i + max_seq_len])
+        chunk = all_tokens[i:i + max_seq_len]
+        if len(chunk) == max_seq_len:  # Only use complete chunks
+            chunks.append(chunk)
     
     return chunks
 

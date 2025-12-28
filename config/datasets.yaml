@@ -89,7 +89,7 @@ datasets:
     subset: null
     split: "train"
     text_column: "article"
-    max_samples: 30000
+    max_samples: 10000
     
   # Hour 13 - TinyStories (repeat)
   - name: "roneneldan/TinyStories"
@@ -165,7 +165,7 @@ datasets:
     subset: null
     split: "train"
     text_column: "article"
-    max_samples: 30000
+    max_samples: 10000
 
 # Rotation: Cycles through datasets based on hour of day (0-23)
 # Each hour trains on a different dataset for diversity
