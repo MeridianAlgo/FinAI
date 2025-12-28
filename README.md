@@ -1,315 +1,304 @@
-# Fin.AI 🤖
+# 🤖 Fin.AI
 
-A lightweight, trainable transformer-based language model with automated daily training via GitHub Actions.
+**A continuously-learning transformer language model trained hourly on diverse datasets via GitHub Actions**
 
 [![Hugging Face](https://img.shields.io/badge/🤗%20Model-Fin.AI-yellow)](https://huggingface.co/MeridianAlgo/Fin.AI)
 [![GitHub Actions](https://github.com/MeridianAlgo/FinAI/actions/workflows/train.yml/badge.svg)](https://github.com/MeridianAlgo/FinAI/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
-## Features
+---
 
-- **Scalable Architecture**: GPT-style transformer, easily adjustable from tiny (10M) to large (350M+) parameters
-- **Automated Training**: Daily training on different Hugging Face datasets via GitHub Actions
-- **Day-based Dataset Rotation**: Different dataset trains each day (Monday-Sunday)
-- **Hugging Face Integration**: Model automatically uploaded to [HuggingFace Hub](https://huggingface.co/MeridianAlgo/Fin.AI)
-- **Wandb Integration**: Real-time training metrics and visualization
-- **CPU-Optimized**: Runs efficiently on GitHub Actions free tier (Ubuntu CPU)
-- **Easy Configuration**: YAML-based model and dataset configuration
+## 🌟 What is Fin.AI?
 
-## 🤗 Model
+Fin.AI is an experimental GPT-style language model that trains itself **every hour** on different datasets from Hugging Face. It's designed to be:
 
-The trained model is available on Hugging Face:
+- **🔄 Continuously Learning**: Trains 24/7 on GitHub Actions
+- **📚 Diverse**: Rotates through 18 different dataset types hourly
+- **🎯 Focused**: Each hour targets specific capabilities (math, reasoning, conversation, etc.)
+- **🚀 Accessible**: Free to use, modify, and deploy
+- **📊 Transparent**: All training metrics visible on Wandb
 
-**[MeridianAlgo/Fin.AI](https://huggingface.co/MeridianAlgo/Fin.AI)**
+## ✨ Key Features
 
-### Download Model
+| Feature | Description |
+|---------|-------------|
+| **Automated Training** | Hourly training runs via GitHub Actions (no manual intervention) |
+| **Dataset Rotation** | 18 unique datasets covering news, math, code, conversations, and more |
+| **Hugging Face Integration** | Model auto-uploaded to [HF Hub](https://huggingface.co/MeridianAlgo/Fin.AI) after each run |
+| **Wandb Monitoring** | Real-time training metrics and loss curves |
+| **Scalable Architecture** | Easily adjust from 10M to 350M+ parameters |
+| **CPU Optimized** | Runs efficiently on free GitHub Actions runners |
+
+## 🎓 Training Curriculum
+
+Fin.AI trains on a diverse curriculum that rotates hourly:
+
+### Dataset Categories
+
+| Category | Datasets | Hours | Purpose |
+|----------|----------|-------|---------|
+| 📖 **Encyclopedia** | WikiText | 0, 6 | General knowledge |
+| ✍️ **Creative Writing** | TinyStories | 1, 18 | Narrative generation |
+| 📰 **News** | CNN, AG News, CC News | 2, 15, 17, 20 | Current events |
+| 🧮 **Math & Reasoning** | GSM8K, CommonsenseQA | 3, 9, 19, 23 | Problem solving |
+| 🌐 **Web Content** | OpenWebText, C4 | 4, 11 | Internet text |
+| ❓ **Q&A** | SQuAD | 5, 22 | Question answering |
+| 📋 **Instructions** | Alpaca, Dolly | 7, 14, 21 | Task following |
+| ⭐ **Reviews** | IMDB, Amazon, Yelp | 8, 10, 16 | Sentiment analysis |
+| 🏥 **Medical** | PubMed | 12 | Scientific text |
+| 💬 **Conversations** | UltraChat | 13 | Dialogue |
+
+## 🚀 Quick Start
+
+### Download Pre-trained Model
 
 ```python
 from huggingface_hub import hf_hub_download
 
-# Download model files
+# Download latest model
 hf_hub_download("MeridianAlgo/Fin.AI", "model.pt", local_dir="./model")
 hf_hub_download("MeridianAlgo/Fin.AI", "config.json", local_dir="./model")
 ```
 
-### Use with Fin.AI
+### Generate Text
 
 ```python
 from fin_ai.model import FinAIModel
+import torch
 
+# Load model
 model = FinAIModel.from_pretrained("./model")
+tokenizer = model.tokenizer
+
+# Generate
+prompt = "The future of artificial intelligence is"
+inputs = tokenizer(prompt, return_tensors="pt")
+outputs = model.generate(**inputs, max_length=100, temperature=0.8)
+print(tokenizer.decode(outputs[0]))
 ```
 
-## Quick Start
-
-### Local Training
+### Train Locally
 
 ```bash
 # Install dependencies
 pip install -r requirements.txt
 
-# Train the model
+# Train on current hour's dataset
 python train.py --config config/model_config.yaml --datasets config/datasets.yaml
 
-# Generate text
-python generate.py --model checkpoints/model --prompt "Once upon a time"
+# Train with custom settings
+python train.py --max-steps 1000 --max-samples 50000
 ```
 
-### GitHub Actions (Automated)
+## 📊 Model Architecture
 
-The model trains automatically **every hour**. Datasets rotate based on the hour:
+Fin.AI uses a modern GPT-2 style transformer with improvements:
 
-- **Hour 0, 7, 14, 21**: WikiText-2 (encyclopedia)
-- **Hour 1, 8, 15, 22**: TinyStories (short stories)
-- **Hour 2, 9, 16, 23**: CNN News (articles)
-- **Hour 3, 10, 17**: Dolly (instructions)
-- **Hour 4, 11, 18**: arXiv (scientific papers)
-- **Hour 5, 12, 19**: SQuAD (Q&A)
-- **Hour 6, 13, 20**: WikiText-103 (large encyclopedia)
-
-After training, the model is automatically uploaded to Hugging Face.
-
-## Configuration
+- **Multi-head Self-Attention** with rotary positional embeddings (RoPE)
+- **SwiGLU Activation** in feed-forward layers
+- **Pre-norm Architecture** for training stability
+- **Gradient Accumulation** for larger effective batch sizes
+- **Mixed Precision Training** (when GPU available)
 
 ### Model Sizes
 
-| Size | Parameters | Layers | Heads | Embed Dim | Speed |
-|------|-----------|--------|-------|-----------|-------|
-| tiny | ~10M | 4 | 4 | 256 | ⚡ Fast |
-| small | ~25M | 6 | 6 | 384 | 🚀 Medium |
-| medium | ~85M | 12 | 8 | 512 | 🐢 Slow |
-| large | ~350M | 24 | 12 | 768 | 🐌 Very Slow |
+| Preset | Parameters | Layers | Heads | Embed Dim | Use Case |
+|--------|-----------|--------|-------|-----------|----------|
+| `tiny` | ~10M | 4 | 4 | 256 | Fast prototyping, CPU training |
+| `small` | ~25M | 6 | 6 | 384 | Balanced performance |
+| `medium` | ~85M | 12 | 8 | 512 | Better quality, slower |
+| `large` | ~350M | 24 | 12 | 768 | Best quality, GPU recommended |
 
-Edit `config/model_config.yaml` to change model size:
+Current deployment: **tiny** (optimized for GitHub Actions CPU)
 
-```yaml
-model:
-  size_preset: "tiny"  # or small, medium, large
-```
-
-### Datasets
-
-Edit `config/datasets.yaml` to customize datasets for each day:
-
-```yaml
-datasets:
-  - name: "wikitext"
-    subset: "wikitext-2-raw-v1"
-    split: "train"
-    text_column: "text"
-    day: 1  # Monday
-    max_samples: 100000
-```
-
-### Training Parameters
-
-Adjust in `config/model_config.yaml`:
-
-```yaml
-training:
-  batch_size: 4
-  learning_rate: 5.0e-4
-  max_steps: 500
-  warmup_steps: 100
-  eval_steps: 100
-```
-
-## Project Structure
-
-```
-fin-ai/
-├── fin_ai/                 # Main package
-│   ├── model/             # Transformer architecture
-│   │   ├── config.py      # Model configuration
-│   │   └── transformer.py # GPT-style model
-│   ├── data/              # Dataset loading
-│   │   └── dataset.py     # HF dataset utilities
-│   └── training/          # Training loop
-│       └── trainer.py     # Trainer with checkpointing
-├── config/                # Configuration files
-│   ├── model_config.yaml  # Model & training config
-│   └── datasets.yaml      # Dataset configuration
-├── train.py               # Main training script
-├── generate.py            # Text generation script
-├── requirements.txt       # Python dependencies
-└── .github/workflows/     # GitHub Actions
-    └── train.yml          # Daily training workflow
-```
-
-## Usage
-
-### Training
-
-```bash
-# Train with default config
-python train.py
-
-# Override max steps
-python train.py --max-steps 1000
-
-# Limit dataset samples (for testing)
-python train.py --max-samples 10000
-
-# Custom output directory
-python train.py --output-dir ./my_checkpoints
-```
-
-### Generation
-
-```bash
-# Generate from prompt
-python generate.py --prompt "The future of AI"
-
-# Customize generation
-python generate.py \
-  --model checkpoints/model \
-  --prompt "Hello world" \
-  --max-tokens 200 \
-  --temperature 0.8 \
-  --top-k 50 \
-  --top-p 0.9
-```
-
-## Monitoring Training
-
-### Wandb Dashboard
-
-If you have a Wandb account, add your API key as a GitHub secret:
-
-1. Get your API key from [wandb.ai](https://wandb.ai)
-2. Add `WANDB_API_KEY` to GitHub repo secrets
-3. View live training at [wandb.ai/your-username/fin-ai](https://wandb.ai)
-
-### Local Checkpoints
-
-Checkpoints are saved to `checkpoints/`:
-
-```
-checkpoints/
-├── model/                 # Latest model
-│   ├── config.json
-│   └── model.pt
-├── checkpoint-100.pt      # Intermediate checkpoints
-├── checkpoint-200.pt
-└── best_model.pt          # Best evaluation checkpoint
-```
-
-## Performance
+## 📈 Training Performance
 
 On GitHub Actions free tier (Ubuntu CPU):
 
-- **Tiny model**: ~16 seconds per step
-- **500 steps**: ~2.2 hours (fits in 3-hour limit)
-- **Hourly training**: ~500 steps per hour
-- **Daily**: ~12,000 steps (~6M tokens)
-- **Monthly**: ~360,000 steps (~180M tokens)
+- **Training Speed**: ~16 seconds/step
+- **Hourly Training**: 500 steps (~2 hours)
+- **Daily Progress**: ~12,000 steps
+- **Monthly Progress**: ~360,000 steps (~180M tokens)
 
-## Architecture
+### Expected Metrics
 
-Fin.AI uses a GPT-2 style transformer with:
+- **Initial Loss**: ~10-15
+- **After 500 steps**: ~2-5
+- **Learning Rate**: 3e-4 with cosine decay
+- **Batch Size**: 8 (effective)
 
-- Multi-head self-attention with rotary positional embeddings
-- Feed-forward layers with SwiGLU activation
-- Pre-norm architecture for stable training
-- Gradient accumulation for larger effective batch sizes
-- Mixed precision training (when GPU available)
+## 🛠️ Configuration
 
-## Customization
+### Change Model Size
 
-### Add New Datasets
+Edit `config/model_config.yaml`:
+
+```yaml
+model:
+  size_preset: "small"  # tiny, small, medium, or large
+```
+
+### Customize Training
+
+```yaml
+training:
+  batch_size: 8
+  learning_rate: 3.0e-4
+  max_steps: 500
+  warmup_steps: 50
+```
+
+### Add Custom Datasets
 
 Edit `config/datasets.yaml`:
 
 ```yaml
 datasets:
-  - name: "your-dataset"
+  - name: "your-org/your-dataset"
     subset: null
     split: "train"
     text_column: "text"
-    day: 1
-    max_samples: 50000
+    max_samples: 20000
 ```
 
-### Change Training Schedule
+### Adjust Training Schedule
 
 Edit `.github/workflows/train.yml`:
 
 ```yaml
 schedule:
   - cron: '0 * * * *'  # Every hour
-  # Or change to:
+  # Or customize:
   # - cron: '0 */2 * * *'  # Every 2 hours
-  # - cron: '0 0,6,12,18 * * *'  # 4 times per day
+  # - cron: '0 0,6,12,18 * * *'  # 4 times daily
 ```
 
-### Adjust Model Size
+## 📁 Project Structure
 
-Edit `config/model_config.yaml`:
-
-```yaml
-model:
-  size_preset: "small"  # Larger model
+```
+fin-ai/
+├── fin_ai/                    # Main package
+│   ├── model/                 # Transformer implementation
+│   │   ├── config.py          # Model configuration
+│   │   └── transformer.py     # GPT architecture
+│   ├── data/                  # Dataset utilities
+│   │   └── dataset.py         # HF dataset loading
+│   └── training/              # Training loop
+│       └── trainer.py         # Trainer with checkpointing
+├── config/                    # Configuration files
+│   ├── model_config.yaml      # Model & training settings
+│   └── datasets.yaml          # Dataset rotation schedule
+├── .github/workflows/         # CI/CD
+│   └── train.yml              # Hourly training workflow
+├── train.py                   # Training script
+├── generate.py                # Text generation
+├── test_model.py              # Model tests
+└── requirements.txt           # Dependencies
 ```
 
-## Troubleshooting
+## 🔬 Usage Examples
 
-### Training too slow
+### Basic Generation
 
-- Reduce `batch_size` in config
-- Use smaller `size_preset` (tiny)
-- Reduce `max_seq_len` to 256
+```bash
+python generate.py --prompt "Once upon a time" --max-tokens 200
+```
 
-### Out of memory
+### Advanced Generation
 
-- Reduce `batch_size`
-- Reduce `max_seq_len`
-- Use `gradient_accumulation_steps` to simulate larger batches
+```bash
+python generate.py \
+  --model checkpoints/model \
+  --prompt "Explain quantum computing" \
+  --max-tokens 300 \
+  --temperature 0.7 \
+  --top-k 50 \
+  --top-p 0.9
+```
 
-### Dataset loading fails
+### Training with Limits
 
-- Check dataset name on [Hugging Face](https://huggingface.co/datasets)
-- Verify `text_column` matches dataset schema
-- Try with `max_samples` limit first
+```bash
+# Quick test run
+python train.py --max-steps 100 --max-samples 5000
 
-## Contributing
+# Full training
+python train.py --max-steps 1000
+```
 
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+## 📊 Monitoring
 
-Areas for enhancement:
+### Wandb Dashboard
 
-- [ ] GPU support for faster training
-- [ ] Distributed training across multiple machines
-- [ ] Model quantization for inference
-- [ ] Web UI for generation
-- [ ] Fine-tuning on custom data
+View live training metrics:
 
-## Security
+1. Get API key from [wandb.ai](https://wandb.ai)
+2. Add `WANDB_API_KEY` to GitHub secrets
+3. Monitor at [wandb.ai/your-username/fin-ai](https://wandb.ai)
 
-For security concerns, please see [SECURITY.md](SECURITY.md).
+Tracked metrics:
+- Training loss
+- Learning rate
+- Steps per second
+- Tokens processed
 
-## Code of Conduct
+### GitHub Actions
 
-This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md).
+View training logs:
+- [Actions Tab](https://github.com/MeridianAlgo/FinAI/actions)
+- Check workflow runs
+- Download artifacts
 
-## License
+## 🤝 Contributing
 
-MIT License - see [LICENSE](LICENSE) file
+We welcome contributions! Areas for improvement:
 
-## Acknowledgments
+- [ ] Add more diverse datasets (code, multilingual, etc.)
+- [ ] Implement model quantization for faster inference
+- [ ] Create web UI for text generation
+- [ ] Add evaluation benchmarks
+- [ ] Support distributed training
+- [ ] Implement LoRA fine-tuning
 
-- Built with [PyTorch](https://pytorch.org)
-- Models from [Hugging Face Transformers](https://huggingface.co/transformers)
-- Datasets from [Hugging Face Datasets](https://huggingface.co/datasets)
-- Monitoring with [Weights & Biases](https://wandb.ai)
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-## Status
+## 🔒 Security
 
-🚀 **Active Development** - Daily training on GitHub Actions
+For security concerns, see [SECURITY.md](SECURITY.md).
 
-- **Model**: [huggingface.co/MeridianAlgo/Fin.AI](https://huggingface.co/MeridianAlgo/Fin.AI)
+## 📜 License
+
+MIT License - see [LICENSE](LICENSE)
+
+## 🙏 Acknowledgments
+
+Built with:
+- [PyTorch](https://pytorch.org) - Deep learning framework
+- [Hugging Face](https://huggingface.co) - Models and datasets
+- [Weights & Biases](https://wandb.ai) - Experiment tracking
+- [GitHub Actions](https://github.com/features/actions) - CI/CD
+
+## 📞 Support
+
+- **Issues**: [GitHub Issues](https://github.com/MeridianAlgo/FinAI/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/MeridianAlgo/FinAI/discussions)
+- **Model**: [Hugging Face](https://huggingface.co/MeridianAlgo/Fin.AI)
+
+## 📈 Status
+
+🟢 **Active Development** - Training 24/7
+
+- **Latest Model**: [huggingface.co/MeridianAlgo/Fin.AI](https://huggingface.co/MeridianAlgo/Fin.AI)
 - **Training Logs**: [GitHub Actions](https://github.com/MeridianAlgo/FinAI/actions)
 - **Metrics**: [Wandb Dashboard](https://wandb.ai/meridianalgo-meridianalgo/fin-ai)
 
 ---
 
-**Questions?** Open an issue on GitHub!
+<div align="center">
+
+**Made with ❤️ by the Fin.AI team**
+
+[⭐ Star us on GitHub](https://github.com/MeridianAlgo/FinAI) • [🤗 Try on Hugging Face](https://huggingface.co/MeridianAlgo/Fin.AI)
+
+</div>

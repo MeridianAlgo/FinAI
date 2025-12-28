@@ -9,7 +9,7 @@ datasets:
     split: "train"
     text_column: "text"
     
-  # Hour 1 - TinyStories
+  # Hour 1 - TinyStories (Creative Writing)
   - name: "roneneldan/TinyStories"
     subset: null
     split: "train"
@@ -23,13 +23,13 @@ datasets:
     text_column: "article"
     max_samples: 30000
     
-  # Hour 3 - Dolly Instructions
-  - name: "databricks/databricks-dolly-15k"
-    subset: null
+  # Hour 3 - Math Reasoning (GSM8K)
+  - name: "openai/gsm8k"
+    subset: "main"
     split: "train"
-    text_column: "context"
+    text_column: "question"
     
-  # Hour 4 - OpenWebText
+  # Hour 4 - OpenWebText (Web Content)
   - name: "Skylion007/openwebtext"
     subset: null
     split: "train"
@@ -50,25 +50,26 @@ datasets:
     text_column: "text"
     max_samples: 50000
     
-  # Hour 7 - AG News
-  - name: "ag_news"
+  # Hour 7 - Instruction Following (Alpaca)
+  - name: "tatsu-lab/alpaca"
     subset: null
     split: "train"
     text_column: "text"
+    max_samples: 20000
     
-  # Hour 8 - IMDB Reviews
+  # Hour 8 - IMDB Reviews (Sentiment)
   - name: "imdb"
     subset: null
     split: "train"
     text_column: "text"
     max_samples: 40000
     
-  # Hour 9 - Yelp Reviews
-  - name: "yelp_review_full"
+  # Hour 9 - Common Sense Reasoning
+  - name: "commonsense_qa"
     subset: null
     split: "train"
-    text_column: "text"
-    max_samples: 20000
+    text_column: "question"
+    max_samples: 10000
     
   # Hour 10 - Amazon Reviews
   - name: "amazon_polarity"
@@ -77,12 +78,12 @@ datasets:
     text_column: "content"
     max_samples: 20000
     
-  # Hour 11 - Common Crawl News
-  - name: "cc_news"
-    subset: null
+  # Hour 11 - Common Crawl (C4)
+  - name: "allenai/c4"
+    subset: "en"
     split: "train"
     text_column: "text"
-    max_samples: 40000
+    max_samples: 15000
     
   # Hour 12 - PubMed Medical
   - name: "ccdv/pubmed-summarization"
@@ -91,85 +92,92 @@ datasets:
     text_column: "article"
     max_samples: 10000
     
-  # Hour 13 - TinyStories (repeat)
-  - name: "roneneldan/TinyStories"
+  # Hour 13 - Conversations (UltraChat)
+  - name: "HuggingFaceH4/ultrachat_200k"
     subset: null
-    split: "train"
-    text_column: "text"
-    max_samples: 20000
+    split: "train_sft"
+    text_column: "messages"
+    max_samples: 15000
     
-  # Hour 14 - CNN News (repeat)
-  - name: "cnn_dailymail"
-    subset: "3.0.0"
-    split: "train"
-    text_column: "article"
-    max_samples: 30000
-    
-  # Hour 15 - OpenWebText (repeat)
-  - name: "Skylion007/openwebtext"
-    subset: null
-    split: "train"
-    text_column: "text"
-    max_samples: 10000
-    
-  # Hour 16 - SQuAD Q&A (repeat)
-  - name: "squad_v2"
+  # Hour 14 - Dolly Instructions
+  - name: "databricks/databricks-dolly-15k"
     subset: null
     split: "train"
     text_column: "context"
-    max_samples: 30000
     
-  # Hour 17 - Wikipedia Large (repeat)
-  - name: "wikitext"
-    subset: "wikitext-103-raw-v1"
-    split: "train"
-    text_column: "text"
-    max_samples: 50000
-    
-  # Hour 18 - AG News (repeat)
+  # Hour 15 - AG News (Headlines)
   - name: "ag_news"
     subset: null
     split: "train"
     text_column: "text"
     
-  # Hour 19 - IMDB Reviews (repeat)
-  - name: "imdb"
-    subset: null
-    split: "train"
-    text_column: "text"
-    max_samples: 40000
-    
-  # Hour 20 - Yelp Reviews (repeat)
+  # Hour 16 - Yelp Reviews
   - name: "yelp_review_full"
     subset: null
     split: "train"
     text_column: "text"
     max_samples: 20000
     
-  # Hour 21 - Amazon Reviews (repeat)
-  - name: "amazon_polarity"
-    subset: null
-    split: "train"
-    text_column: "content"
-    max_samples: 20000
-    
-  # Hour 22 - Common Crawl News (repeat)
+  # Hour 17 - Common Crawl News
   - name: "cc_news"
     subset: null
     split: "train"
     text_column: "text"
     max_samples: 40000
     
-  # Hour 23 - PubMed Medical (repeat)
-  - name: "ccdv/pubmed-summarization"
+  # Hour 18 - TinyStories (repeat)
+  - name: "roneneldan/TinyStories"
     subset: null
     split: "train"
+    text_column: "text"
+    max_samples: 20000
+    
+  # Hour 19 - Math Reasoning (repeat)
+  - name: "openai/gsm8k"
+    subset: "main"
+    split: "train"
+    text_column: "question"
+    
+  # Hour 20 - CNN News (repeat)
+  - name: "cnn_dailymail"
+    subset: "3.0.0"
+    split: "train"
     text_column: "article"
+    max_samples: 30000
+    
+  # Hour 21 - Instruction Following (repeat)
+  - name: "tatsu-lab/alpaca"
+    subset: null
+    split: "train"
+    text_column: "text"
+    max_samples: 20000
+    
+  # Hour 22 - SQuAD Q&A (repeat)
+  - name: "squad_v2"
+    subset: null
+    split: "train"
+    text_column: "context"
+    max_samples: 30000
+    
+  # Hour 23 - Common Sense Reasoning (repeat)
+  - name: "commonsense_qa"
+    subset: null
+    split: "train"
+    text_column: "question"
     max_samples: 10000
 
 # Rotation: Cycles through datasets based on hour of day (0-23)
-# Each hour trains on a different dataset for diversity
-# Note: Some datasets repeat to fill 24 hours (only 13 unique working datasets)
+# Dataset Categories:
+# - Encyclopedia: WikiText (hours 0, 6)
+# - Creative Writing: TinyStories (hours 1, 18)
+# - News: CNN, AG News, CC News (hours 2, 15, 17, 20)
+# - Math & Reasoning: GSM8K, CommonsenseQA (hours 3, 9, 19, 23)
+# - Web Content: OpenWebText, C4 (hours 4, 11)
+# - Q&A: SQuAD (hours 5, 22)
+# - Instructions: Alpaca, Dolly (hours 7, 14, 21)
+# - Reviews: IMDB, Amazon, Yelp (hours 8, 10, 16)
+# - Medical: PubMed (hour 12)
+# - Conversations: UltraChat (hour 13)
 
 tokenizer:
   pretrained: "gpt2"
