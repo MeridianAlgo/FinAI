@@ -1,6 +1,7 @@
 {
-  "version": "v1.0.43",
-  "trained_at": "2025-12-28T22:24:46Z",
-  "run_number": 77,
-  "hf_repo": "MeridianAlgo/Fin.AI"
+  "version": "v2.0.0",
+  "model_type": "fresh_init",
+  "parameters": 30142848,
+  "architecture": "small",
+  "note": "Fresh model initialization - starting training from scratch"
 }
