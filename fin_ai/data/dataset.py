@@ -63,6 +63,36 @@ def get_todays_dataset(datasets: List[Dict]) -> Dict:
     return selected
 
 
+def extract_text_from_item(item: Dict, text_column: str) -> Optional[str]:
+    """Extract text from item, handling nested fields like 'answers.text'."""
+    if '.' in text_column:
+        # Handle nested fields
+        parts = text_column.split('.')
+        value = item
+        for part in parts:
+            if isinstance(value, dict):
+                value = value.get(part, "")
+            elif isinstance(value, list) and value:
+                # Take first item from list
+                value = value[0] if value else ""
+                if isinstance(value, dict):
+                    value = value.get(part, "")
+            else:
+                return ""
+        
+        # Handle list results
+        if isinstance(value, list):
+            value = " ".join(str(v) for v in value if v)
+        
+        return str(value) if value else ""
+    else:
+        # Simple field access
+        value = item.get(text_column, "")
+        if isinstance(value, list):
+            value = " ".join(str(v) for v in value if v)
+        return str(value) if value else ""
+
+
 def load_datasets_from_config(
     config_path: str,
     tokenizer: Optional[AutoTokenizer] = None,
@@ -115,7 +145,7 @@ def load_datasets_from_config(
             for item in dataset:
                 if sample_count >= max_to_load:
                     break
-                text = item.get(text_column, "")
+                text = extract_text_from_item(item, text_column)
                 if text and len(str(text).strip()) > 10:
                     texts.append(str(text))
                     sample_count += 1
@@ -125,7 +155,7 @@ def load_datasets_from_config(
                 dataset = dataset.select(range(min(ds_max_samples, len(dataset))))
             
             for item in dataset:
-                text = item.get(text_column, "")
+                text = extract_text_from_item(item, text_column)
                 if text and len(str(text).strip()) > 10:
                     texts.append(str(text))
         

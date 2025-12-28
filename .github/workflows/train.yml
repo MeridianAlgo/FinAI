@@ -12,7 +12,7 @@ on:
       max_steps:
         description: 'Maximum training steps'
         required: false
-        default: '1000'
+        default: '800'
 
 env:
   PYTHON_VERSION: '3.10'
@@ -21,7 +21,7 @@ env:
 jobs:
   train:
     runs-on: ubuntu-latest
-    timeout-minutes: 240
+    timeout-minutes: 120
     permissions:
       contents: write
     
@@ -121,7 +121,7 @@ jobs:
           HF_DATASETS_CACHE: "/tmp/hf_cache"
           HF_HOME: "/tmp/hf_home"
         run: |
-          MAX_STEPS="${{ github.event.inputs.max_steps || '1000' }}"
+          MAX_STEPS="${{ github.event.inputs.max_steps || '800' }}"
           
           # Create temp cache directories
           mkdir -p /tmp/hf_cache

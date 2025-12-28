@@ -1,184 +1,286 @@
 # Hugging Face Datasets Configuration
-# Fin.AI cycles through these datasets every hour (24 datasets for 24 hours)
-# All datasets have been tested and verified to work
+# Fin.AI cycles through these datasets every 1.5 hours
+# All datasets are < 5GB and optimized for quality training
 
 datasets:
-  # Hour 0 - Wikipedia Small
+  # 0 - Wikipedia Small
   - name: "wikitext"
     subset: "wikitext-2-raw-v1"
     split: "train"
     text_column: "text"
     
-  # Hour 1 - TinyStories (Creative Writing)
+  # 1 - TinyStories (Creative Writing)
   - name: "roneneldan/TinyStories"
     subset: null
     split: "train"
     text_column: "text"
-    max_samples: 20000
-    
-  # Hour 2 - CNN News
-  - name: "cnn_dailymail"
-    subset: "3.0.0"
-    split: "train"
-    text_column: "article"
     max_samples: 30000
     
-  # Hour 3 - Math Reasoning (GSM8K)
+  # 2 - Math Reasoning (GSM8K)
   - name: "openai/gsm8k"
     subset: "main"
     split: "train"
     text_column: "question"
     
-  # Hour 4 - OpenWebText (Web Content) - STREAMING MODE
-  - name: "Skylion007/openwebtext"
-    subset: null
-    split: "train"
-    text_column: "text"
-    max_samples: 5000
-    streaming: true
-    
-  # Hour 5 - SQuAD Q&A
-  - name: "squad_v2"
+  # 3 - SQuAD Q&A
+  - name: "squad"
     subset: null
     split: "train"
     text_column: "context"
-    max_samples: 30000
-    
-  # Hour 6 - Wikipedia Large
-  - name: "wikitext"
-    subset: "wikitext-103-raw-v1"
-    split: "train"
-    text_column: "text"
     max_samples: 50000
     
-  # Hour 7 - Instruction Following (Alpaca)
-  - name: "tatsu-lab/alpaca"
-    subset: null
-    split: "train"
-    text_column: "text"
-    max_samples: 20000
-    
-  # Hour 8 - IMDB Reviews (Sentiment)
+  # 4 - IMDB Reviews
   - name: "imdb"
     subset: null
     split: "train"
     text_column: "text"
-    max_samples: 40000
+    max_samples: 25000
     
-  # Hour 9 - Common Sense Reasoning
-  - name: "commonsense_qa"
-    subset: null
-    split: "train"
-    text_column: "question"
-    max_samples: 10000
-    
-  # Hour 10 - Amazon Reviews
-  - name: "amazon_polarity"
-    subset: null
-    split: "train"
-    text_column: "content"
-    max_samples: 20000
-    
-  # Hour 11 - Common Crawl (C4)
-  - name: "allenai/c4"
-    subset: "en"
-    split: "train"
-    text_column: "text"
-    max_samples: 15000
-    
-  # Hour 12 - PubMed Medical
-  - name: "ccdv/pubmed-summarization"
-    subset: null
-    split: "train"
-    text_column: "article"
-    max_samples: 10000
-    
-  # Hour 13 - Conversations (UltraChat)
-  - name: "HuggingFaceH4/ultrachat_200k"
-    subset: null
-    split: "train_sft"
-    text_column: "messages"
-    max_samples: 15000
-    
-  # Hour 14 - Dolly Instructions
-  - name: "databricks/databricks-dolly-15k"
-    subset: null
-    split: "train"
-    text_column: "context"
-    
-  # Hour 15 - AG News (Headlines)
+  # 5 - AG News
   - name: "ag_news"
     subset: null
     split: "train"
     text_column: "text"
     
-  # Hour 16 - Yelp Reviews
+  # 6 - Yelp Reviews
   - name: "yelp_review_full"
     subset: null
     split: "train"
     text_column: "text"
-    max_samples: 20000
+    max_samples: 50000
     
-  # Hour 17 - Common Crawl News
-  - name: "cc_news"
+  # 7 - BookCorpus (Books)
+  - name: "bookcorpus"
     subset: null
     split: "train"
     text_column: "text"
-    max_samples: 40000
+    max_samples: 30000
+    streaming: true
     
-  # Hour 18 - TinyStories (repeat)
-  - name: "roneneldan/TinyStories"
+  # 8 - ELI5 (Explanations)
+  - name: "eli5"
     subset: null
     split: "train"
-    text_column: "text"
+    text_column: "answers.text"
     max_samples: 20000
     
-  # Hour 19 - Math Reasoning (repeat)
-  - name: "openai/gsm8k"
-    subset: "main"
+  # 9 - Scientific Papers
+  - name: "scientific_papers"
+    subset: "arxiv"
+    split: "train"
+    text_column: "article"
+    max_samples: 15000
+    
+  # 10 - Multi-News Summarization
+  - name: "multi_news"
+    subset: null
+    split: "train"
+    text_column: "document"
+    max_samples: 30000
+    
+  # 11 - XSum News
+  - name: "xsum"
+    subset: null
+    split: "train"
+    text_column: "document"
+    max_samples: 50000
+    
+  # 12 - Reddit TIFU
+  - name: "reddit_tifu"
+    subset: "long"
+    split: "train"
+    text_column: "documents"
+    max_samples: 20000
+    
+  # 13 - Gigaword Headlines
+  - name: "gigaword"
+    subset: null
+    split: "train"
+    text_column: "document"
+    max_samples: 50000
+    
+  # 14 - WikiHow Instructions
+  - name: "wikihow"
+    subset: "all"
+    split: "train"
+    text_column: "text"
+    max_samples: 30000
+    
+  # 15 - Common Sense QA
+  - name: "commonsense_qa"
+    subset: null
     split: "train"
     text_column: "question"
     
-  # Hour 20 - CNN News (repeat)
-  - name: "cnn_dailymail"
-    subset: "3.0.0"
-    split: "train"
-    text_column: "article"
-    max_samples: 30000
-    
-  # Hour 21 - Instruction Following (repeat)
-  - name: "tatsu-lab/alpaca"
+  # 16 - PIQA (Physical Reasoning)
+  - name: "piqa"
     subset: null
     split: "train"
-    text_column: "text"
-    max_samples: 20000
+    text_column: "goal"
     
-  # Hour 22 - SQuAD Q&A (repeat)
-  - name: "squad_v2"
+  # 17 - HellaSwag (Common Sense)
+  - name: "hellaswag"
+    subset: null
+    split: "train"
+    text_column: "ctx"
+    max_samples: 30000
+    
+  # 18 - WinoGrande (Reasoning)
+  - name: "winogrande"
+    subset: "winogrande_xl"
+    split: "train"
+    text_column: "sentence"
+    
+  # 19 - BoolQ (Yes/No Questions)
+  - name: "boolq"
+    subset: null
+    split: "train"
+    text_column: "passage"
+    
+  # 20 - RACE (Reading Comprehension)
+  - name: "race"
+    subset: "all"
+    split: "train"
+    text_column: "article"
+    max_samples: 50000
+    
+  # 21 - CoQA (Conversational QA)
+  - name: "coqa"
+    subset: null
+    split: "train"
+    text_column: "story"
+    
+  # 22 - QuAC (Question Answering)
+  - name: "quac"
     subset: null
     split: "train"
     text_column: "context"
     max_samples: 30000
     
-  # Hour 23 - Common Sense Reasoning (repeat)
-  - name: "commonsense_qa"
+  # 23 - Natural Questions
+  - name: "natural_questions"
     subset: null
     split: "train"
+    text_column: "document.tokens.token"
+    max_samples: 20000
+    
+  # 24 - TriviaQA
+  - name: "trivia_qa"
+    subset: "unfiltered"
+    split: "train"
     text_column: "question"
-    max_samples: 10000
+    max_samples: 30000
+    
+  # 25 - HotpotQA
+  - name: "hotpot_qa"
+    subset: "fullwiki"
+    split: "train"
+    text_column: "context"
+    max_samples: 30000
+    
+  # 26 - MS MARCO
+  - name: "ms_marco"
+    subset: "v2.1"
+    split: "train"
+    text_column: "passages.passage_text"
+    max_samples: 30000
+    
+  # 27 - DuoRC (Reading Comprehension)
+  - name: "duorc"
+    subset: "SelfRC"
+    split: "train"
+    text_column: "plot"
+    max_samples: 30000
+    
+  # 28 - SNLI (Natural Language Inference)
+  - name: "snli"
+    subset: null
+    split: "train"
+    text_column: "premise"
+    max_samples: 50000
+    
+  # 29 - MNLI (Multi-Genre NLI)
+  - name: "multi_nli"
+    subset: null
+    split: "train"
+    text_column: "premise"
+    max_samples: 50000
+    
+  # 30 - QQP (Quora Question Pairs)
+  - name: "glue"
+    subset: "qqp"
+    split: "train"
+    text_column: "question1"
+    max_samples: 50000
+    
+  # 31 - SST-2 (Sentiment)
+  - name: "glue"
+    subset: "sst2"
+    split: "train"
+    text_column: "sentence"
+    
+  # 32 - MRPC (Paraphrase)
+  - name: "glue"
+    subset: "mrpc"
+    split: "train"
+    text_column: "sentence1"
+    
+  # 33 - RTE (Textual Entailment)
+  - name: "glue"
+    subset: "rte"
+    split: "train"
+    text_column: "sentence1"
+    
+  # 34 - QNLI (Question NLI)
+  - name: "glue"
+    subset: "qnli"
+    split: "train"
+    text_column: "question"
+    max_samples: 50000
+    
+  # 35 - CoLA (Linguistic Acceptability)
+  - name: "glue"
+    subset: "cola"
+    split: "train"
+    text_column: "sentence"
+    
+  # 36 - Poem Sentiment
+  - name: "poem_sentiment"
+    subset: null
+    split: "train"
+    text_column: "verse_text"
+    
+  # 37 - Financial PhraseBank
+  - name: "financial_phrasebank"
+    subset: "sentences_allagree"
+    split: "train"
+    text_column: "sentence"
+    
+  # 38 - Emotion Detection
+  - name: "emotion"
+    subset: null
+    split: "train"
+    text_column: "text"
+    
+  # 39 - Tweet Eval Sentiment
+  - name: "tweet_eval"
+    subset: "sentiment"
+    split: "train"
+    text_column: "text"
 
-# Rotation: Cycles through datasets based on hour of day (0-23)
 # Dataset Categories:
-# - Encyclopedia: WikiText (hours 0, 6)
-# - Creative Writing: TinyStories (hours 1, 18)
-# - News: CNN, AG News, CC News (hours 2, 15, 17, 20)
-# - Math & Reasoning: GSM8K, CommonsenseQA (hours 3, 9, 19, 23)
-# - Web Content: OpenWebText, C4 (hours 4, 11)
-# - Q&A: SQuAD (hours 5, 22)
-# - Instructions: Alpaca, Dolly (hours 7, 14, 21)
-# - Reviews: IMDB, Amazon, Yelp (hours 8, 10, 16)
-# - Medical: PubMed (hour 12)
-# - Conversations: UltraChat (hour 13)
+# - Encyclopedia: WikiText
+# - Creative Writing: TinyStories, BookCorpus, Reddit TIFU
+# - News: AG News, XSum, Multi-News, Gigaword
+# - Math & Reasoning: GSM8K, PIQA, HellaSwag, WinoGrande
+# - Q&A: SQuAD, CoQA, QuAC, Natural Questions, TriviaQA, HotpotQA
+# - Reviews & Sentiment: IMDB, Yelp, SST-2, Emotion, Tweet Eval, Financial
+# - Instructions: WikiHow, ELI5
+# - Scientific: ArXiv Papers
+# - NLI & Logic: SNLI, MNLI, RTE, QNLI, BoolQ
+# - Reading Comprehension: RACE, DuoRC, MS MARCO
+# - Paraphrase: MRPC, QQP
+# - Linguistic: CoLA, Poem Sentiment
 
 tokenizer:
   pretrained: "gpt2"
