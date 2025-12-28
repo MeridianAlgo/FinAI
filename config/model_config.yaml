@@ -5,14 +5,14 @@ model:
   size_preset: "tiny"  # Smaller model for faster CPU training
 
 training:
-  batch_size: 16
+  batch_size: 12
   gradient_accumulation_steps: 2
   learning_rate: 5.0e-4
   weight_decay: 0.01
-  warmup_steps: 100
-  max_steps: 800  # 1.5 hours on CPU
+  warmup_steps: 50
+  max_steps: 600  # Reduced to fit in 90 minutes
   eval_steps: 100
-  save_steps: 400
+  save_steps: 300
   max_grad_norm: 1.0
   fp16: false  # CPU doesn't support fp16
   optimizer: "adamw"

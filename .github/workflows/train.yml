@@ -12,7 +12,7 @@ on:
       max_steps:
         description: 'Maximum training steps'
         required: false
-        default: '800'
+        default: '600'
 
 env:
   PYTHON_VERSION: '3.10'
@@ -21,7 +21,7 @@ env:
 jobs:
   train:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 90
     permissions:
       contents: write
     
@@ -121,7 +121,7 @@ jobs:
           HF_DATASETS_CACHE: "/tmp/hf_cache"
           HF_HOME: "/tmp/hf_home"
         run: |
-          MAX_STEPS="${{ github.event.inputs.max_steps || '800' }}"
+          MAX_STEPS="${{ github.event.inputs.max_steps || '600' }}"
           
           # Create temp cache directories
           mkdir -p /tmp/hf_cache
@@ -130,11 +130,12 @@ jobs:
           # Monitor disk space during training
           df -h
           
-          python train.py \
+          # Set timeout for training (80 minutes max)
+          timeout 80m python train.py \
             --config config/model_config.yaml \
             --datasets config/datasets.yaml \
             --max-steps $MAX_STEPS \
-            --output-dir checkpoints 2>&1 | tee training_output.txt
+            --output-dir checkpoints 2>&1 | tee training_output.txt || true
           
           # Extract training info
           echo "TRAINING_OUTPUT<<EOF" >> $GITHUB_OUTPUT

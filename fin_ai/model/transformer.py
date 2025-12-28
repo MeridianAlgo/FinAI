@@ -18,10 +18,6 @@ class FinAIModel(nn.Module):
         super().__init__()
         self.config = config
         
-        self.token_emb = nn.Embedding(config.vocab_size, config.embed_dim)
-        self.pos_emb = nn.Embedding(config.max_seq_len, config.embed_dim)
-        self.dropout = nn.Dropout(config.dropout)
-        
         # Use GPT2 architecture from transformers as backbone
         from transformers import GPT2Config, GPT2LMHeadModel
         gpt_config = GPT2Config(
