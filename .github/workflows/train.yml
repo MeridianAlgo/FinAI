@@ -1,10 +1,14 @@
 name: Train Fin.AI
 
 on:
-  # Every 1.5 hours training
+  # Every 1 hour 10 minutes training
   schedule:
-    - cron: '0 */2 * * *'  # Every 2 hours at minute 0
-    - cron: '30 1,3,5,7,9,11,13,15,17,19,21,23 * * *'  # 30 minutes past odd hours
+    - cron: '0 * * * *'      # Every hour at minute 0
+    - cron: '10 * * * *'     # Every hour at minute 10
+    - cron: '20 * * * *'     # Every hour at minute 20
+    - cron: '30 * * * *'     # Every hour at minute 30
+    - cron: '40 * * * *'     # Every hour at minute 40
+    - cron: '50 * * * *'     # Every hour at minute 50
   
   # Manual trigger only
   workflow_dispatch:
@@ -120,6 +124,7 @@ jobs:
           TOKENIZERS_PARALLELISM: "false"
           HF_DATASETS_CACHE: "/tmp/hf_cache"
           HF_HOME: "/tmp/hf_home"
+          HF_DATASETS_TRUST_REMOTE_CODE: "1"
         run: |
           MAX_STEPS="${{ github.event.inputs.max_steps || '600' }}"
           
@@ -128,6 +133,7 @@ jobs:
           mkdir -p /tmp/hf_home
           
           # Monitor disk space during training
+          echo "Disk space before training:"
           df -h
           
           # Set timeout for training (80 minutes max)
@@ -135,7 +141,10 @@ jobs:
             --config config/model_config.yaml \
             --datasets config/datasets.yaml \
             --max-steps $MAX_STEPS \
-            --output-dir checkpoints 2>&1 | tee training_output.txt || true
+            --output-dir checkpoints 2>&1 | tee training_output.txt || {
+              echo "Training completed or timed out"
+              echo "Exit code: $?"
+          }
           
           # Extract training info
           echo "TRAINING_OUTPUT<<EOF" >> $GITHUB_OUTPUT

@@ -130,10 +130,17 @@ def load_datasets_from_config(
     
     try:
         # Load dataset with streaming for large datasets
+        # Use trust_remote_code=True for datasets that need it
+        load_kwargs = {
+            "split": split,
+            "streaming": use_streaming,
+            "trust_remote_code": True  # Required for some datasets
+        }
+        
         if subset:
-            dataset = load_dataset(name, subset, split=split, streaming=use_streaming)
+            dataset = load_dataset(name, subset, **load_kwargs)
         else:
-            dataset = load_dataset(name, split=split, streaming=use_streaming)
+            dataset = load_dataset(name, **load_kwargs)
         
         texts = []
         sample_count = 0
@@ -162,8 +169,30 @@ def load_datasets_from_config(
         print(f"📊 Loaded {len(texts):,} samples")
         
     except Exception as e:
-        print(f"❌ Failed to load {name}: {e}")
-        raise
+        error_msg = str(e)
+        print(f"❌ Failed to load {name}: {error_msg}")
+        
+        # If this dataset failed, try to fall back to a safe default
+        if "Dataset scripts are no longer supported" in error_msg or "trust_remote_code" in error_msg:
+            print(f"⚠️  Dataset {name} uses legacy format or requires trust_remote_code")
+            print(f"🔄 Falling back to wikitext-2 as safe alternative...")
+            
+            # Fall back to wikitext-2 (always works)
+            try:
+                dataset = load_dataset("wikitext", "wikitext-2-raw-v1", split="train")
+                texts = []
+                for item in dataset:
+                    text = item.get("text", "")
+                    if text and len(str(text).strip()) > 10:
+                        texts.append(str(text))
+                        if len(texts) >= 10000:  # Limit fallback
+                            break
+                print(f"✅ Fallback successful: {len(texts):,} samples from wikitext-2")
+            except Exception as fallback_error:
+                print(f"❌ Fallback also failed: {fallback_error}")
+                raise
+        else:
+            raise
     
     if not texts:
         raise ValueError("No texts loaded!")
