@@ -29,12 +29,13 @@ datasets:
     split: "train"
     text_column: "question"
     
-  # Hour 4 - OpenWebText (Web Content)
+  # Hour 4 - OpenWebText (Web Content) - STREAMING MODE
   - name: "Skylion007/openwebtext"
     subset: null
     split: "train"
     text_column: "text"
-    max_samples: 10000
+    max_samples: 5000
+    streaming: true
     
   # Hour 5 - SQuAD Q&A
   - name: "squad_v2"

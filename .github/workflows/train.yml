@@ -30,12 +30,15 @@ jobs:
           echo "Disk space before cleanup:"
           df -h
           
-          # Remove unnecessary packages
+          # Remove unnecessary packages and free up space
           sudo rm -rf /usr/share/dotnet
           sudo rm -rf /usr/local/lib/android
           sudo rm -rf /opt/ghc
           sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
           sudo docker image prune --all --force
+          sudo apt-get clean
           
           echo "Disk space after cleanup:"
           df -h
@@ -115,11 +118,16 @@ jobs:
           WANDB_PROJECT: "fin-ai"
           TOKENIZERS_PARALLELISM: "false"
           HF_DATASETS_CACHE: "/tmp/hf_cache"
+          HF_HOME: "/tmp/hf_home"
         run: |
           MAX_STEPS="${{ github.event.inputs.max_steps || '500' }}"
           
-          # Create temp cache directory
+          # Create temp cache directories
           mkdir -p /tmp/hf_cache
+          mkdir -p /tmp/hf_home
+          
+          # Monitor disk space during training
+          df -h
           
           python train.py \
             --config config/model_config.yaml \
@@ -131,13 +139,19 @@ jobs:
           echo "TRAINING_OUTPUT<<EOF" >> $GITHUB_OUTPUT
           tail -30 training_output.txt >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
+          
+          # Show disk usage after training
+          echo "Disk space after training:"
+          df -h
       
       - name: Clean up cache after training
         if: always()
         run: |
           echo "Cleaning up dataset cache..."
           rm -rf /tmp/hf_cache
+          rm -rf /tmp/hf_home
           rm -rf ~/.cache/huggingface/datasets
+          rm -rf ~/.cache/huggingface/hub
           echo "Cache cleaned!"
           df -h
       

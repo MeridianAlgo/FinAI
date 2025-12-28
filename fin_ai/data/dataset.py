@@ -92,23 +92,42 @@ def load_datasets_from_config(
     split = ds_config.get("split", "train")
     text_column = ds_config.get("text_column", "text")
     ds_max_samples = ds_config.get("max_samples")
+    use_streaming = ds_config.get("streaming", False)
     
     print(f"📚 Loading: {name}")
+    if use_streaming:
+        print("🌊 Using streaming mode (memory efficient)")
     
     try:
+        # Load dataset with streaming for large datasets
         if subset:
-            dataset = load_dataset(name, subset, split=split)
+            dataset = load_dataset(name, subset, split=split, streaming=use_streaming)
         else:
-            dataset = load_dataset(name, split=split)
-        
-        if ds_max_samples:
-            dataset = dataset.select(range(min(ds_max_samples, len(dataset))))
+            dataset = load_dataset(name, split=split, streaming=use_streaming)
         
         texts = []
-        for item in dataset:
-            text = item.get(text_column, "")
-            if text and len(str(text).strip()) > 10:
-                texts.append(str(text))
+        sample_count = 0
+        max_to_load = ds_max_samples or 50000  # Default limit
+        
+        # Handle streaming vs regular datasets
+        if use_streaming:
+            # For streaming, iterate and take only what we need
+            for item in dataset:
+                if sample_count >= max_to_load:
+                    break
+                text = item.get(text_column, "")
+                if text and len(str(text).strip()) > 10:
+                    texts.append(str(text))
+                    sample_count += 1
+        else:
+            # For regular datasets, select range first
+            if ds_max_samples:
+                dataset = dataset.select(range(min(ds_max_samples, len(dataset))))
+            
+            for item in dataset:
+                text = item.get(text_column, "")
+                if text and len(str(text).strip()) > 10:
+                    texts.append(str(text))
         
         print(f"📊 Loaded {len(texts):,} samples")
         
