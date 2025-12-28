@@ -109,9 +109,32 @@ class FinAITrainer:
         if self.config.use_wandb:
             try:
                 import wandb
-                wandb.init(project=self.config.wandb_project, config=self.config.__dict__)
-            except:
-                logger.warning("Wandb not available")
+                
+                # Enhanced Wandb config
+                wandb_config = {
+                    **self.config.__dict__,
+                    "model_parameters": self.model.config.num_parameters,
+                    "model_layers": self.model.config.n_layers,
+                    "model_heads": self.model.config.n_heads,
+                    "model_embed_dim": self.model.config.embed_dim,
+                    "device": str(self.device),
+                    "dataset": dataset_cycler.current_dataset_name if dataset_cycler else "unknown",
+                }
+                
+                wandb.init(
+                    project=self.config.wandb_project,
+                    config=wandb_config,
+                    name=f"train-{dataset_cycler.current_dataset_name if dataset_cycler else 'unknown'}",
+                    tags=["v2.0", "fresh-model", dataset_cycler.current_dataset_name if dataset_cycler else "unknown"],
+                )
+                
+                # Define custom charts
+                wandb.define_metric("train/step")
+                wandb.define_metric("train/*", step_metric="train/step")
+                
+                print("✅ Wandb initialized with enhanced logging")
+            except Exception as e:
+                logger.warning(f"Wandb not available: {e}")
     
     def _create_optimizer(self):
         decay_params = []
@@ -204,22 +227,49 @@ class FinAITrainer:
             if self.global_step % self.config.log_steps == 0:
                 elapsed = time.time() - start_time
                 current_lr = self.scheduler.get_last_lr()[0]
+                tokens_per_sec = (self.config.batch_size * self.config.log_steps * self.model.config.max_seq_len) / elapsed if elapsed > 0 else 0
                 
                 if not is_ci:
                     pbar.set_postfix({
                         "loss": f"{accumulation_loss:.4f}",
                         "lr": f"{current_lr:.2e}",
+                        "tok/s": f"{tokens_per_sec:.0f}",
                     })
                 else:
-                    print(f"Items processed: {self.global_step * self.config.batch_size} | Step {self.global_step}/{self.config.max_steps} | Loss: {accumulation_loss:.4f} | LR: {current_lr:.2e}")
+                    print(f"Items processed: {self.global_step * self.config.batch_size} | Step {self.global_step}/{self.config.max_steps} | Loss: {accumulation_loss:.4f} | LR: {current_lr:.2e} | Tokens/s: {tokens_per_sec:.0f}")
                 
                 try:
                     import wandb
+                    
+                    # Calculate additional metrics
+                    perplexity = math.exp(min(accumulation_loss, 20))  # Cap to avoid overflow
+                    progress = (self.global_step / self.config.max_steps) * 100
+                    
+                    # Enhanced logging with descriptive names
                     wandb.log({
+                        # Core metrics
+                        "train/step": self.global_step,
                         "train/loss": accumulation_loss,
+                        "train/perplexity": perplexity,
                         "train/learning_rate": current_lr,
+                        
+                        # Performance metrics
+                        "performance/tokens_per_second": tokens_per_sec,
+                        "performance/steps_per_second": self.config.log_steps / elapsed if elapsed > 0 else 0,
+                        "performance/time_per_step": elapsed / self.config.log_steps if elapsed > 0 else 0,
+                        
+                        # Progress metrics
+                        "progress/percent_complete": progress,
+                        "progress/epoch": self.epoch,
+                        "progress/steps_remaining": self.config.max_steps - self.global_step,
+                        
+                        # Gradient metrics
+                        "gradients/global_norm": torch.nn.utils.clip_grad_norm_(self.model.parameters(), float('inf')),
+                        
+                        # Dataset info
+                        "dataset/name": self.dataset_cycler.current_dataset_name if self.dataset_cycler else "unknown",
                     }, step=self.global_step)
-                except:
+                except Exception as e:
                     pass
                 
                 accumulation_loss = 0.0
@@ -230,6 +280,19 @@ class FinAITrainer:
         
         pbar.close()
         self._save_checkpoint()
+        
+        # Log final summary to Wandb
+        try:
+            import wandb
+            wandb.log({
+                "summary/final_step": self.global_step,
+                "summary/total_epochs": self.epoch,
+                "summary/final_loss": accumulation_loss,
+            })
+            wandb.finish()
+        except:
+            pass
+        
         print(f"\n✅ Training complete! Final step: {self.global_step}")
     
     def _save_checkpoint(self):

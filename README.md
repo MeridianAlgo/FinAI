@@ -227,29 +227,6 @@ python train.py --max-steps 100 --max-samples 5000
 python train.py --max-steps 1000
 ```
 
-## 📊 Monitoring
-
-### Wandb Dashboard
-
-View live training metrics:
-
-1. Get API key from [wandb.ai](https://wandb.ai)
-2. Add `WANDB_API_KEY` to GitHub secrets
-3. Monitor at [wandb.ai/your-username/fin-ai](https://wandb.ai)
-
-Tracked metrics:
-- Training loss
-- Learning rate
-- Steps per second
-- Tokens processed
-
-### GitHub Actions
-
-View training logs:
-- [Actions Tab](https://github.com/MeridianAlgo/FinAI/actions)
-- Check workflow runs
-- Download artifacts
-
 ## 🤝 Contributing
 
 We welcome contributions! Areas for improvement:
