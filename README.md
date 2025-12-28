@@ -11,11 +11,11 @@
 
 ## 🌟 What is Fin.AI?
 
-Fin.AI is an experimental GPT-style language model that trains itself **every hour** on different datasets from Hugging Face. It's designed to be:
+Fin.AI is an experimental GPT-style language model that trains itself **every 1.5 hours** on different datasets from Hugging Face. It's designed to be:
 
 - **🔄 Continuously Learning**: Trains 24/7 on GitHub Actions
-- **📚 Diverse**: Rotates through 18 different dataset types hourly
-- **🎯 Focused**: Each hour targets specific capabilities (math, reasoning, conversation, etc.)
+- **📚 Diverse**: Rotates through 24 different dataset types
+- **🎯 Focused**: Each cycle targets specific capabilities (math, reasoning, conversation, etc.)
 - **🚀 Accessible**: Free to use, modify, and deploy
 - **📊 Transparent**: All training metrics visible on Wandb
 
@@ -23,8 +23,8 @@ Fin.AI is an experimental GPT-style language model that trains itself **every ho
 
 | Feature | Description |
 |---------|-------------|
-| **Automated Training** | Hourly training runs via GitHub Actions (no manual intervention) |
-| **Dataset Rotation** | 18 unique datasets covering news, math, code, conversations, and more |
+| **Automated Training** | Training every 1.5 hours via GitHub Actions (no manual intervention) |
+| **Dataset Rotation** | 24 unique datasets covering news, math, code, conversations, and more |
 | **Hugging Face Integration** | Model auto-uploaded to [HF Hub](https://huggingface.co/MeridianAlgo/Fin.AI) after each run |
 | **Wandb Monitoring** | Real-time training metrics and loss curves |
 | **Scalable Architecture** | Easily adjust from 10M to 350M+ parameters |
@@ -32,7 +32,7 @@ Fin.AI is an experimental GPT-style language model that trains itself **every ho
 
 ## 🎓 Training Curriculum
 
-Fin.AI trains on a diverse curriculum that rotates hourly:
+Fin.AI trains on a diverse curriculum that rotates every 1.5 hours (16 cycles per day):
 
 ### Dataset Categories
 

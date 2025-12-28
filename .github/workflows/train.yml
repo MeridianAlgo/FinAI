@@ -1,9 +1,10 @@
 name: Train Fin.AI
 
 on:
-  # Hourly training
+  # Every 1.5 hours training
   schedule:
-    - cron: '0 * * * *'  # Every hour at minute 0
+    - cron: '0 */2 * * *'  # Every 2 hours at minute 0
+    - cron: '30 1,3,5,7,9,11,13,15,17,19,21,23 * * *'  # 30 minutes past odd hours
   
   # Manual trigger only
   workflow_dispatch:
@@ -11,7 +12,7 @@ on:
       max_steps:
         description: 'Maximum training steps'
         required: false
-        default: '500'
+        default: '1000'
 
 env:
   PYTHON_VERSION: '3.10'
@@ -120,7 +121,7 @@ jobs:
           HF_DATASETS_CACHE: "/tmp/hf_cache"
           HF_HOME: "/tmp/hf_home"
         run: |
-          MAX_STEPS="${{ github.event.inputs.max_steps || '500' }}"
+          MAX_STEPS="${{ github.event.inputs.max_steps || '1000' }}"
           
           # Create temp cache directories
           mkdir -p /tmp/hf_cache

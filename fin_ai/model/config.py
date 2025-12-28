@@ -4,8 +4,8 @@ from dataclasses import dataclass
 import yaml
 
 SIZE_PRESETS = {
-    "tiny": {"n_layers": 4, "n_heads": 4, "embed_dim": 256, "ff_dim": 1024},
-    "small": {"n_layers": 6, "n_heads": 6, "embed_dim": 384, "ff_dim": 1536},
+    "tiny": {"n_layers": 6, "n_heads": 6, "embed_dim": 384, "ff_dim": 1536},
+    "small": {"n_layers": 8, "n_heads": 8, "embed_dim": 512, "ff_dim": 2048},
     "medium": {"n_layers": 12, "n_heads": 8, "embed_dim": 512, "ff_dim": 2048},
     "large": {"n_layers": 24, "n_heads": 12, "embed_dim": 768, "ff_dim": 3072},
 }

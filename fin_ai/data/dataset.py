@@ -170,7 +170,7 @@ def tokenize_and_chunk(
     all_tokens = []
     eos_token_id = tokenizer.eos_token_id
     
-    for text in texts[:5000]:  # Limit number of texts
+    for text in texts[:10000]:  # Increased limit for better training
         try:
             tokens = tokenizer.encode(text, add_special_tokens=False, truncation=True, max_length=max_seq_len * 2)
             if len(tokens) > 0:
@@ -180,9 +180,10 @@ def tokenize_and_chunk(
         except Exception as e:
             continue
     
-    # Create fixed-length chunks
+    # Create fixed-length chunks with stride for more data
     chunks = []
-    for i in range(0, len(all_tokens) - max_seq_len + 1, max_seq_len):
+    stride = max_seq_len // 2  # 50% overlap for more training examples
+    for i in range(0, len(all_tokens) - max_seq_len + 1, stride):
         chunk = all_tokens[i:i + max_seq_len]
         if len(chunk) == max_seq_len:  # Only use complete chunks
             chunks.append(chunk)
