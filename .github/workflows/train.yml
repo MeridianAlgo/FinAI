@@ -10,7 +10,7 @@ on:
     - cron: '15 4,11,18 * * *'        # Hours: 4, 11, 18 at minute 15
     - cron: '40 5,12,19 * * *'        # Hours: 5, 12, 19 at minute 40
   
-  # Manual trigger only
+  # Manual trigger
   workflow_dispatch:
     inputs:
       max_steps:
@@ -240,35 +240,44 @@ jobs:
           git stash
           
           # Pull latest changes to avoid conflicts
-          git fetch origin main --tags
+          git fetch origin main
           git pull --rebase origin main
           
           # Restore local changes
           git stash pop || echo "No changes to restore"
           
-          # Calculate version based on latest tags
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v1.0.0")
-          VERSION=${LATEST_TAG#v}
-          MAJOR=$(echo $VERSION | cut -d. -f1)
-          MINOR=$(echo $VERSION | cut -d. -f2)
-          PATCH=$(echo $VERSION | cut -d. -f3)
-          PATCH=$((PATCH + 1))
-          NEW_VERSION="v${MAJOR}.${MINOR}.${PATCH}"
+          # Get run number for versioning
+          RUN_NUM=${{ github.run_number }}
           
           # Output for other steps
-          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "RUN_NUM=$RUN_NUM" >> $GITHUB_OUTPUT
           DAY_OF_WEEK=$(date +%u)
           echo "DAY_OF_WEEK=$DAY_OF_WEEK" >> $GITHUB_OUTPUT
           WEEK_NUM=$(date +%V)
           echo "WEEK_NUM=$WEEK_NUM" >> $GITHUB_OUTPUT
           
-          # Save version info
+          # Check if this is a release run (every 15 runs)
+          if [ $((RUN_NUM % 15)) -eq 0 ]; then
+            echo "SHOULD_RELEASE=true" >> $GITHUB_OUTPUT
+            # Calculate version for releases only
+            LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v1.0.0")
+            VERSION=${LATEST_TAG#v}
+            MAJOR=$(echo $VERSION | cut -d. -f1)
+            MINOR=$(echo $VERSION | cut -d. -f2)
+            PATCH=$(echo $VERSION | cut -d. -f3)
+            PATCH=$((PATCH + 1))
+            NEW_VERSION="v${MAJOR}.${MINOR}.${PATCH}"
+            echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_OUTPUT
+          else
+            echo "SHOULD_RELEASE=false" >> $GITHUB_OUTPUT
+          fi
+          
+          # Save version info (no version tag, just run number)
           mkdir -p checkpoints
           cat > checkpoints/version.json << EOF
           {
-            "version": "$NEW_VERSION",
+            "run_number": $RUN_NUM,
             "trained_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-            "run_number": ${{ github.run_number }},
             "hf_repo": "${{ env.HF_REPO_ID }}"
           }
           EOF
@@ -277,37 +286,28 @@ jobs:
           git add checkpoints/dataset_state.json || true
           
           if ! git diff --quiet --cached; then
-            git commit -m "🤖 Training $NEW_VERSION - $(date +'%Y-%m-%d') [skip ci]"
-            git tag -a "$NEW_VERSION" -m "Training run ${{ github.run_number }}"
-            git push origin main --tags
+            git commit -m "🤖 Training run #$RUN_NUM - $(date +'%Y-%m-%d') [skip ci]"
+            git push origin main
           fi
       
-      - name: Create weekly release (Sundays)
-        if: steps.version.outputs.DAY_OF_WEEK == '7'
+      - name: Create release every 15 runs
+        if: steps.version.outputs.SHOULD_RELEASE == 'true'
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.version.outputs.NEW_VERSION }}
-          name: "Fin.AI Weekly Release ${{ steps.version.outputs.NEW_VERSION }}"
+          name: "Fin.AI Release ${{ steps.version.outputs.NEW_VERSION }}"
           body: |
-            ## 🤖 Fin.AI Weekly Training Summary
+            ## 🤖 Fin.AI Training Milestone
             
-            **Week ${{ steps.version.outputs.WEEK_NUM }} Complete!**
+            **15 Training Runs Complete!**
             
             ### 📦 Model Location
             **Hugging Face**: [MeridianAlgo/Fin.AI](https://huggingface.co/MeridianAlgo/Fin.AI)
             
             ### 📊 Training Stats
             - **Version**: ${{ steps.version.outputs.NEW_VERSION }}
-            - **Run Number**: ${{ github.run_number }}
-            
-            ### 📚 Datasets Trained This Week
-            - Monday: WikiText-2
-            - Tuesday: TinyStories
-            - Wednesday: CNN News
-            - Thursday: Dolly
-            - Friday: arXiv
-            - Saturday: SQuAD
-            - Sunday: WikiText-103
+            - **Total Runs**: ${{ github.run_number }}
+            - **Datasets Trained**: Multiple datasets cycled hourly
             
             ### 🚀 Usage
             ```python
@@ -317,7 +317,7 @@ jobs:
             hf_hub_download("MeridianAlgo/Fin.AI", "model.pt", local_dir="./model")
             ```
             
-            ### 📈 Training Output
+            ### 📈 Latest Training Output
             ```
             ${{ steps.train.outputs.TRAINING_OUTPUT }}
             ```
