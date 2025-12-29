@@ -45,10 +45,10 @@ class FinAIDataset(Dataset):
         }
 
 
-def get_todays_dataset(datasets: List[Dict]) -> Dict:
+def get_todays_dataset(datasets: List[Dict]) -> tuple[Dict, int]:
     """Get the dataset based on current hour (cycles through datasets every hour)."""
     if not datasets:
-        return None
+        return None, 0
     
     # Get current hour (0-23)
     current_hour = datetime.now().hour
@@ -60,7 +60,7 @@ def get_todays_dataset(datasets: List[Dict]) -> Dict:
     
     print(f"📅 Hour: {current_hour:02d}:00 → Dataset #{dataset_idx + 1}/{len(datasets)}: {selected['name']}")
     
-    return selected
+    return selected, dataset_idx
 
 
 def extract_text_from_item(item: Dict, text_column: str) -> Optional[str]:
@@ -112,7 +112,7 @@ def load_datasets_from_config(
     
     # Get today's dataset
     datasets = config.get("datasets", [])
-    ds_config = get_todays_dataset(datasets)
+    ds_config, dataset_idx = get_todays_dataset(datasets)
     
     if not ds_config:
         raise ValueError("No dataset configured!")

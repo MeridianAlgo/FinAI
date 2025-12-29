@@ -62,16 +62,15 @@ class DatasetCycler:
             self.config = yaml.safe_load(f)
         self.datasets = self.config.get("datasets", [])
         self.current_dataset_idx = 0
-        self._load_state()
+        self._update_current_dataset()
+        self._save_state()
     
-    def _load_state(self):
-        if os.path.exists(self.state_file):
-            try:
-                with open(self.state_file, "r") as f:
-                    state = json.load(f)
-                self.current_dataset_idx = state.get("current_dataset_idx", 0)
-            except:
-                pass
+    def _update_current_dataset(self):
+        """Update dataset index based on current hour."""
+        from datetime import datetime
+        if self.datasets:
+            current_hour = datetime.now().hour
+            self.current_dataset_idx = current_hour % len(self.datasets)
     
     def _save_state(self):
         os.makedirs(os.path.dirname(self.state_file) or ".", exist_ok=True)
@@ -84,7 +83,11 @@ class DatasetCycler:
     @property
     def current_dataset_name(self):
         ds = self.get_current_dataset()
-        return ds.get("name", "unknown")
+        name = ds.get("name", "unknown")
+        # Extract short name (e.g., "roneneldan/TinyStories" -> "TinyStories")
+        if "/" in name:
+            name = name.split("/")[-1]
+        return name
 
 
 class FinAITrainer:
@@ -124,8 +127,8 @@ class FinAITrainer:
                 wandb.init(
                     project=self.config.wandb_project,
                     config=wandb_config,
-                    name=f"train-{dataset_cycler.current_dataset_name if dataset_cycler else 'unknown'}",
-                    tags=["v2.0", "fresh-model", dataset_cycler.current_dataset_name if dataset_cycler else "unknown"],
+                    name=f"train-{wandb_config['dataset']}-run{os.environ.get('GITHUB_RUN_NUMBER', 'local')}",
+                    tags=["continuous-training", wandb_config['dataset'], f"v{os.environ.get('GITHUB_RUN_NUMBER', '0')}"],
                 )
                 
                 # Define custom charts
