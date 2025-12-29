@@ -1,13 +1,14 @@
 name: Train Fin.AI
 
 on:
-  # Every 75 minutes (56 min training + 15 min buffer)
-  # Runs at: 00:00, 01:15, 02:30, 03:45, 05:00, 06:15, 07:30, 08:45, 10:00, 11:15, 12:30, 13:45, 15:00, 16:15, 17:30, 18:45, 20:00, 21:15, 22:30, 23:45
+  # Every 85 minutes (56 min training + 29 min buffer)
+  # Runs at: 00:00, 01:25, 02:50, 04:15, 05:40, 07:05, 08:30, 09:55, 11:20, 12:45, 14:10, 15:35, 17:00, 18:25, 19:50, 21:15, 22:40
   schedule:
-    - cron: '0 0,5,10,15,20 * * *'    # Hours: 0, 5, 10, 15, 20 at minute 0
-    - cron: '15 1,6,11,16,21 * * *'   # Hours: 1, 6, 11, 16, 21 at minute 15
-    - cron: '30 2,7,12,17,22 * * *'   # Hours: 2, 7, 12, 17, 22 at minute 30
-    - cron: '45 3,8,13,18,23 * * *'   # Hours: 3, 8, 13, 18, 23 at minute 45
+    - cron: '0 0,7,14,21 * * *'       # Hours: 0, 7, 14, 21 at minute 0
+    - cron: '25 1,8,15,22 * * *'      # Hours: 1, 8, 15, 22 at minute 25
+    - cron: '50 2,9,16,23 * * *'      # Hours: 2, 9, 16, 23 at minute 50
+    - cron: '15 4,11,18 * * *'        # Hours: 4, 11, 18 at minute 15
+    - cron: '40 5,12,19 * * *'        # Hours: 5, 12, 19 at minute 40
   
   # Manual trigger only
   workflow_dispatch:
