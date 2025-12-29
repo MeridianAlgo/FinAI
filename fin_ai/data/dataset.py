@@ -129,11 +129,17 @@ def load_datasets_from_config(
         print("🌊 Using streaming mode (memory efficient)")
     
     try:
+        # Force streaming for large datasets to save disk space
+        # Always use streaming in CI environments
+        import os
+        is_ci = os.environ.get("CI", "false").lower() == "true" or os.environ.get("GITHUB_ACTIONS", "false").lower() == "true"
+        force_streaming = is_ci or use_streaming or ds_max_samples is None or ds_max_samples > 10000
+        
         # Load dataset with streaming for large datasets
         # Use trust_remote_code=True for datasets that need it
         load_kwargs = {
             "split": split,
-            "streaming": use_streaming,
+            "streaming": force_streaming,
             "trust_remote_code": True  # Required for some datasets
         }
         
@@ -144,11 +150,12 @@ def load_datasets_from_config(
         
         texts = []
         sample_count = 0
-        max_to_load = ds_max_samples or 50000  # Default limit
+        max_to_load = min(ds_max_samples or 10000, 10000)  # Cap at 10k samples to save space
         
         # Handle streaming vs regular datasets
-        if use_streaming:
+        if force_streaming:
             # For streaming, iterate and take only what we need
+            print(f"🌊 Streaming mode: loading up to {max_to_load:,} samples")
             for item in dataset:
                 if sample_count >= max_to_load:
                     break

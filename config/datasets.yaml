@@ -118,40 +118,45 @@ datasets:
     max_samples: 20000
     streaming: true
     
-  # 17 - TriviaQA
+  # 17 - TriviaQA (streaming to save space)
   - name: "trivia_qa"
     subset: "unfiltered"
     split: "train"
     text_column: "question"
-    max_samples: 30000
+    max_samples: 10000
+    streaming: true
     
-  # 18 - HotpotQA
+  # 18 - HotpotQA (streaming to save space)
   - name: "hotpot_qa"
     subset: "distractor"
     split: "train"
     text_column: "question"
-    max_samples: 30000
+    max_samples: 10000
+    streaming: true
     
-  # 19 - MS MARCO
+  # 19 - MS MARCO (streaming to save space)
   - name: "microsoft/ms_marco"
     subset: "v1.1"
     split: "train"
     text_column: "query"
-    max_samples: 30000
+    max_samples: 10000
+    streaming: true
     
-  # 20 - DuoRC
+  # 20 - DuoRC (streaming to save space)
   - name: "duorc"
     subset: "ParaphraseRC"
     split: "train"
     text_column: "plot"
-    max_samples: 30000
+    max_samples: 10000
+    streaming: true
     
-  # 21 - Amazon Polarity
+  # 21 - Amazon Polarity (streaming to save space)
   - name: "amazon_polarity"
     subset: null
     split: "train"
     text_column: "content"
-    max_samples: 50000
+    max_samples: 10000
+    streaming: true
     
   # 22 - Financial News
   - name: "zeroshot/twitter-financial-news-sentiment"
@@ -165,12 +170,13 @@ datasets:
     split: "train"
     text_column: "support"
     
-  # 24 - Quail
+  # 24 - Quail (streaming to save space)
   - name: "quail"
     subset: null
     split: "train"
     text_column: "context"
-    max_samples: 30000
+    max_samples: 10000
+    streaming: true
     
   # 25 - WikiQA
   - name: "wiki_qa"

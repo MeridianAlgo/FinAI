@@ -131,6 +131,7 @@ jobs:
           HF_HOME: "/tmp/hf_home"
           HF_DATASETS_TRUST_REMOTE_CODE: "1"
           HF_DATASETS_OFFLINE: "0"
+          TMPDIR: "/tmp"
         run: |
           MAX_STEPS="${{ github.event.inputs.max_steps || '800' }}"
           
@@ -152,6 +153,11 @@ jobs:
               echo "Exit code: $?"
           }
           
+          # Clean cache immediately after training to free space
+          echo "Cleaning cache to free disk space..."
+          rm -rf /tmp/hf_cache/* || true
+          rm -rf /tmp/hf_home/* || true
+          
           # Extract training info
           echo "TRAINING_OUTPUT<<EOF" >> $GITHUB_OUTPUT
           tail -30 training_output.txt >> $GITHUB_OUTPUT
@@ -164,11 +170,17 @@ jobs:
       - name: Clean up cache after training
         if: always()
         run: |
-          echo "Cleaning up dataset cache..."
+          echo "Aggressive cache cleanup to free disk space..."
           rm -rf /tmp/hf_cache
           rm -rf /tmp/hf_home
           rm -rf ~/.cache/huggingface/datasets
           rm -rf ~/.cache/huggingface/hub
+          rm -rf ~/.cache/huggingface/modules
+          rm -rf /tmp/*
+          
+          # Clean pip cache
+          pip cache purge || true
+          
           echo "Cache cleaned!"
           df -h
       
