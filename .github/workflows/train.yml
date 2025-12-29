@@ -171,15 +171,18 @@ jobs:
         if: always()
         run: |
           echo "Aggressive cache cleanup to free disk space..."
-          rm -rf /tmp/hf_cache
-          rm -rf /tmp/hf_home
-          rm -rf ~/.cache/huggingface/datasets
-          rm -rf ~/.cache/huggingface/hub
-          rm -rf ~/.cache/huggingface/modules
-          rm -rf /tmp/*
+          rm -rf /tmp/hf_cache || true
+          rm -rf /tmp/hf_home || true
+          rm -rf ~/.cache/huggingface/datasets || true
+          rm -rf ~/.cache/huggingface/hub || true
+          rm -rf ~/.cache/huggingface/modules || true
           
           # Clean pip cache
           pip cache purge || true
+          
+          # Clean only our temp files, not system directories
+          find /tmp -maxdepth 1 -type f -user runner -delete 2>/dev/null || true
+          find /tmp -maxdepth 1 -type d -user runner -name "tmp*" -exec rm -rf {} + 2>/dev/null || true
           
           echo "Cache cleaned!"
           df -h
