@@ -193,58 +193,23 @@ jobs:
           except Exception as e:
               print(f"Repo creation note: {e}")
           
-          # Create model card
-          model_card = """---
-          license: mit
-          tags:
-            - pytorch
-            - gpt2
-            - text-generation
-            - fin-ai
-          ---
-          
-          # Fin.AI
-          
-          A lightweight, trainable GPT-style language model with automated daily training.
-          
-          ## Model Details
-          
-          - **Architecture**: GPT-2 style transformer
-          - **Parameters**: ~10M (tiny preset)
-          - **Training**: Daily automated training via GitHub Actions
-          - **Datasets**: Rotating daily (WikiText, TinyStories, CNN, etc.)
-          
-          ## Usage
-          
-          ```python
-          from fin_ai.model import FinAIModel
-          
-          model = FinAIModel.from_pretrained("MeridianAlgo/Fin.AI")
-          ```
-          
-          ## Training Info
-          
-          - **Last Updated**: {date}
-          - **Run Number**: {run}
-          - **Version**: {version}
-          
-          ## Links
-          
-          - [GitHub Repository](https://github.com/MeridianAlgo/FinAI)
-          - [Training Logs](https://wandb.ai/meridianalgo-meridianalgo/fin-ai)
-          
-          ## License
-          
-          MIT License
-          """.format(
-              date=datetime.now().strftime("%Y-%m-%d"),
-              run="${{ github.run_number }}",
-              version="${{ github.run_number }}"
-          )
-          
-          # Save model card
-          with open("checkpoints/model/README.md", "w") as f:
-              f.write(model_card)
+          # Update README with current timestamp
+          readme_path = "checkpoints/model/README.md"
+          if os.path.exists(readme_path):
+              with open(readme_path, 'r', encoding='utf-8') as f:
+                  content = f.read()
+              
+              # Update timestamp
+              current_time = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+              content = content.replace(
+                  "**Last Updated**: Auto-updated with each training run",
+                  f"**Last Updated**: {current_time}"
+              )
+              
+              with open(readme_path, 'w', encoding='utf-8') as f:
+                  f.write(content)
+              
+              print(f"✅ Updated README timestamp: {current_time}")
           
           # Upload to HF
           print(f"Uploading to {repo_id}...")
@@ -252,7 +217,7 @@ jobs:
               folder_path="checkpoints/model",
               repo_id=repo_id,
               token=token,
-              commit_message=f"Training update - Run ${{ github.run_number }} - {datetime.now().strftime('%Y-%m-%d')}"
+              commit_message=f"Training update - Run ${{ github.run_number }} - {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}"
           )
           print(f"Model uploaded to https://huggingface.co/{repo_id}")
           EOF
