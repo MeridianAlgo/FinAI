@@ -11,7 +11,7 @@ training:
   learning_rate: 3.0e-4
   weight_decay: 0.01
   warmup_steps: 100
-  max_steps: 800  # More steps for better training
+  max_steps: 450  # Reduced to fit 80-minute timeout
   eval_steps: 200
   save_steps: 400
   max_grad_norm: 1.0
