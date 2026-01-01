@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fin_ai"
+version = "0.1.0"
+description = "Fin.AI language model training package"
+authors = [{name = "Ishaan", email = "ishaan@example.com"}]
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.8"
+dependencies = [
+    "torch",
+    "transformers",
+    "datasets",
+    "tqdm",
+    "pyyaml",
+    "wandb",
+    "pytest",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["fin_ai*"]

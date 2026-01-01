@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from typing import Optional
 import torch
 from torch.utils.data import DataLoader
-from torch.cuda.amp import GradScaler, autocast
+from torch.cuda.amp import GradScaler
 import yaml
 from tqdm import tqdm
 
@@ -62,6 +62,8 @@ class DatasetCycler:
             self.config = yaml.safe_load(f)
         self.datasets = self.config.get("datasets", [])
         self.current_dataset_idx = 0
+        self.dataset_offsets = {}  # Track offsets for each dataset
+        self._load_state()  # Load existing state
         self._update_current_dataset()
         self._save_state()
     
@@ -72,10 +74,31 @@ class DatasetCycler:
             current_hour = datetime.now().hour
             self.current_dataset_idx = current_hour % len(self.datasets)
     
+    def _load_state(self):
+        """Load state from file."""
+        if os.path.exists(self.state_file):
+            try:
+                with open(self.state_file, "r") as f:
+                    state = json.load(f)
+                    self.current_dataset_idx = state.get("current_dataset_idx", 0)
+                    self.dataset_offsets = state.get("dataset_offsets", {})
+                    # Ensure offsets are integers/valid
+                    for k, v in self.dataset_offsets.items():
+                        try:
+                            self.dataset_offsets[k] = int(v)
+                        except:
+                            self.dataset_offsets[k] = 0
+            except Exception as e:
+                logger.warning(f"Failed to load dataset state: {e}")
+                self.dataset_offsets = {}
+
     def _save_state(self):
         os.makedirs(os.path.dirname(self.state_file) or ".", exist_ok=True)
         with open(self.state_file, "w") as f:
-            json.dump({"current_dataset_idx": self.current_dataset_idx}, f)
+            json.dump({
+                "current_dataset_idx": self.current_dataset_idx,
+                "dataset_offsets": self.dataset_offsets
+            }, f, indent=2)
     
     def get_current_dataset(self):
         return self.datasets[self.current_dataset_idx] if self.datasets else {}
@@ -88,6 +111,22 @@ class DatasetCycler:
         if "/" in name:
             name = name.split("/")[-1]
         return name
+    
+    def get_current_offset(self) -> int:
+        """Get the offset for the current dataset."""
+        name = self.get_current_dataset().get("name")
+        if not name:
+            return 0
+        return self.dataset_offsets.get(name, 0)
+    
+    def increment_offset(self, amount: int):
+        """Increment the offset for the current dataset."""
+        name = self.get_current_dataset().get("name")
+        if name:
+            current = self.dataset_offsets.get(name, 0)
+            self.dataset_offsets[name] = current + amount
+            self._save_state()
+            print(f"📍 Updated offset for {name}: {current} -> {self.dataset_offsets[name]}")
 
 
 class FinAITrainer:
@@ -122,12 +161,14 @@ class FinAITrainer:
                     "model_embed_dim": self.model.config.embed_dim,
                     "device": str(self.device),
                     "dataset": dataset_cycler.current_dataset_name if dataset_cycler else "unknown",
+                    "dataset_offset": dataset_cycler.get_current_offset() if dataset_cycler else 0,
                 }
                 
+                run_name = f"train-{wandb_config['dataset']}-run{os.environ.get('GITHUB_RUN_NUMBER', 'local')}"
                 wandb.init(
                     project=self.config.wandb_project,
                     config=wandb_config,
-                    name=f"train-{wandb_config['dataset']}-run{os.environ.get('GITHUB_RUN_NUMBER', 'local')}",
+                    name=run_name,
                     tags=["continuous-training", wandb_config['dataset'], f"v{os.environ.get('GITHUB_RUN_NUMBER', '0')}"],
                 )
                 
@@ -184,6 +225,9 @@ class FinAITrainer:
         
         pbar = tqdm(total=self.config.max_steps, initial=self.global_step, desc="Training", disable=is_ci)
         
+        # Keep track of local progress to update dataset offset later
+        steps_processed = 0
+
         while self.global_step < self.config.max_steps:
             try:
                 batch = next(train_iter)
@@ -224,6 +268,7 @@ class FinAITrainer:
                 self.optimizer.zero_grad()
             
             self.global_step += 1
+            steps_processed += 1
             if not is_ci:
                 pbar.update(1)
             
@@ -271,6 +316,7 @@ class FinAITrainer:
                         
                         # Dataset info
                         "dataset/name": self.dataset_cycler.current_dataset_name if self.dataset_cycler else "unknown",
+                        "dataset/offset": self.dataset_cycler.get_current_offset() if self.dataset_cycler else 0,
                     }, step=self.global_step)
                 except Exception as e:
                     pass
@@ -319,26 +365,56 @@ class FinAITrainer:
     def _load_checkpoint(self):
         if not os.path.exists(self.config.output_dir):
             return
-        checkpoints = [f for f in os.listdir(self.config.output_dir) if f.startswith("checkpoint-") and f.endswith(".pt")]
-        if not checkpoints:
-            return
-        checkpoints.sort(key=lambda x: int(x.split("-")[1].split(".")[0]))
-        latest = checkpoints[-1]
-        checkpoint_path = os.path.join(self.config.output_dir, latest)
-        print(f"📂 Resuming from checkpoint: {latest}")
         
-        try:
-            checkpoint = torch.load(checkpoint_path, map_location=self.device, weights_only=False)
-            self.model.load_state_dict(checkpoint["model_state_dict"])
-            self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-            self.scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
-            self.global_step = checkpoint["global_step"]
-            self.epoch = checkpoint["epoch"]
-            if self.scaler and "scaler_state_dict" in checkpoint:
-                self.scaler.load_state_dict(checkpoint["scaler_state_dict"])
-            print(f"✅ Resumed from step {self.global_step}")
-        except Exception as e:
-            print(f"⚠️ Failed to load checkpoint: {e}")
-            print("Starting fresh training...")
-            self.global_step = 0
-            self.epoch = 0
+        # 1. Try to find the latest checkpoint-*.pt
+        checkpoints = [f for f in os.listdir(self.config.output_dir) if f.startswith("checkpoint-") and f.endswith(".pt")]
+        
+        if checkpoints:
+            checkpoints.sort(key=lambda x: int(x.split("-")[1].split(".")[0]))
+            latest = checkpoints[-1]
+            checkpoint_path = os.path.join(self.config.output_dir, latest)
+            print(f"📂 Resuming from checkpoint: {latest}")
+            
+            try:
+                checkpoint = torch.load(checkpoint_path, map_location=self.device, weights_only=False)
+                self.model.load_state_dict(checkpoint["model_state_dict"])
+                self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+                self.scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
+                self.global_step = checkpoint["global_step"]
+                self.epoch = checkpoint["epoch"]
+                if self.scaler and "scaler_state_dict" in checkpoint:
+                    self.scaler.load_state_dict(checkpoint["scaler_state_dict"])
+                print(f"✅ Resumed from step {self.global_step}")
+                return
+            except Exception as e:
+                print(f"⚠️ Failed to load checkpoint: {e}")
+        
+        # 2. Fallback: Check for model.pt or model/model.pt (Hugging Face format)
+        model_paths = [
+            os.path.join(self.config.output_dir, "model", "model.pt"),
+            os.path.join(self.config.output_dir, "model.pt"),
+            os.path.join(self.config.output_dir, "model", "pytorch_model.bin"),
+        ]
+        
+        for path in model_paths:
+            if os.path.exists(path):
+                print(f"📂 Found pretrained model weights at {path}, starting fine-tuning...")
+                try:
+                    # Load state dict
+                    state_dict = torch.load(path, map_location=self.device, weights_only=False)
+                    # Handle if it's a full checkpoint or just state dict
+                    if "model_state_dict" in state_dict:
+                        self.model.load_state_dict(state_dict["model_state_dict"])
+                    else:
+                        self.model.load_state_dict(state_dict)
+                    print(f"✅ Loaded weights from {path}")
+                    # Reset optimizer/scheduler since we are starting fresh/fine-tuning
+                    self.global_step = 0
+                    self.epoch = 0
+                    return
+                except Exception as e:
+                    print(f"⚠️ Failed to load pretrained weights: {e} - Starting fresh")
+        
+        print("Starting fresh training (random initialization)...")
+        self.global_step = 0
+        self.epoch = 0

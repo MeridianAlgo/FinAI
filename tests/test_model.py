@@ -123,14 +123,14 @@ try:
     print(f"   Today is {day_names[today]}")
     
     # This will load today's dataset
-    dataset = load_datasets_from_config(
+    dataset, new_offset = load_datasets_from_config(
         "config/datasets.yaml",
         tokenizer=tokenizer,
         max_seq_len=512,
         max_samples=100,  # Small sample for testing
     )
     
-    print(f"✅ Dataset loaded: {len(dataset)} sequences\n")
+    print(f"✅ Dataset loaded: {len(dataset)} sequences (offset: {new_offset})\n")
 except Exception as e:
     print(f"❌ Dataset loading failed: {e}\n")
     exit(1)

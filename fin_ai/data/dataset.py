@@ -98,8 +98,13 @@ def load_datasets_from_config(
     tokenizer: Optional[AutoTokenizer] = None,
     max_seq_len: int = 512,
     max_samples: Optional[int] = None,
-) -> FinAIDataset:
-    """Load today's dataset from YAML configuration."""
+    offset: int = 0,
+) -> tuple[FinAIDataset, int]:
+    """Load today's dataset from YAML configuration with offset support.
+    
+    Returns:
+        tuple: (FinAIDataset, new_offset)
+    """
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
     
@@ -125,8 +130,14 @@ def load_datasets_from_config(
     use_streaming = ds_config.get("streaming", False)
     
     print(f"📚 Loading: {name}")
+    if offset > 0:
+        print(f"⏭️  Skipping first {offset:,} samples (Resuming)")
+    
     if use_streaming:
         print("🌊 Using streaming mode (memory efficient)")
+    
+    # Track how far we scanned to update offset correctly
+    new_offset = offset
     
     try:
         # Force streaming for large datasets to save disk space
@@ -136,11 +147,10 @@ def load_datasets_from_config(
         force_streaming = is_ci or use_streaming or ds_max_samples is None or ds_max_samples > 10000
         
         # Load dataset with streaming for large datasets
-        # Use trust_remote_code=True for datasets that need it
         load_kwargs = {
             "split": split,
             "streaming": force_streaming,
-            "trust_remote_code": True  # Required for some datasets
+            "trust_remote_code": True
         }
         
         if subset:
@@ -149,51 +159,84 @@ def load_datasets_from_config(
             dataset = load_dataset(name, **load_kwargs)
         
         texts = []
-        sample_count = 0
-        max_to_load = min(ds_max_samples or 10000, 10000)  # Cap at 10k samples to save space
+        # Chunk size to load in memory
+        chunk_size = min(ds_max_samples or 10000, 10000)
         
-        # Handle streaming vs regular datasets
         if force_streaming:
-            # For streaming, iterate and take only what we need
-            print(f"🌊 Streaming mode: loading up to {max_to_load:,} samples")
-            for item in dataset:
-                if sample_count >= max_to_load:
-                    break
-                text = extract_text_from_item(item, text_column)
-                if text and len(str(text).strip()) > 10:
-                    texts.append(str(text))
-                    sample_count += 1
-        else:
-            # For regular datasets, select range first
-            if ds_max_samples:
-                dataset = dataset.select(range(min(ds_max_samples, len(dataset))))
+            # For streaming, skip 'offset' items from source
+            current_idx = 0
+            collected_count = 0
             
             for item in dataset:
+                # Iterate until we reach offset
+                if current_idx < offset:
+                    current_idx += 1
+                    continue
+                
+                # Collect items
+                if collected_count >= chunk_size:
+                    break
+                    
+                text = extract_text_from_item(item, text_column)
+                if text and len(str(text).strip()) > 10:
+                    texts.append(str(text))
+                    collected_count += 1
+                
+                current_idx += 1
+            
+            new_offset = current_idx
+            
+            # If we reached end of dataset and have no texts, reset offset
+            if not texts and offset > 0:
+                print("⚠️  Reached end of dataset! Resetting offset to 0...")
+                return load_datasets_from_config(config_path, tokenizer, max_seq_len, max_samples, offset=0)
+                
+        else:
+            # For regular datasets
+            total_len = len(dataset)
+            if offset >= total_len:
+                print("⚠️  Offset beyond dataset length! Resetting offset to 0...")
+                offset = 0
+            
+            new_offset = min(offset + chunk_size, total_len)
+            print(f"📊 Selecting range {offset:,} - {new_offset:,} (Total: {total_len:,})")
+            
+            subset_indices = range(offset, new_offset)
+            dataset_slice = dataset.select(subset_indices)
+            
+            for item in dataset_slice:
                 text = extract_text_from_item(item, text_column)
                 if text and len(str(text).strip()) > 10:
                     texts.append(str(text))
         
-        print(f"📊 Loaded {len(texts):,} samples")
+        print(f"📊 Loaded {len(texts):,} samples. New offset: {new_offset:,}")
         
     except Exception as e:
         error_msg = str(e)
         print(f"❌ Failed to load {name}: {error_msg}")
         
-        # If this dataset failed, try to fall back to a safe default
+        # Fallback logic
         if "Dataset scripts are no longer supported" in error_msg or "trust_remote_code" in error_msg:
             print(f"⚠️  Dataset {name} uses legacy format or requires trust_remote_code")
             print(f"🔄 Falling back to wikitext-2 as safe alternative...")
             
-            # Fall back to wikitext-2 (always works)
             try:
                 dataset = load_dataset("wikitext", "wikitext-2-raw-v1", split="train")
                 texts = []
+                count = 0
                 for item in dataset:
-                    text = item.get("text", "")
-                    if text and len(str(text).strip()) > 10:
-                        texts.append(str(text))
-                        if len(texts) >= 10000:  # Limit fallback
-                            break
+                    if count >= offset:
+                         text = item.get("text", "")
+                         if text and len(str(text).strip()) > 10:
+                             texts.append(str(text))
+                             if len(texts) >= 10000:
+                                 break
+                    count += 1
+                new_offset = count
+                
+                if not texts and offset > 0:
+                     return load_datasets_from_config(config_path, tokenizer, max_seq_len, max_samples, offset=0)
+
                 print(f"✅ Fallback successful: {len(texts):,} samples from wikitext-2")
             except Exception as fallback_error:
                 print(f"❌ Fallback also failed: {fallback_error}")
@@ -202,6 +245,9 @@ def load_datasets_from_config(
             raise
     
     if not texts:
+        if offset > 0:
+            print("⚠️ No texts found at this offset, resetting to 0")
+            return load_datasets_from_config(config_path, tokenizer, max_seq_len, max_samples, offset=0)
         raise ValueError("No texts loaded!")
     
     if max_samples and len(texts) > max_samples:
@@ -220,7 +266,7 @@ def load_datasets_from_config(
     
     print(f"🔢 Created {len(tokenized_chunks):,} training sequences")
     
-    return FinAIDataset(tokenized_chunks, max_seq_len)
+    return FinAIDataset(tokenized_chunks, max_seq_len), new_offset
 
 
 def tokenize_and_chunk(
@@ -236,7 +282,7 @@ def tokenize_and_chunk(
     all_tokens = []
     eos_token_id = tokenizer.eos_token_id
     
-    for text in texts[:10000]:  # Increased limit for better training
+    for text in texts[:10000]:  # Limit applied here as well
         try:
             tokens = tokenizer.encode(text, add_special_tokens=False, truncation=True, max_length=max_seq_len * 2)
             if len(tokens) > 0:

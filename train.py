@@ -95,11 +95,14 @@ def main():
     
     # Load datasets
     print("📥 Loading datasets...")
-    dataset = load_datasets_from_config(
+    current_offset = dataset_cycler.get_current_offset()
+    
+    dataset, new_offset = load_datasets_from_config(
         args.datasets,
         tokenizer=tokenizer,
         max_seq_len=model_config.max_seq_len,
         max_samples=args.max_samples,
+        offset=current_offset,
     )
     
     # Create dataloaders
@@ -127,6 +130,12 @@ def main():
     
     # Train
     trainer.train()
+    
+    # Update dataset state
+    if new_offset > current_offset:
+        print(f"📍 Updating dataset offset: {current_offset} -> {new_offset}")
+        dataset_cycler.dataset_offsets[dataset_cycler.current_dataset_name] = new_offset
+        dataset_cycler._save_state()
 
 
 if __name__ == "__main__":

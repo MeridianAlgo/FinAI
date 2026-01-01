@@ -1,6 +1,10 @@
 # 🤖 Fin.AI
 
-**A continuously-learning transformer language model trained hourly on diverse datasets via GitHub Actions**
+**⚠️ WORK IN PROGRESS - EXPERIMENTAL RESEARCH PROJECT ⚠️**
+
+*A continuously-learning transformer language model trained hourly on diverse datasets via GitHub Actions*
+
+> **🚨 Important Notice**: Fin.AI is an **experimental research project** and **work in progress**. The model is continuously being trained and may produce inaccurate, inappropriate, or nonsensical outputs. **Do not use for production applications or critical systems.** Use at your own risk.
 
 [![Hugging Face](https://img.shields.io/badge/🤗%20Model-Fin.AI-yellow)](https://huggingface.co/MeridianAlgo/Fin.AI)
 [![GitHub Actions](https://github.com/MeridianAlgo/FinAI/actions/workflows/train.yml/badge.svg)](https://github.com/MeridianAlgo/FinAI/actions)
@@ -11,13 +15,15 @@
 
 ## 🌟 What is Fin.AI?
 
-Fin.AI is an experimental GPT-style language model that trains itself **every 1.5 hours** on different datasets from Hugging Face. It's designed to be:
+Fin.AI is an **experimental GPT-style language model** that trains itself **every 1.5 hours** on different datasets from Hugging Face. It's designed to be:
 
 - **🔄 Continuously Learning**: Trains 24/7 on GitHub Actions
 - **📚 Diverse**: Rotates through 24 different dataset types
 - **🎯 Focused**: Each cycle targets specific capabilities (math, reasoning, conversation, etc.)
 - **🚀 Accessible**: Free to use, modify, and deploy
 - **📊 Transparent**: All training metrics visible on Wandb
+
+> **⚠️ Experimental Status**: This is a research prototype, not a production-ready system. The model's capabilities are evolving and may exhibit unexpected behaviors.
 
 ## ✨ Key Features
 
@@ -53,6 +59,8 @@ Fin.AI trains on a diverse curriculum that rotates every 1.5 hours (16 cycles pe
 
 ### Download Pre-trained Model
 
+> **⚠️ Warning**: Models are works-in-progress and may contain biases, inaccuracies, or inappropriate content. Use responsibly.
+
 ```python
 from huggingface_hub import hf_hub_download
 
@@ -62,6 +70,8 @@ hf_hub_download("MeridianAlgo/Fin.AI", "config.json", local_dir="./model")
 ```
 
 ### Generate Text
+
+> **⚠️ Experimental**: Generated text may be nonsensical, biased, or inappropriate. This is for research purposes only.
 
 ```python
 from fin_ai.model import FinAIModel
