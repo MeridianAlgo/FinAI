@@ -35,8 +35,6 @@ tags:
 - swiglu
 - rmsnorm
 - rope
-datasets:
-- multiple (rotated hourly)
 ---
 
 # 🤖 Fin.AI v2.0
@@ -161,9 +159,35 @@ def main():
     # Check for HF token
     hf_token = os.environ.get("HF_TOKEN")
     if not hf_token:
-        print("❌ Error: HF_TOKEN environment variable not set")
-        print("Please set it with: export HF_TOKEN=your_token_here")
-        sys.exit(1)
+        print("⚠️  HF_TOKEN environment variable not set")
+        print()
+        print("Options:")
+        print("1. Set environment variable: export HF_TOKEN=your_token_here")
+        print("2. Or run via GitHub Actions (recommended)")
+        print()
+        print("Get your token from: https://huggingface.co/settings/tokens")
+        print()
+        
+        # Try to read from .env file if it exists
+        env_file = ".env"
+        if os.path.exists(env_file):
+            print(f"Checking {env_file} file...")
+            with open(env_file, 'r') as f:
+                for line in f:
+                    if line.startswith('HF_TOKEN='):
+                        hf_token = line.split('=', 1)[1].strip().strip('"').strip("'")
+                        if hf_token:
+                            print(f"✓ Found HF_TOKEN in {env_file}")
+                            break
+        
+        if not hf_token:
+            print()
+            print("💡 Tip: You can also run this via GitHub Actions:")
+            print("   1. Go to Actions tab in your repo")
+            print("   2. Select 'Initialize v2 Model' workflow")
+            print("   3. Click 'Run workflow' and type 'INIT_V2'")
+            print()
+            sys.exit(1)
     
     # Configuration
     repo_id = "MeridianAlgo/Fin.AI"
