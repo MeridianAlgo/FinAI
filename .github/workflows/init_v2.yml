@@ -1,0 +1,47 @@
+name: Initialize v2 Model
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "INIT_V2" to confirm initialization'
+        required: true
+        default: ''
+
+env:
+  PYTHON_VERSION: '3.10'
+  HF_REPO_ID: 'MeridianAlgo/Fin.AI'
+
+jobs:
+  init-v2:
+    runs-on: ubuntu-latest
+    if: github.event.inputs.confirm == 'INIT_V2'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Initialize v2 model
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python scripts/init_v2_model.py
+      
+      - name: Summary
+        run: |
+          echo "✅ Fin.AI v2 model initialized and uploaded to Hugging Face!"
+          echo ""
+          echo "🔗 Model: https://huggingface.co/${{ env.HF_REPO_ID }}"
+          echo ""
+          echo "🎯 Next training run will use the new v2 architecture"

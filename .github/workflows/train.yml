@@ -92,9 +92,12 @@ jobs:
               
               os.makedirs("checkpoints/model", exist_ok=True)
               
-              # Download model files
-              for f in files:
-                  if f.endswith(('.pt', '.json')):
+              # Download v2 model files (model.pt, config.json, version.json)
+              required_files = ['model.pt', 'config.json']
+              optional_files = ['version.json', 'README.md']
+              
+              for f in required_files:
+                  if f in files:
                       print(f"Downloading {f}...")
                       try:
                           hf_hub_download(
@@ -106,8 +109,28 @@ jobs:
                           print(f"✓ Downloaded {f}")
                       except Exception as e:
                           print(f"✗ Failed to download {f}: {e}")
+                          print("Will start fresh training...")
+                          exit(0)
+                  else:
+                      print(f"⚠️  Required file {f} not found in repo")
+                      print("Will start fresh training...")
+                      exit(0)
               
-              print("Model download complete!")
+              # Download optional files
+              for f in optional_files:
+                  if f in files:
+                      try:
+                          hf_hub_download(
+                              repo_id=repo_id,
+                              filename=f,
+                              local_dir="checkpoints/model",
+                              token=token
+                          )
+                          print(f"✓ Downloaded {f}")
+                      except Exception as e:
+                          print(f"Note: Could not download {f}: {e}")
+              
+              print("✅ Model download complete! Will continue training from checkpoint.")
           except Exception as e:
               print(f"Could not download model: {e}")
               print("Starting fresh training...")
