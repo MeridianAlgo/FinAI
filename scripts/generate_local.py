@@ -4,6 +4,7 @@ This maps characters to token ids via `ord(char) % vocab_size` and back via a pr
 Run:
     python scripts/generate_local.py "Hello world" --max_new_tokens 20
 """
+
 import argparse
 import torch
 from fin_ai.model.config import FinAIConfig
@@ -19,7 +20,7 @@ def ids_to_text(ids):
     for t in ids:
         c = t % 95 + 32
         chars.append(chr(c))
-    return ''.join(chars)
+    return "".join(chars)
 
 
 def main():
@@ -31,11 +32,15 @@ def main():
     parser.add_argument("--greedy", action="store_true")
     args = parser.parse_args()
 
-    cfg = FinAIConfig.from_preset(args.preset, vocab_size=args.vocab_size, max_seq_len=512)
+    cfg = FinAIConfig.from_preset(
+        args.preset, vocab_size=args.vocab_size, max_seq_len=512
+    )
     model = FinAIModel(cfg)
     model.eval()
 
-    input_ids = torch.tensor([text_to_ids(args.prompt, cfg.vocab_size)], dtype=torch.long)
+    input_ids = torch.tensor(
+        [text_to_ids(args.prompt, cfg.vocab_size)], dtype=torch.long
+    )
 
     # allow repetition penalty and sampling controls
     out = model.generate(

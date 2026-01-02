@@ -3,6 +3,7 @@
 This script moves `checkpoints/` and `downloaded_model/` into `legacy/backup-<ts>/` and
 creates a new empty `checkpoints/` folder and `model/` placeholders for a new model.
 """
+
 import os
 import shutil
 import time
@@ -24,7 +25,9 @@ def main():
     os.makedirs(os.path.join("checkpoints", "model"), exist_ok=True)
     os.makedirs("model", exist_ok=True)
 
-    print(f"Archived old artifacts to {backup_dir} and created fresh `checkpoints/` and `model/`.")
+    print(
+        f"Archived old artifacts to {backup_dir} and created fresh `checkpoints/` and `model/`."
+    )
 
 
 if __name__ == "__main__":

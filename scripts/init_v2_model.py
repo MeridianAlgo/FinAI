@@ -155,7 +155,7 @@ Architecture inspired by:
 
 def main():
     print("🚀 Initializing Fin.AI v2 Model for Hugging Face\n")
-    
+
     # Check for HF token
     hf_token = os.environ.get("HF_TOKEN")
     if not hf_token:
@@ -167,19 +167,19 @@ def main():
         print()
         print("Get your token from: https://huggingface.co/settings/tokens")
         print()
-        
+
         # Try to read from .env file if it exists
         env_file = ".env"
         if os.path.exists(env_file):
             print(f"Checking {env_file} file...")
-            with open(env_file, 'r') as f:
+            with open(env_file, "r") as f:
                 for line in f:
-                    if line.startswith('HF_TOKEN='):
-                        hf_token = line.split('=', 1)[1].strip().strip('"').strip("'")
+                    if line.startswith("HF_TOKEN="):
+                        hf_token = line.split("=", 1)[1].strip().strip('"').strip("'")
                         if hf_token:
                             print(f"✓ Found HF_TOKEN in {env_file}")
                             break
-        
+
         if not hf_token:
             print()
             print("💡 Tip: You can also run this via GitHub Actions:")
@@ -188,25 +188,25 @@ def main():
             print("   3. Click 'Run workflow' and type 'INIT_V2'")
             print()
             sys.exit(1)
-    
+
     # Configuration
     repo_id = "MeridianAlgo/Fin.AI"
     output_dir = "checkpoints/model"
-    
+
     print("📋 Configuration:")
     print(f"   Repository: {repo_id}")
     print(f"   Output Directory: {output_dir}")
     print()
-    
+
     # Create model config
     print("⚙️  Creating model configuration (small preset)...")
     config = FinAIConfig.from_preset("small")
-    
+
     # Load tokenizer to get vocab size
     print("🔤 Loading GPT-2 tokenizer...")
     tokenizer = AutoTokenizer.from_pretrained("gpt2")
     config.vocab_size = len(tokenizer)
-    
+
     print(f"   Vocab size: {config.vocab_size}")
     print(f"   Parameters: {config.num_parameters:,}")
     print(f"   Layers: {config.n_layers}")
@@ -214,20 +214,20 @@ def main():
     print(f"   Embed dim: {config.embed_dim}")
     print(f"   FFN dim: {config.ff_dim}")
     print()
-    
+
     # Create model
     print("🤖 Creating fresh v2 model...")
     model = FinAIModel(config)
-    
+
     actual_params = model.count_parameters()
     print(f"   ✓ Model created with {actual_params:,} parameters")
     print()
-    
+
     # Save model
     print(f"💾 Saving model to {output_dir}...")
     os.makedirs(output_dir, exist_ok=True)
     model.save_pretrained(output_dir)
-    
+
     # Save model card
     print("📝 Creating model card...")
     readme_path = os.path.join(output_dir, "README.md")
@@ -235,36 +235,38 @@ def main():
         f.write(create_model_card())
     print(f"   ✓ Model card saved to {readme_path}")
     print()
-    
+
     # Create version file
     from datetime import datetime
+
     version_info = {
         "version": "2.0.0",
         "architecture": "v2",
         "created_at": datetime.utcnow().isoformat() + "Z",
         "parameters": actual_params,
-        "config": config.to_dict()
+        "config": config.to_dict(),
     }
-    
+
     import json
+
     version_path = os.path.join(output_dir, "version.json")
     with open(version_path, "w") as f:
         json.dump(version_info, f, indent=2)
     print(f"   ✓ Version info saved to {version_path}")
     print()
-    
+
     # Upload to Hugging Face
     print(f"☁️  Uploading to Hugging Face ({repo_id})...")
-    
+
     api = HfApi(token=hf_token)
-    
+
     # Create repo if it doesn't exist
     try:
         create_repo(repo_id, token=hf_token, exist_ok=True, repo_type="model")
         print(f"   ✓ Repository ready: https://huggingface.co/{repo_id}")
     except Exception as e:
         print(f"   Note: {e}")
-    
+
     # Upload all files
     print("   Uploading files...")
     try:
@@ -272,7 +274,7 @@ def main():
             folder_path=output_dir,
             repo_id=repo_id,
             token=hf_token,
-            commit_message="🚀 Initialize Fin.AI v2.0 - Fresh model with GQA, SwiGLU, RMSNorm, RoPE"
+            commit_message="🚀 Initialize Fin.AI v2.0 - Fresh model with GQA, SwiGLU, RMSNorm, RoPE",
         )
         print(f"   ✓ Upload complete!")
         print()
@@ -283,7 +285,7 @@ def main():
         print("   1. The next training run will download this v2 model")
         print("   2. Training will continue from this fresh initialization")
         print("   3. Model will be updated every ~85 minutes")
-        
+
     except Exception as e:
         print(f"   ❌ Upload failed: {e}")
         sys.exit(1)

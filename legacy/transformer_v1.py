@@ -13,13 +13,14 @@ from fin_ai.model.config import FinAIConfig
 
 class FinAIModel(nn.Module):
     """Simplified GPT-style transformer for Fin.AI"""
-    
+
     def __init__(self, config: FinAIConfig):
         super().__init__()
         self.config = config
-        
+
         # Use GPT2 architecture from transformers as backbone
         from transformers import GPT2Config, GPT2LMHeadModel
+
         gpt_config = GPT2Config(
             vocab_size=config.vocab_size,
             n_positions=config.max_seq_len,
@@ -32,7 +33,7 @@ class FinAIModel(nn.Module):
             attn_pdrop=config.attention_dropout,
         )
         self.transformer = GPT2LMHeadModel(gpt_config)
-    
+
     def forward(
         self,
         input_ids: torch.Tensor,
@@ -44,12 +45,12 @@ class FinAIModel(nn.Module):
             attention_mask=attention_mask,
             labels=labels,
         )
-        
+
         result = {"logits": outputs.logits}
         if labels is not None:
             result["loss"] = outputs.loss
         return result
-    
+
     @torch.no_grad()
     def generate(
         self,
@@ -92,7 +93,7 @@ class FinAIModel(nn.Module):
         # Delegate to transformers' generation utilities which handle caching and decoding
         outputs = self.transformer.generate(input_ids=input_ids, **gen_kwargs)
         return outputs
-    
+
     def save_pretrained(self, path: str):
         os.makedirs(path, exist_ok=True)
         # Save our custom config
@@ -104,7 +105,7 @@ class FinAIModel(nn.Module):
         except Exception:
             # Fallback to state_dict
             torch.save(self.state_dict(), os.path.join(path, "model.pt"))
-    
+
     @classmethod
     def from_pretrained(cls, path: str, device: str = "cpu"):
         # Load our custom config first if present
@@ -141,8 +142,16 @@ class FinAIModel(nn.Module):
         try:
             from peft import LoraConfig, get_peft_model
         except Exception as e:
-            raise RuntimeError("PEFT library not installed. Install `peft` to use LoRA.") from e
+            raise RuntimeError(
+                "PEFT library not installed. Install `peft` to use LoRA."
+            ) from e
 
-        lora_config = LoraConfig(r=r, lora_alpha=alpha, target_modules=["c_attn", "c_proj"], lora_dropout=dropout, bias="none")
+        lora_config = LoraConfig(
+            r=r,
+            lora_alpha=alpha,
+            target_modules=["c_attn", "c_proj"],
+            lora_dropout=dropout,
+            bias="none",
+        )
         self.transformer = get_peft_model(self.transformer, lora_config)
         return self

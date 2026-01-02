@@ -16,6 +16,7 @@ datasets automatically. Run datasets checks manually from `legacy/` when
 needed.
 """
 
+
 def main():
     print("Dataset tests were moved to legacy/ to avoid automatic downloads.")
 

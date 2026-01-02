@@ -2,6 +2,7 @@
 
 This is a smoke/validation training run with slightly improved defaults.
 """
+
 import os
 import torch
 from fin_ai.model.config import FinAIConfig
@@ -11,9 +12,13 @@ from fin_ai.model.transformer import FinAIModel
 def synthetic_dataloader(vocab_size, seq_len, dataset_size=1000, batch_size=8):
     # Create synthetic dataset of simple token sequences
     import random
+
     data = []
     for _ in range(dataset_size):
-        seq = torch.tensor([random.randint(0, vocab_size - 1) for _ in range(seq_len)], dtype=torch.long)
+        seq = torch.tensor(
+            [random.randint(0, vocab_size - 1) for _ in range(seq_len)],
+            dtype=torch.long,
+        )
         data.append(seq)
 
     def iterator():
@@ -38,7 +43,9 @@ def train(steps=200, lr=5e-4, batch_size=8, seq_len=32):
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
 
-    loader = synthetic_dataloader(cfg.vocab_size, seq_len, dataset_size=500, batch_size=batch_size)
+    loader = synthetic_dataloader(
+        cfg.vocab_size, seq_len, dataset_size=500, batch_size=batch_size
+    )
 
     for step in range(steps):
         batch = next(loader)

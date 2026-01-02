@@ -27,13 +27,17 @@ def test_forward_determinism_and_save_load():
     seq_len = 8
     # deterministic input
     set_seed(1234)
-    input_ids = torch.randint(0, cfg.vocab_size, (batch_size, seq_len), dtype=torch.long)
+    input_ids = torch.randint(
+        0, cfg.vocab_size, (batch_size, seq_len), dtype=torch.long
+    )
 
     out1 = model(input_ids)
     out2 = model(input_ids)
 
     # logits should be identical between runs in eval mode
-    assert torch.allclose(out1["logits"], out2["logits"]), "Logits differ between identical forward passes"
+    assert torch.allclose(
+        out1["logits"], out2["logits"]
+    ), "Logits differ between identical forward passes"
 
     # Save and load, then compare parameters
     with tempfile.TemporaryDirectory() as td:
@@ -90,4 +94,6 @@ def test_small_synthetic_training_decreases_loss():
         # Allow small increases due to noise but not explosion
         pass
     else:
-        raise AssertionError(f"Loss did not improve or moved too much: initial={initial_loss}, final={final_loss}")
+        raise AssertionError(
+            f"Loss did not improve or moved too much: initial={initial_loss}, final={final_loss}"
+        )

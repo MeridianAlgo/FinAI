@@ -23,9 +23,13 @@ def test_force_streaming_does_not_write_cache(monkeypatch, tmp_path):
         def gen():
             for i in range(20):
                 yield {"text": f"Sample text {i} for {name}"}
+
         return gen()
 
-    monkeypatch.setattr("fin_ai.data.dataset.load_dataset", lambda *a, **k: fake_load_dataset(a[0], *a[1:], **k))
+    monkeypatch.setattr(
+        "fin_ai.data.dataset.load_dataset",
+        lambda *a, **k: fake_load_dataset(a[0], *a[1:], **k),
+    )
 
     # Call loader with force_streaming True (should not write to HF cache)
     ds, offset = load_datasets_from_config(
@@ -38,5 +42,9 @@ def test_force_streaming_does_not_write_cache(monkeypatch, tmp_path):
     )
 
     # Since we monkeypatched, no network downloads occurred and cache_dir should be empty
-    large_files = [p for p in cache_dir.rglob("*") if p.is_file() and p.stat().st_size > 1_000_000]
-    assert len(large_files) == 0, f"Found large cache files when streaming: {large_files}"
+    large_files = [
+        p for p in cache_dir.rglob("*") if p.is_file() and p.stat().st_size > 1_000_000
+    ]
+    assert (
+        len(large_files) == 0
+    ), f"Found large cache files when streaming: {large_files}"

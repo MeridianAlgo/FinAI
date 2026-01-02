@@ -10,6 +10,7 @@ Move to `scripts/` or run directly via `python tests/_legacy_test_model.py`.
 import torch
 from transformers import AutoTokenizer
 
+
 def main():
     print("This legacy test harness was moved to legacy/ for manual runs.")
 

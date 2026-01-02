@@ -59,14 +59,17 @@ def test_generate_and_save_load():
 
 def test_dataset_loading_small():
     tokenizer = AutoTokenizer.from_pretrained("gpt2")
+
     # Monkeypatch load_dataset to avoid HF network access during tests
     def fake_load_dataset(name, *args, **kwargs):
         def gen():
             for i in range(5):
                 yield {"text": f"dummy {i} {name}"}
+
         return gen()
 
     import fin_ai.data.dataset as ds_module
+
     ds_module.load_dataset = fake_load_dataset
 
     ds, offset = load_datasets_from_config(

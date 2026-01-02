@@ -12,7 +12,10 @@ def make_dummy_dataset(vocab_size=1000, seq_len=32, samples=32):
     import random
 
     rng = random.Random(0)
-    texts = [" ".join([str(rng.randint(1, 100)) for _ in range(seq_len)]) for _ in range(samples)]
+    texts = [
+        " ".join([str(rng.randint(1, 100)) for _ in range(seq_len)])
+        for _ in range(samples)
+    ]
     # Use a small GPT2 tokenizer for consistency
     from transformers import AutoTokenizer
 

@@ -28,6 +28,7 @@ logger.setLevel(logging.INFO)
 
 # Suppress verbose warnings
 import warnings
+
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -66,37 +67,37 @@ def main():
         help="Limit dataset samples (for testing)",
     )
     args = parser.parse_args()
-    
+
     # Load configs
     print("⚙️  Loading configurations...")
     model_config = FinAIConfig.from_yaml(args.config)
     training_config = TrainingConfig.from_yaml(args.config)
-    
+
     # Apply overrides
     if args.output_dir:
         training_config.output_dir = args.output_dir
     if args.max_steps:
         training_config.max_steps = args.max_steps
-    
+
     # Load tokenizer
     print("🔤 Loading tokenizer...")
     tokenizer = AutoTokenizer.from_pretrained("gpt2", verbose=False)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     model_config.vocab_size = len(tokenizer)
-    
+
     # Initialize dataset cycler
     dataset_cycler = DatasetCycler(
         args.datasets,
-        state_file=os.path.join(training_config.output_dir, "dataset_state.json")
+        state_file=os.path.join(training_config.output_dir, "dataset_state.json"),
     )
-    
+
     print(f"📚 Dataset: {dataset_cycler.current_dataset_name}")
-    
+
     # Load datasets
     print("📥 Loading datasets...")
     current_offset = dataset_cycler.get_current_offset()
-    
+
     dataset, new_offset = load_datasets_from_config(
         args.datasets,
         tokenizer=tokenizer,
@@ -104,22 +105,22 @@ def main():
         max_samples=args.max_samples,
         offset=current_offset,
     )
-    
+
     # Create dataloaders
     train_dataloader = create_dataloader(
         dataset,
         batch_size=training_config.batch_size,
         shuffle=True,
-        num_workers=0 if os.name == 'nt' else 4,  # Windows compatibility
+        num_workers=0 if os.name == "nt" else 4,  # Windows compatibility
     )
-    
+
     # Create model
     print("🤖 Creating model...")
     model = FinAIModel(model_config)
-    
+
     total_params = sum(p.numel() for p in model.parameters())
     print(f"✨ Model ready: {total_params:,} parameters")
-    
+
     # Create trainer
     trainer = FinAITrainer(
         model=model,
@@ -127,10 +128,10 @@ def main():
         config=training_config,
         dataset_cycler=dataset_cycler,
     )
-    
+
     # Train
     trainer.train()
-    
+
     # Update dataset state
     if new_offset > current_offset:
         print(f"📍 Updating dataset offset: {current_offset} -> {new_offset}")

@@ -57,23 +57,23 @@ def main():
         help="Use greedy decoding instead of sampling",
     )
     args = parser.parse_args()
-    
+
     # Load model
     print(f"Loading model from {args.model}...")
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model = FinAIModel.from_pretrained(args.model, device=device)
     model.to(device)
     model.eval()
-    
+
     # Load tokenizer
     tokenizer = AutoTokenizer.from_pretrained("gpt2")
-    
+
     # Encode prompt
     input_ids = tokenizer.encode(args.prompt, return_tensors="pt").to(device)
-    
+
     print(f"\nPrompt: {args.prompt}")
     print("-" * 50)
-    
+
     # Generate
     with torch.no_grad():
         output_ids = model.generate(
@@ -84,7 +84,7 @@ def main():
             top_p=args.top_p,
             do_sample=not args.no_sample,
         )
-    
+
     # Decode
     generated_text = tokenizer.decode(output_ids[0], skip_special_tokens=True)
     print(f"Generated:\n{generated_text}")

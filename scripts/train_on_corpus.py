@@ -2,6 +2,7 @@
 
 This is CPU-friendly and intended to show qualitative improvement compared to random data.
 """
+
 import os
 import torch
 from fin_ai.model.config import FinAIConfig
@@ -25,7 +26,9 @@ CORPUS = [
 def encode_sentence(tokenizer, sentence, max_len):
     # If tokenizer available, use it; otherwise simple char->id
     try:
-        ids = tokenizer.encode(sentence, add_special_tokens=False, truncation=True, max_length=max_len)
+        ids = tokenizer.encode(
+            sentence, add_special_tokens=False, truncation=True, max_length=max_len
+        )
     except Exception:
         ids = [ord(c) % 256 for c in sentence][:max_len]
     return ids
@@ -41,6 +44,7 @@ def train(steps=300, lr=5e-4, batch_size=4, seq_len=64):
     # Try to use GPT-2 tokenizer if available for realistic ids
     try:
         from transformers import AutoTokenizer
+
         tokenizer = AutoTokenizer.from_pretrained("gpt2")
     except Exception:
         tokenizer = None
@@ -52,6 +56,7 @@ def train(steps=300, lr=5e-4, batch_size=4, seq_len=64):
             continue
         # pad/truncate
         import itertools
+
         ids = ids + [0] * (seq_len - len(ids)) if len(ids) < seq_len else ids[:seq_len]
         dataset.append(torch.tensor(ids, dtype=torch.long))
 

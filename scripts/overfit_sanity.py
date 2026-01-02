@@ -4,6 +4,7 @@ training loop, loss, and label alignment are correct.
 Run locally (quick):
     python scripts/overfit_sanity.py
 """
+
 import tempfile
 import torch
 from fin_ai.model.config import FinAIConfig
@@ -18,7 +19,10 @@ def overfit_steps(steps=50, lr=1e-3, batch_size=8, seq_len=16):
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
 
     # tiny synthetic dataset: a handful of sequences to memorize
-    data = [torch.randint(0, cfg.vocab_size, (seq_len,), dtype=torch.long) for _ in range(16)]
+    data = [
+        torch.randint(0, cfg.vocab_size, (seq_len,), dtype=torch.long)
+        for _ in range(16)
+    ]
 
     losses = []
     for step in range(steps):

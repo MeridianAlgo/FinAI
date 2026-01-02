@@ -18,7 +18,7 @@ def detokenize_simple(token_ids):
     for t in token_ids:
         c = t % 95 + 32  # printable ASCII range 32-126
         chars.append(chr(c))
-    return ''.join(chars)
+    return "".join(chars)
 
 
 def test_greedy_generation_increases_length_and_tokens_in_vocab():

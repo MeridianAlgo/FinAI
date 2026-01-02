@@ -29,7 +29,9 @@ def test_hf_repo_has_model_and_config():
     # Check for common model file names
     model_candidates = ["model.pt", "pytorch_model.bin", "pytorch_model.safetensors"]
     found = [f for f in model_candidates if f in files]
-    assert found, f"No model weight files found in {HF_REPO}. Found files: {list(files.keys())[:20]}"
+    assert (
+        found
+    ), f"No model weight files found in {HF_REPO}. Found files: {list(files.keys())[:20]}"
 
 
 @pytest.mark.slow
@@ -57,7 +59,9 @@ def test_download_small_model_and_load_if_small():
     name, size = preferred
     # If size is unknown or very large, skip to avoid downloading huge models
     if size is None or size > 200 * 1024 * 1024:
-        pytest.skip(f"Model file {name} is too large ({size}) to download in CI/test environment")
+        pytest.skip(
+            f"Model file {name} is too large ({size}) to download in CI/test environment"
+        )
 
     with tempfile.TemporaryDirectory() as tmp:
         # Download the model file into tmp dir

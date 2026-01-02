@@ -9,9 +9,12 @@ os.environ.setdefault("WANDB_MODE", "offline")
 os.environ.setdefault("HF_DATASETS_OFFLINE", "1")
 os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
 
+
 def pytest_configure(config):
     # register markers
-    config.addinivalue_line("markers", "slow: mark test as slow (network or large downloads)")
+    config.addinivalue_line(
+        "markers", "slow: mark test as slow (network or large downloads)"
+    )
     try:
         # also silence transformers python logger
         import transformers

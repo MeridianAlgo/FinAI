@@ -4,6 +4,7 @@ This script will attempt to load a checkpoint at `checkpoints/checkpoint-50.pt` 
 and will fall back to a freshly-initialized model. It will try to load state dict with
 `strict=False` and report missing/unexpected keys.
 """
+
 import os
 import torch
 from transformers import AutoTokenizer
@@ -50,7 +51,9 @@ def try_load_checkpoint(model, ckpt_path: str):
         else:
             state = ckpt
         missing, unexpected = model.load_state_dict(state, strict=False)
-        info = f"loaded with missing_keys={len(missing)} unexpected_keys={len(unexpected)}"
+        info = (
+            f"loaded with missing_keys={len(missing)} unexpected_keys={len(unexpected)}"
+        )
         return True, info
     except Exception as e:
         return False, f"load error: {e}"
@@ -58,14 +61,18 @@ def try_load_checkpoint(model, ckpt_path: str):
 
 def simple_detokenize(token_ids, cfg_vocab):
     # Map token ids to printable ASCII as a readable stand-in
-    return ''.join(chr((t % 95) + 32) for t in token_ids)
+    return "".join(chr((t % 95) + 32) for t in token_ids)
 
 
 def inspect_checkpoint_meta(ckpt_path: str):
     if not os.path.exists(ckpt_path):
         return None
     ckpt = torch.load(ckpt_path, map_location="cpu")
-    state = ckpt["model_state_dict"] if isinstance(ckpt, dict) and "model_state_dict" in ckpt else ckpt
+    state = (
+        ckpt["model_state_dict"]
+        if isinstance(ckpt, dict) and "model_state_dict" in ckpt
+        else ckpt
+    )
     meta = {}
     if "transformer.transformer.wte.weight" in state:
         meta["vocab_size"] = state["transformer.transformer.wte.weight"].shape[0]
@@ -76,7 +83,7 @@ def inspect_checkpoint_meta(ckpt_path: str):
     layers = set()
     for k in state.keys():
         if k.startswith("transformer.transformer.h."):
-            parts = k.split('.')
+            parts = k.split(".")
             if len(parts) > 3:
                 try:
                     layers.add(int(parts[3]))
@@ -105,8 +112,17 @@ def main():
             vocab_size = int(meta.get("vocab_size", 50257))
             embed_dim = int(meta.get("embed_dim", 384))
             n_layers = int(meta.get("n_layers", 6))
-            print(f"Found checkpoint meta: vocab={vocab_size}, embed_dim={embed_dim}, n_layers={n_layers}")
-            cfg = FinAIConfig(vocab_size=vocab_size, embed_dim=embed_dim, n_layers=n_layers, n_heads=6, ff_dim=embed_dim * 4, max_seq_len=int(meta.get("max_seq_len", 512)))
+            print(
+                f"Found checkpoint meta: vocab={vocab_size}, embed_dim={embed_dim}, n_layers={n_layers}"
+            )
+            cfg = FinAIConfig(
+                vocab_size=vocab_size,
+                embed_dim=embed_dim,
+                n_layers=n_layers,
+                n_heads=6,
+                ff_dim=embed_dim * 4,
+                max_seq_len=int(meta.get("max_seq_len", 512)),
+            )
         else:
             cfg = FinAIConfig.from_preset("tiny", vocab_size=128, max_seq_len=128)
 
@@ -132,11 +148,16 @@ def main():
         for i, q in enumerate(QUESTIONS, start=1):
             # Encode prompt using tokenizer if available, else fallback to char-mapped ids
             if tokenizer is not None:
-                enc = tokenizer.encode(q, add_special_tokens=False, truncation=True, max_length=cfg.max_seq_len)
+                enc = tokenizer.encode(
+                    q,
+                    add_special_tokens=False,
+                    truncation=True,
+                    max_length=cfg.max_seq_len,
+                )
                 input_ids = torch.tensor([enc], dtype=torch.long)
                 attention_mask = torch.ones_like(input_ids)
             else:
-                token_ids = [ord(c) % cfg.vocab_size for c in q][:cfg.max_seq_len]
+                token_ids = [ord(c) % cfg.vocab_size for c in q][: cfg.max_seq_len]
                 input_ids = torch.tensor([token_ids], dtype=torch.long)
                 attention_mask = None
 
@@ -161,7 +182,11 @@ def main():
                 out = model.generate(input_ids, **gen_kwargs)
                 gen_ids = out[0].tolist()
                 if tokenizer is not None:
-                    gen_text = tokenizer.decode(gen_ids, clean_up_tokenization_spaces=True, skip_special_tokens=True)
+                    gen_text = tokenizer.decode(
+                        gen_ids,
+                        clean_up_tokenization_spaces=True,
+                        skip_special_tokens=True,
+                    )
                 else:
                     gen_text = simple_detokenize(gen_ids, cfg.vocab_size)
             except Exception as e:
@@ -170,7 +195,9 @@ def main():
             f.write(f"Q{i}: {q}\n")
             f.write(f"A{i}: {gen_text}\n\n")
 
-    print(f"Wrote {len(QUESTIONS)} Q/A to {out_path}. checkpoint_loaded={loaded} info={info}")
+    print(
+        f"Wrote {len(QUESTIONS)} Q/A to {out_path}. checkpoint_loaded={loaded} info={info}"
+    )
 
 
 if __name__ == "__main__":

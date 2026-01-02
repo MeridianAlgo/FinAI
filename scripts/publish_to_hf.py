@@ -5,6 +5,7 @@ Usage: set the env var `HF_TOKEN` to a valid token with repo write permissions, 
 
 This script uses `huggingface_hub` and will raise if token is missing.
 """
+
 import os
 import argparse
 from huggingface_hub import create_repo, upload_folder, HfApi, HfFolder
@@ -19,7 +20,9 @@ def main():
 
     token = os.environ.get("HF_TOKEN")
     if not token:
-        raise RuntimeError("HF_TOKEN not set in env. Provide a token with write access.")
+        raise RuntimeError(
+            "HF_TOKEN not set in env. Provide a token with write access."
+        )
 
     api = HfApi()
     try:
@@ -29,7 +32,9 @@ def main():
         pass
 
     print(f"Uploading {args.model_dir} to {args.repo_id} (private={args.private})")
-    upload_folder(folder_path=args.model_dir, repo_id=args.repo_id, token=token, path_in_repo="/")
+    upload_folder(
+        folder_path=args.model_dir, repo_id=args.repo_id, token=token, path_in_repo="/"
+    )
     print("Upload complete.")
 
 
