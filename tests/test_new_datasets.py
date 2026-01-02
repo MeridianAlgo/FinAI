@@ -1,6 +1,5 @@
 """Test new datasets before adding to config"""
 
-
 # Test datasets to add
 test_datasets = [
     # Math reasoning
