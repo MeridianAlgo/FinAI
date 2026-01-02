@@ -63,23 +63,32 @@ test_texts = [
 
 from torch.utils.data import Dataset, DataLoader
 
+
 class TestDataset(Dataset):
     def __init__(self, texts, tokenizer):
         self.encodings = []
         for text in texts:
-            enc = tokenizer(text, max_length=128, padding="max_length", 
-                          truncation=True, return_tensors="pt")
-            self.encodings.append({
-                "input_ids": enc["input_ids"].squeeze(0),
-                "attention_mask": enc["attention_mask"].squeeze(0),
-                "labels": enc["input_ids"].squeeze(0),
-            })
-    
+            enc = tokenizer(
+                text,
+                max_length=128,
+                padding="max_length",
+                truncation=True,
+                return_tensors="pt",
+            )
+            self.encodings.append(
+                {
+                    "input_ids": enc["input_ids"].squeeze(0),
+                    "attention_mask": enc["attention_mask"].squeeze(0),
+                    "labels": enc["input_ids"].squeeze(0),
+                }
+            )
+
     def __len__(self):
         return len(self.encodings)
-    
+
     def __getitem__(self, idx):
         return self.encodings[idx]
+
 
 dataset = TestDataset(test_texts, tokenizer)
 dataloader = DataLoader(dataset, batch_size=2, shuffle=True)
@@ -102,7 +111,7 @@ config = TrainingConfig(
     log_steps=1,
     save_steps=100,
     use_wandb=False,
-    output_dir="./test_final_checkpoints"
+    output_dir="./test_final_checkpoints",
 )
 
 trainer = FinAITrainer(model=model, train_dataloader=dataloader, config=config)
@@ -114,6 +123,7 @@ try:
 except Exception as e:
     print(f"❌ Training failed: {e}")
     import traceback
+
     traceback.print_exc()
     sys.exit(1)
 
@@ -146,7 +156,7 @@ save_dir = "./test_final_checkpoints/model"
 try:
     model.save_pretrained(save_dir)
     print(f"✅ Model saved to {save_dir}")
-    
+
     # Verify files exist
     if os.path.exists(os.path.join(save_dir, "model.pt")):
         print("   ✓ model.pt created")
