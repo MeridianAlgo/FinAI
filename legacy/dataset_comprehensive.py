@@ -1,9 +1,7 @@
-"""Rigorous dataset testing script - moved to legacy/ to avoid automatic pytest collection."""
+"""Rigorous dataset testing script - moved to legacy/ to avoid automatic pytest collection.
 
-import pytest
-
-# Moved to legacy/ to avoid accidental network downloads during `pytest` runs.
-pytest.skip("moved to legacy/dataset_comprehensive.py", allow_module_level=True)
+Run manually: python legacy/dataset_comprehensive.py
+"""
 
 import yaml
 from datasets import load_dataset
@@ -15,6 +13,7 @@ import io
 # Fix Windows console encoding
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
 
 def test_dataset_comprehensive(name, subset, split, text_column, max_samples=None):
     """Comprehensive test of dataset loading and processing."""
@@ -83,6 +82,7 @@ def test_dataset_comprehensive(name, subset, split, text_column, max_samples=Non
         print(f"   Error: {str(e)[:200]}")
         return False
 
+
 def extract_text(item, text_column):
     """Extract text from item, handling nested fields."""
     if '.' in text_column:
@@ -107,6 +107,7 @@ def extract_text(item, text_column):
         if isinstance(value, list):
             value = " ".join(str(v) for v in value if v)
         return str(value) if value else ""
+
 
 def main():
     print("This script has been moved to legacy/ to avoid downloads during pytest. Run manually if needed.")

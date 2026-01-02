@@ -1,0 +1,77 @@
+checkpoint_loaded: True - loaded from checkpoints\model
+
+Q1: What is the definition of market volatility?
+A1: What is the definition of market volatility? when on data leakage noisy.!!! key!! volatility!! instead!! return!!.'!! CV!! interest!! measures!! looks!! to!!izing
+
+Q2: Explain in one paragraph what value investing is.
+A2: Explain in one paragraph what value investing is.!!! ratio!! to!! or rate!! are!!,!! swaps!! fundamentals!!-!! looks!! a!! volatility!! metrics!!
+
+Q3: How would you hedge a portfolio against interest rate risk?
+A3: How would you hedge a portfolio against interest rate risk? when.!!! model noise of!!.! metrics!!.'!! swaps!!pe!! companies!! ratio!! are!! time!!izing!!R
+
+Q4: Summarize the steps to backtest a trading strategy.
+A4: Summarize the steps to backtest a trading strategy.!!!.!izing!! ratio!! call!! instead!!pe!!2!!ing!! patterns!! duration!!,!!.'!!R!
+
+Q5: What are common pitfalls when training language models on financial data?
+A5: What are common pitfalls when training language models on financial data?, clear key from Q earnings.'!!! model!! consistently!! the!! of!!.!!,!! ratio!! prompt!! labels!! companies!!
+
+Q6: Give a short example of a prompt for generating earnings-call summaries.
+A6: Give a short example of a prompt for generating earnings-call summaries.!!! key!!R and!! from!! are!! when!! hedge!!2!! fundamentals!! labels!!ing!! ratio!! swaps!!
+
+Q7: What does Sharpe ratio measure?
+A7: What does Sharpe ratio measure? training financial are and performance.!!! ratio!! interest!! consistently!! prompt!!.'!! by!! companies!! volatility!!.! fundamentals!! CV!
+
+Q8: Explain overfitting in machine learning and how to detect it.
+A8: Explain overfitting in machine learning and how to detect it.!!! ratio risk!! return!! time!!ing!! key!! call!! of!!.'!!call!! general!! occurs!!aries!!
+
+Q9: List three risk metrics used in portfolio management.
+A9: List three risk metrics used in portfolio management.!!! consistently!!aries!! time!! model!! instead!!-!! are!! call!! swaps!! financial!! volatility!! duration!! a
+
+Q10: How do you preprocess raw financial text for an LM?
+A10: How do you preprocess raw financial text for an LM? data a strategy and performance.!!! to!!.'!! occurs!!,!! rate!! patterns!!R!! measures!! return!! key!! volatility
+
+Q11: What is tokenization and why is it important for NLP models?
+A11: What is tokenization and why is it important for NLP models? training financial are and.!!! companies!! from!! volatility!! interest!!pe!! are!! looks!! consistently!! metrics!! model!! duration!
+
+Q12: How to choose sequence length for training a transformer?
+A12: How to choose sequence length for training a transformer? when model.!!!.'!! instead general!! model!! key!! metrics!! labels!!R!! prompt!! general!.! volatility!!. general
+
+Q13: Describe a lightweight checkpointing strategy for frequent training.
+A13: Describe a lightweight checkpointing strategy for frequent training.!!!-!!ing!! companies!!R!!.'!! metrics!! rate!! time!! model!! general!! risk!! duration!! patterns
+
+Q14: What are parameter-efficient fine-tuning methods?
+A14: What are parameter-efficient fine-tuning methods? data.!!! swaps!!, volatility!! ratio!! occurs!!.'!! the!! interest!! hedge!! consistently!! companies!! model!! duration
+
+Q15: How can you speed up training on CPU-only machines?
+A15: How can you speed up training on CPU-only machines? occurs a learns points the the2 call!!! patterns!! occurs!! general!! swaps!! interest!!.'!! metrics!! to!! by!! consistently!
+
+Q16: What is the role of learning rate schedulers?
+A16: What is the role of learning rate schedulers? when model noise of.!!! are and performance.! call!! model!!.'!! consistently!! key!!izing!! ratio!! patterns!! occurs!!
+
+Q17: How should one validate a generative financial model before production?
+A17: How should one validate a generative financial model before production? training the key from Q earnings.'!!! consistently!!-!! swaps!! are!! ratio!! noise!! of!! data!! volatility!!.!!
+
+Q18: Write a short compliance-safe prompt to generate investment advice.
+A18: Write a short compliance-safe prompt to generate investment advice.!!! by, volatility!! return!!,!! interest!! noise!!.!, proper!! companies!!R!! swaps!! when!! of!
+
+Q19: Explain why mixed-precision training is useful and whether it applies to CPUs.
+A19: Explain why mixed-precision training is useful and whether it applies to CPUs.!!! prompt!! or!! are!! metrics!!,!! looks!! duration!! a!! general!! call!! swaps!! earnings!! volatility
+
+Q20: How to evaluate model drift over repeated daily training runs?
+A20: How to evaluate model drift over repeated daily training runs? historicaling interest swaps!!!,!!ing interest!!.!! fundamentals!! ratio!! the!! volatility!! a!! return!! looks!! are!
+
+Q21: Give a one-paragraph checklist before pushing a model to Hugging Face Hub.
+A21: Give a one-paragraph checklist before pushing a model to Hugging Face Hub.!!!, proper metrics!! of!! volatility!! swaps!! are!! or!! duration!! labels!! fundamentals!! return!! call!! ratio!
+
+Q22: What monitoring metrics should run during each training hour?
+A22: What monitoring metrics should run during each training hour? when on data a learns points the strong.!!!aries!! swaps!!R!! labels!! metrics!!,!! duration!! patterns!! interest!! volatility
+
+Q23: How to reduce tokenization overhead when streaming datasets?
+A23: How to reduce tokenization overhead when streaming datasets? when performance.!!! swaps!! data leakage noisy!!-!!R!! time!! call!! consistently!! occurs!!izing!! general!! patterns!
+
+Q24: Describe pros/cons of training from scratch vs fine-tuning a base model.
+A24: Describe pros/cons of training from scratch vs fine-tuning a base model.!!! swaps!! volatility!! consistently!! companies!! key!! fundamentals!! occurs!! metrics!! instead!!R!!.'!!,!! the
+
+Q25: What are recommended defaults for batch size and learning rate for small models?
+A25: What are recommended defaults for batch size and learning rate for small models? a learns instead general!!! occurs!! or!!aries!! of!! to!! from!! model!! patterns!! duration!!ing!!izing!!
+

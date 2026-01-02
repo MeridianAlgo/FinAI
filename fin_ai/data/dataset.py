@@ -99,6 +99,7 @@ def load_datasets_from_config(
     max_seq_len: int = 512,
     max_samples: Optional[int] = None,
     offset: int = 0,
+    force_streaming: Optional[bool] = None,
 ) -> tuple[FinAIDataset, int]:
     """Load today's dataset from YAML configuration with offset support.
     
@@ -144,7 +145,13 @@ def load_datasets_from_config(
         # Always use streaming in CI environments
         import os
         is_ci = os.environ.get("CI", "false").lower() == "true" or os.environ.get("GITHUB_ACTIONS", "false").lower() == "true"
-        force_streaming = is_ci or use_streaming or ds_max_samples is None or ds_max_samples > 10000
+        computed_force = is_ci or use_streaming or ds_max_samples is None or ds_max_samples > 10000
+
+        # Allow tests or caller to override streaming behavior explicitly
+        if force_streaming is None:
+            force_streaming = computed_force
+        else:
+            force_streaming = bool(force_streaming)
         
         # Load dataset with streaming for large datasets
         load_kwargs = {

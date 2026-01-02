@@ -60,6 +60,10 @@ checkpoints/model/
 *.bin
 *.safetensors
 
+# Legacy / artifacts
+legacy/downloaded_model/
+artifacts/
+
 # Keep version.json (small metadata file)
 !checkpoints/version.json
 

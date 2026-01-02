@@ -20,6 +20,31 @@ dependencies = [
     "pytest",
 ]
 
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+]
+
+[project.urls]
+Homepage = "https://github.com/MeridianAlgo/FinAI"
+Repository = "https://github.com/MeridianAlgo/FinAI"
+Documentation = "https://github.com/MeridianAlgo/FinAI#readme"
+
+[project.optional-dependencies]
+dev = ["black", "ruff", "pre-commit", "pytest", "mypy"]
+
+[tool.black]
+line-length = 88
+target-version = ['py310']
+
+[tool.ruff]
+line-length = 88
+extend-select = ["E", "F", "W", "I"]
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["fin_ai*"]

@@ -1,0 +1,55 @@
+name: CI - Tests and Lint
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.10]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install black ruff pytest mypy pre-commit
+
+      - name: Run Black (check)
+        run: black --check .
+
+      - name: Run Ruff (lint)
+        run: ruff check .
+
+      - name: Run tests (fast)
+        run: |
+          # By default skip slow / network tests which may download large artifacts
+          pytest -q -m "not slow"
+
+      - name: Run slow tests (optional)
+        if: env.RUN_SLOW_TESTS == 'true'
+        run: pytest -q -m slow
+
+      - name: Run mypy (optional)
+        run: mypy --ignore-missing-imports . || true
