@@ -1,0 +1,14 @@
+{
+  "vocab_size": 50257,
+  "n_layers": 6,
+  "n_heads": 4,
+  "n_kv_heads": 2,
+  "embed_dim": 256,
+  "ff_dim": 896,
+  "max_seq_len": 128,
+  "dropout": 0.1,
+  "activation": "swiglu",
+  "attention_dropout": 0.1,
+  "pos_encoding": "rotary",
+  "tie_word_embeddings": true
+}

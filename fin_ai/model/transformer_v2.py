@@ -115,12 +115,13 @@ class GroupedQueryAttention(nn.Module):
         self.dropout = nn.Dropout(config.attention_dropout)
         self.rope = RotaryEmbedding(self.head_dim, config.max_seq_len)
 
-        # For causal masking
+        # For causal masking (don't persist to avoid size mismatch on load)
         self.register_buffer(
             "causal_mask",
             torch.triu(
                 torch.ones(config.max_seq_len, config.max_seq_len), diagonal=1
             ).bool(),
+            persistent=False,
         )
 
     def forward(
