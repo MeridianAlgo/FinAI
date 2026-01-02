@@ -11,14 +11,14 @@ This script:
 
 import os
 import sys
-import torch
-from transformers import AutoTokenizer
+
 from huggingface_hub import HfApi, create_repo
+from transformers import AutoTokenizer
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from fin_ai.model import FinAIModel, FinAIConfig
+from fin_ai.model import FinAIConfig, FinAIModel
 
 
 def create_model_card():
@@ -276,9 +276,9 @@ def main():
             token=hf_token,
             commit_message="🚀 Initialize Fin.AI v2.0 - Fresh model with GQA, SwiGLU, RMSNorm, RoPE",
         )
-        print(f"   ✓ Upload complete!")
+        print("   ✓ Upload complete!")
         print()
-        print(f"✅ Success! Model is now available at:")
+        print("✅ Success! Model is now available at:")
         print(f"   https://huggingface.co/{repo_id}")
         print()
         print("🎯 Next steps:")

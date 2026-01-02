@@ -1,4 +1,6 @@
-import torch, os
+import os
+
+import torch
 
 p = "checkpoints/checkpoint-50.pt"
 if not os.path.exists(p):

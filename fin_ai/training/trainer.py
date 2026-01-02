@@ -1,16 +1,15 @@
 """Simplified trainer for Fin.AI"""
 
-import os
-import math
-import time
 import json
 import logging
+import math
+import os
+import time
 from dataclasses import dataclass
-from typing import Optional
+
 import torch
-from torch.utils.data import DataLoader
-from torch.cuda.amp import GradScaler
 import yaml
+from torch.cuda.amp import GradScaler
 from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
@@ -396,7 +395,7 @@ class FinAITrainer:
                         },
                         step=self.global_step,
                     )
-                except Exception as e:
+                except Exception:
                     pass
 
                 accumulation_loss = 0.0

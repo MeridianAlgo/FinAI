@@ -2,7 +2,8 @@
 
 import pytest
 import torch
-from fin_ai.model import FinAIModel, FinAIConfig
+
+from fin_ai.model import FinAIConfig, FinAIModel
 
 
 def test_model_creation():

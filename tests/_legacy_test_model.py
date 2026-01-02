@@ -7,8 +7,6 @@ Move to `scripts/` or run directly via `python tests/_legacy_test_model.py`.
 
 # The original verbose test script is preserved below for manual debugging.
 
-import torch
-from transformers import AutoTokenizer
 
 
 def main():

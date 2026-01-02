@@ -1,10 +1,11 @@
-import tempfile
 import os
+import tempfile
+
 import torch
 from transformers import AutoTokenizer
 
-from fin_ai.model import FinAIModel, FinAIConfig
 from fin_ai.data import load_datasets_from_config
+from fin_ai.model import FinAIConfig, FinAIModel
 
 
 def test_imports():

@@ -1,6 +1,7 @@
 """Model configuration for Fin.AI"""
 
 from dataclasses import dataclass
+
 import yaml
 
 SIZE_PRESETS = {

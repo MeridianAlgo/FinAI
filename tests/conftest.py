@@ -17,7 +17,6 @@ def pytest_configure(config):
     )
     try:
         # also silence transformers python logger
-        import transformers
         from transformers.utils import logging as hf_logging
 
         hf_logging.set_verbosity_error()

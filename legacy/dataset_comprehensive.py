@@ -3,12 +3,12 @@
 Run manually: python legacy/dataset_comprehensive.py
 """
 
-import yaml
-from datasets import load_dataset
-from transformers import AutoTokenizer
+import io
 import sys
 import time
-import io
+
+from datasets import load_dataset
+from transformers import AutoTokenizer
 
 # Fix Windows console encoding
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
@@ -43,7 +43,7 @@ def test_dataset_comprehensive(name, subset, split, text_column, max_samples=Non
             items.append(item)
 
         if not items:
-            print(f"❌ FAILED: No items loaded")
+            print("❌ FAILED: No items loaded")
             return False
 
         print(f"✓ Loaded {len(items)} test items")

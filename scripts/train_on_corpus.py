@@ -4,10 +4,11 @@ This is CPU-friendly and intended to show qualitative improvement compared to ra
 """
 
 import os
+
 import torch
+
 from fin_ai.model.config import FinAIConfig
 from fin_ai.model.transformer import FinAIModel
-
 
 CORPUS = [
     "Market volatility measures how much prices change over time.",
@@ -55,7 +56,6 @@ def train(steps=300, lr=5e-4, batch_size=4, seq_len=64):
         if len(ids) < 4:
             continue
         # pad/truncate
-        import itertools
 
         ids = ids + [0] * (seq_len - len(ids)) if len(ids) < seq_len else ids[:seq_len]
         dataset.append(torch.tensor(ids, dtype=torch.long))

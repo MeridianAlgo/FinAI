@@ -6,9 +6,10 @@ Usage: set the env var `HF_TOKEN` to a valid token with repo write permissions, 
 This script uses `huggingface_hub` and will raise if token is missing.
 """
 
-import os
 import argparse
-from huggingface_hub import create_repo, upload_folder, HfApi, HfFolder
+import os
+
+from huggingface_hub import HfApi, create_repo, upload_folder
 
 
 def main():
@@ -24,7 +25,7 @@ def main():
             "HF_TOKEN not set in env. Provide a token with write access."
         )
 
-    api = HfApi()
+    HfApi()
     try:
         create_repo(repo_id=args.repo_id, token=token, private=args.private)
     except Exception:

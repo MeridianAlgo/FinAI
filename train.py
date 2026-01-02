@@ -11,12 +11,11 @@ import logging
 import os
 import sys
 
-import torch
 from transformers import AutoTokenizer
 
-from fin_ai.model import FinAIModel, FinAIConfig
-from fin_ai.data import load_datasets_from_config, create_dataloader
-from fin_ai.training import FinAITrainer, TrainingConfig, DatasetCycler
+from fin_ai.data import create_dataloader, load_datasets_from_config
+from fin_ai.model import FinAIConfig, FinAIModel
+from fin_ai.training import DatasetCycler, FinAITrainer, TrainingConfig
 
 logging.basicConfig(
     level=logging.WARNING,

@@ -1,10 +1,12 @@
 import torch
+
 from fin_ai.model.config import FinAIConfig
 from fin_ai.model.transformer import FinAIModel
 
 
 def set_seed(seed: int = 42):
     import random
+
     import numpy as np
 
     random.seed(seed)
@@ -28,7 +30,6 @@ def test_greedy_generation_increases_length_and_tokens_in_vocab():
     model = FinAIModel(cfg)
     model.eval()
 
-    batch_size = 1
     prompt_len = 6
     # deterministic prompt: [1,2,3,4,5,6]
     input_ids = torch.tensor([list(range(1, prompt_len + 1))], dtype=torch.long)

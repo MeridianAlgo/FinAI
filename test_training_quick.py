@@ -3,11 +3,12 @@
 
 import os
 import sys
+
 import torch
 from transformers import AutoTokenizer
 
-from fin_ai.model import FinAIModel, FinAIConfig
-from fin_ai.data import load_datasets_from_config, create_dataloader
+from fin_ai.data import create_dataloader
+from fin_ai.model import FinAIConfig, FinAIModel
 from fin_ai.training import FinAITrainer, TrainingConfig
 
 print("🧪 Quick Training Test\n")
@@ -119,7 +120,7 @@ with torch.no_grad():
     )
 
 output_text = tokenizer.decode(generated[0], skip_special_tokens=True)
-print(f"\n📝 Generated text:")
+print("\n📝 Generated text:")
 print(f"   Prompt: '{prompt}'")
 print(f"   Output: '{output_text}'")
 
@@ -128,5 +129,5 @@ print("\n🎯 Summary:")
 print(f"   - Model: {total_params:,} parameters")
 print(f"   - Training steps: {training_config.max_steps}")
 print(f"   - Dataset: {len(dataset)} samples")
-print(f"   - Generation: Working ✓")
+print("   - Generation: Working ✓")
 print("\n🚀 Ready for GitHub Actions deployment!")

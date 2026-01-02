@@ -11,13 +11,14 @@ Key improvements:
 - Smaller memory footprint
 """
 
+import json
 import math
+import os
+from typing import Dict, Optional, Tuple
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Optional, Dict, Tuple
-import json
-import os
 
 from fin_ai.model.config import FinAIConfig
 

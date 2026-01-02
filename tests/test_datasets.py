@@ -6,8 +6,6 @@ Usage:
     python test_datasets.py
 """
 
-import yaml
-from datasets import load_dataset
 
 """Dataset scripts are moved to `legacy/` for manual execution.
 

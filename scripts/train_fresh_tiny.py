@@ -4,7 +4,9 @@ This is a smoke/validation training run with slightly improved defaults.
 """
 
 import os
+
 import torch
+
 from fin_ai.model.config import FinAIConfig
 from fin_ai.model.transformer import FinAIModel
 

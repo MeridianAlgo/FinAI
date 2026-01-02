@@ -3,6 +3,7 @@
 
 import os
 import sys
+
 import torch
 from transformers import AutoTokenizer
 
@@ -20,7 +21,7 @@ if os.path.exists(os.path.join(model_dir, "model.pt")) and os.path.exists(
     print(
         f"  - model.pt: {os.path.getsize(os.path.join(model_dir, 'model.pt')) / 1024 / 1024:.1f} MB"
     )
-    print(f"  - config.json: exists")
+    print("  - config.json: exists")
 
     # Try to load the model
     print("\n🤖 Loading model...")
@@ -28,7 +29,7 @@ if os.path.exists(os.path.join(model_dir, "model.pt")) and os.path.exists(
 
     try:
         model = FinAIModel.from_pretrained(model_dir)
-        print(f"✅ Model loaded successfully!")
+        print("✅ Model loaded successfully!")
         print(f"   Parameters: {model.count_parameters():,}")
         print(f"   Layers: {model.config.n_layers}")
         print(f"   Heads: {model.config.n_heads}")
@@ -44,7 +45,7 @@ if os.path.exists(os.path.join(model_dir, "model.pt")) and os.path.exists(
         with torch.no_grad():
             outputs = model(test_input["input_ids"])
 
-        print(f"✅ Forward pass works!")
+        print("✅ Forward pass works!")
         print(f"   Output shape: {outputs['logits'].shape}")
 
         # Test generation
@@ -55,8 +56,8 @@ if os.path.exists(os.path.join(model_dir, "model.pt")) and os.path.exists(
             temperature=0.8,
         )
         output_text = tokenizer.decode(generated[0], skip_special_tokens=True)
-        print(f"✅ Generation works!")
-        print(f"   Input: 'Hello world'")
+        print("✅ Generation works!")
+        print("   Input: 'Hello world'")
         print(f"   Output: '{output_text}'")
 
         print("\n✅ All tests passed!")

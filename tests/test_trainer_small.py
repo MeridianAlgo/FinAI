@@ -1,11 +1,9 @@
-import tempfile
-import os
-import torch
+from torch.utils.data import DataLoader
+
+from fin_ai.data.dataset import FinAIDataset, tokenize_and_chunk
 from fin_ai.model.config import FinAIConfig
 from fin_ai.model.transformer import FinAIModel
 from fin_ai.training.trainer import FinAITrainer, TrainingConfig
-from fin_ai.data.dataset import FinAIDataset, tokenize_and_chunk
-from torch.utils.data import DataLoader
 
 
 def make_dummy_dataset(vocab_size=1000, seq_len=32, samples=32):

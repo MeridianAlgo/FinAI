@@ -1,14 +1,15 @@
 """Dataset loading and processing for Fin.AI"""
 
-import torch
-from torch.utils.data import Dataset, DataLoader
-from datasets import load_dataset
-from transformers import AutoTokenizer
-from typing import List, Dict, Any, Optional
-from datetime import datetime
-import yaml
 import logging
 import warnings
+from datetime import datetime
+from typing import Dict, List, Optional
+
+import torch
+import yaml
+from datasets import load_dataset
+from torch.utils.data import DataLoader, Dataset
+from transformers import AutoTokenizer
 
 logger = logging.getLogger(__name__)
 warnings.filterwarnings("ignore", category=UserWarning, module="transformers")
@@ -240,7 +241,7 @@ def load_datasets_from_config(
             or "trust_remote_code" in error_msg
         ):
             print(f"⚠️  Dataset {name} uses legacy format or requires trust_remote_code")
-            print(f"🔄 Falling back to wikitext-2 as safe alternative...")
+            print("🔄 Falling back to wikitext-2 as safe alternative...")
 
             try:
                 dataset = load_dataset("wikitext", "wikitext-2-raw-v1", split="train")
@@ -320,7 +321,7 @@ def tokenize_and_chunk(
                 all_tokens.extend(tokens)
                 if eos_token_id:
                     all_tokens.append(eos_token_id)
-        except Exception as e:
+        except Exception:
             continue
 
     # Create fixed-length chunks with stride for more data

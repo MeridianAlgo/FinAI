@@ -1,6 +1,5 @@
 """Test new datasets before adding to config"""
 
-from datasets import load_dataset
 
 # Test datasets to add
 test_datasets = [

@@ -1,12 +1,11 @@
 """Simplified Fin.AI transformer model"""
 
-import math
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from typing import Optional, Dict
 import json
 import os
+from typing import Dict, Optional
+
+import torch
+import torch.nn as nn
 
 from fin_ai.model.config import FinAIConfig
 

@@ -1,8 +1,9 @@
-import os
-import tempfile
 import random
-import torch
+import tempfile
+
 import numpy as np
+import torch
+
 from fin_ai.model.config import FinAIConfig
 from fin_ai.model.transformer import FinAIModel
 

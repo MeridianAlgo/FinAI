@@ -3,6 +3,7 @@
 
 import os
 import sys
+
 import torch
 from transformers import AutoTokenizer
 
@@ -33,12 +34,12 @@ else:
 print("\n🤖 STEP 2: Load v2 model")
 print("-" * 70)
 
-from fin_ai.model import FinAIModel, FinAIConfig
+from fin_ai.model import FinAIModel
 
 try:
     model = FinAIModel.from_pretrained(model_dir)
-    print(f"✅ Model loaded successfully!")
-    print(f"   Architecture: v2 (GQA, SwiGLU, RMSNorm, RoPE)")
+    print("✅ Model loaded successfully!")
+    print("   Architecture: v2 (GQA, SwiGLU, RMSNorm, RoPE)")
     print(f"   Parameters: {model.count_parameters():,}")
     print(f"   Layers: {model.config.n_layers}")
     print(f"   Heads: {model.config.n_heads} (KV: {model.config.n_kv_heads})")
@@ -61,7 +62,7 @@ test_texts = [
     "Deep learning has revolutionized computer vision.",
 ] * 5
 
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader, Dataset
 
 
 class TestDataset(Dataset):
@@ -144,7 +145,7 @@ with torch.no_grad():
     )
 
 output = tokenizer.decode(generated[0], skip_special_tokens=True)
-print(f"✅ Generation works!")
+print("✅ Generation works!")
 print(f"   Input:  '{prompt}'")
 print(f"   Output: '{output}'")
 

@@ -5,8 +5,8 @@ Run locally (quick):
     python scripts/overfit_sanity.py
 """
 
-import tempfile
 import torch
+
 from fin_ai.model.config import FinAIConfig
 from fin_ai.model.transformer import FinAIModel
 

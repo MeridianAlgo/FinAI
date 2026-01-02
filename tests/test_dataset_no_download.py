@@ -1,10 +1,7 @@
-import os
-import tempfile
-from pathlib import Path
-import pytest
+
+from transformers import AutoTokenizer
 
 from fin_ai.data.dataset import load_datasets_from_config
-from transformers import AutoTokenizer
 
 
 def test_force_streaming_does_not_write_cache(monkeypatch, tmp_path):
