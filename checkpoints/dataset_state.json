@@ -1,5 +1,9 @@
 {
+<<<<<<< Updated upstream
   "current_dataset_idx": 3,
+=======
+  "current_dataset_idx": 4,
+>>>>>>> Stashed changes
   "dataset_offsets": {
     "openwebtext": 10000
   }
