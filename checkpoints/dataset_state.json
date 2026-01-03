@@ -1,4 +1,6 @@
 {
-  "current_dataset_idx": 15,
-  "dataset_offsets": {}
+  "current_dataset_idx": 18,
+  "dataset_offsets": {
+    "hotpot_qa": 10000
+  }
 }
