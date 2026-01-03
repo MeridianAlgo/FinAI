@@ -401,6 +401,8 @@ class FinAIModelV2(nn.Module):
         model_path = os.path.join(path, "model.pt")
         if os.path.exists(model_path):
             state_dict = torch.load(model_path, map_location=device)
+            # Filter out causal_mask from state_dict if present (legacy checkpoints)
+            state_dict = {k: v for k, v in state_dict.items() if "causal_mask" not in k}
             model.load_state_dict(state_dict)
 
         model.to(device)

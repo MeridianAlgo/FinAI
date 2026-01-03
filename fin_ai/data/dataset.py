@@ -166,7 +166,6 @@ def load_datasets_from_config(
         load_kwargs = {
             "split": split,
             "streaming": force_streaming,
-            "trust_remote_code": True,
         }
 
         if subset:
