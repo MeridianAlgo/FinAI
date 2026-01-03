@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class TrainingConfig:
-    batch_size: int = 8
-    gradient_accumulation_steps: int = 4
+    batch_size: int = 4
+    gradient_accumulation_steps: int = 8
     learning_rate: float = 3e-4
     weight_decay: float = 0.1
     warmup_steps: int = 1000
@@ -296,6 +296,9 @@ class FinAITrainer:
                 self.scaler.scale(loss).backward()
             else:
                 loss.backward()
+
+            # Free memory
+            del outputs
 
             accumulation_loss += loss.item()
 

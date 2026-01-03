@@ -6,8 +6,8 @@ model:
   max_seq_len: 512
 
 training:
-  batch_size: 16  # Increased for better gradient estimates
-  gradient_accumulation_steps: 2  # Effective batch size = 32
+  batch_size: 4  # Reduced for memory efficiency (CPU)
+  gradient_accumulation_steps: 8  # Effective batch size = 32
   learning_rate: 5.0e-4  # Higher LR for faster convergence
   weight_decay: 0.1  # Stronger regularization
   warmup_steps: 50  # Quick warmup
