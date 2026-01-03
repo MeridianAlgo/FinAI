@@ -467,7 +467,12 @@ class FinAITrainer:
                 checkpoint = torch.load(
                     checkpoint_path, map_location=self.device, weights_only=False
                 )
-                self.model.load_state_dict(checkpoint["model_state_dict"])
+                state_dict = checkpoint["model_state_dict"]
+                # Filter out causal_mask from state_dict if present (legacy checkpoints)
+                state_dict = {
+                    k: v for k, v in state_dict.items() if "causal_mask" not in k
+                }
+                self.model.load_state_dict(state_dict)
                 self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
                 self.scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
                 self.global_step = checkpoint["global_step"]
@@ -498,9 +503,13 @@ class FinAITrainer:
                     )
                     # Handle if it's a full checkpoint or just state dict
                     if "model_state_dict" in state_dict:
-                        self.model.load_state_dict(state_dict["model_state_dict"])
+                        sd = state_dict["model_state_dict"]
                     else:
-                        self.model.load_state_dict(state_dict)
+                        sd = state_dict
+
+                    # Filter out causal_mask
+                    sd = {k: v for k, v in sd.items() if "causal_mask" not in k}
+                    self.model.load_state_dict(sd)
                     print(f"✅ Loaded weights from {path}")
                     # Reset optimizer/scheduler since we are starting fresh/fine-tuning
                     self.global_step = 0
