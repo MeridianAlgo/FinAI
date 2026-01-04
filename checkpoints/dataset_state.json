@@ -1,7 +1,14 @@
 {
+<<<<<<< Updated upstream
   "current_dataset_idx": 13,
   "dataset_offsets": {
     "winogrande": 10000,
     "race": 10000
+=======
+  "current_dataset_idx": 14,
+  "dataset_offsets": {
+    "winogrande": 10000,
+    "coqa": 7199
+>>>>>>> Stashed changes
   }
 }
