@@ -1,12 +1,6 @@
 {
-<<<<<<< Updated upstream
-  "current_dataset_idx": 8,
+  "current_dataset_idx": 11,
   "dataset_offsets": {
-    "billsum": 10000
-=======
-  "current_dataset_idx": 10,
-  "dataset_offsets": {
-    "hellaswag": 10000
->>>>>>> Stashed changes
+    "winogrande": 10000
   }
 }
