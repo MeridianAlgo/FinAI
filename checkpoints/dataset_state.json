@@ -1,5 +1,6 @@
 {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   "current_dataset_idx": 18,
   "dataset_offsets": {
     "hotpot_qa": 10000
@@ -7,6 +8,12 @@
   "current_dataset_idx": 20,
   "dataset_offsets": {
     "duorc": 10000
+>>>>>>> Stashed changes
+=======
+  "current_dataset_idx": 21,
+  "dataset_offsets": {
+    "hotpot_qa": 10000,
+    "amazon_polarity": 10000
 >>>>>>> Stashed changes
   }
 }
