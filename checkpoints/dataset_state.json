@@ -1,6 +1,7 @@
 {
-  "current_dataset_idx": 11,
+  "current_dataset_idx": 13,
   "dataset_offsets": {
-    "winogrande": 10000
+    "winogrande": 10000,
+    "race": 10000
   }
 }
