@@ -1,6 +1,7 @@
 {
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   "current_dataset_idx": 13,
   "dataset_offsets": {
     "winogrande": 10000,
@@ -17,6 +18,11 @@
     "winogrande": 10000,
     "race": 10000,
     "openwebtext": 10000
+>>>>>>> Stashed changes
+=======
+  "current_dataset_idx": 17,
+  "dataset_offsets": {
+    "trivia_qa": 10000
 >>>>>>> Stashed changes
   }
 }
