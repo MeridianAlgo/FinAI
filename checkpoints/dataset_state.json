@@ -1,6 +1,7 @@
 {
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   "current_dataset_idx": 18,
   "dataset_offsets": {
     "hotpot_qa": 10000
@@ -14,6 +15,11 @@
   "dataset_offsets": {
     "hotpot_qa": 10000,
     "amazon_polarity": 10000
+>>>>>>> Stashed changes
+=======
+  "current_dataset_idx": 22,
+  "dataset_offsets": {
+    "twitter-financial-news-sentiment": 9543
 >>>>>>> Stashed changes
   }
 }
