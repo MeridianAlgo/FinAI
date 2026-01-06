@@ -5,6 +5,7 @@
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   "current_dataset_idx": 3,
   "dataset_offsets": {
     "TinyStories": 10000,
@@ -41,6 +42,11 @@
   "current_dataset_idx": 10,
   "dataset_offsets": {
     "hellaswag": 10000
+>>>>>>> Stashed changes
+=======
+  "current_dataset_idx": 12,
+  "dataset_offsets": {
+    "boolq": 9427
 >>>>>>> Stashed changes
   }
 }
