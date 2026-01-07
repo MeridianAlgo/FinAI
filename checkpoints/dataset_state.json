@@ -7,15 +7,17 @@
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   "current_dataset_idx": 3,
 =======
   "current_dataset_idx": 13,
 >>>>>>> Stashed changes
   "dataset_offsets": {
     "race": 10000
-  }
 =======
-  "current_dataset_idx": 12,
-  "dataset_offsets": {}
+  "current_dataset_idx": 14,
+  "dataset_offsets": {
+    "coqa": 7199
 >>>>>>> Stashed changes
+  }
 }
