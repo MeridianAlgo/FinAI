@@ -1,7 +1,8 @@
 {
-  "current_dataset_idx": 17,
+  "current_dataset_idx": 18,
   "dataset_offsets": {
     "c4": 10000,
-    "trivia_qa": 10000
+    "trivia_qa": 10000,
+    "hotpot_qa": 10000
   }
 }
