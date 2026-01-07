@@ -1,7 +1,14 @@
 {
+<<<<<<< Updated upstream
   "current_dataset_idx": 3,
   "dataset_offsets": {
     "TinyStories": 10000,
     "squad": 10000
+=======
+  "current_dataset_idx": 4,
+  "dataset_offsets": {
+    "TinyStories": 10000,
+    "imdb": 10000
+>>>>>>> Stashed changes
   }
 }
