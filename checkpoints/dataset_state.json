@@ -1,23 +1,6 @@
 {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-  "current_dataset_idx": 3,
-=======
-  "current_dataset_idx": 13,
->>>>>>> Stashed changes
+  "current_dataset_idx": 15,
   "dataset_offsets": {
-    "race": 10000
-=======
-  "current_dataset_idx": 14,
-  "dataset_offsets": {
-    "coqa": 7199
->>>>>>> Stashed changes
+    "c4": 10000
   }
 }
