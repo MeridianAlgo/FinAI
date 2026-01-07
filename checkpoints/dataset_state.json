@@ -1,6 +1,12 @@
 {
+<<<<<<< Updated upstream
   "current_dataset_idx": 22,
   "dataset_offsets": {
     "twitter-financial-news-sentiment": 9543
+=======
+  "current_dataset_idx": 0,
+  "dataset_offsets": {
+    "wikitext": 15698
+>>>>>>> Stashed changes
   }
 }
