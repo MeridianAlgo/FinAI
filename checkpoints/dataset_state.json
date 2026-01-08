@@ -3,6 +3,7 @@
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   "current_dataset_idx": 18,
   "dataset_offsets": {
     "c4": 10000,
@@ -32,6 +33,11 @@
   "current_dataset_idx": 0,
   "dataset_offsets": {
     "wikitext": 15698
+>>>>>>> Stashed changes
+=======
+  "current_dataset_idx": 1,
+  "dataset_offsets": {
+    "TinyStories": 10000
 >>>>>>> Stashed changes
   }
 }
