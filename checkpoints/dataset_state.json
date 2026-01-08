@@ -2,6 +2,7 @@
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   "current_dataset_idx": 3,
   "dataset_offsets": {
     "squad": 10000
@@ -20,6 +21,11 @@
   "current_dataset_idx": 7,
   "dataset_offsets": {
     "cnn_dailymail": 10000
+>>>>>>> Stashed changes
+=======
+  "current_dataset_idx": 8,
+  "dataset_offsets": {
+    "billsum": 10000
 >>>>>>> Stashed changes
   }
 }
