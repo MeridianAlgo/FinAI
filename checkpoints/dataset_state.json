@@ -1,43 +1,6 @@
 {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-  "current_dataset_idx": 18,
+  "current_dataset_idx": 3,
   "dataset_offsets": {
-    "c4": 10000,
-    "trivia_qa": 10000,
-    "hotpot_qa": 10000
-=======
-  "current_dataset_idx": 20,
-  "dataset_offsets": {
-    "c4": 10000,
-    "trivia_qa": 10000,
-    "duorc": 10000
->>>>>>> Stashed changes
-=======
-  "current_dataset_idx": 21,
-  "dataset_offsets": {
-    "c4": 10000,
-    "trivia_qa": 10000,
-    "hotpot_qa": 10000,
-    "amazon_polarity": 10000
->>>>>>> Stashed changes
-=======
-  "current_dataset_idx": 22,
-  "dataset_offsets": {
-    "twitter-financial-news-sentiment": 9543
->>>>>>> Stashed changes
-=======
-  "current_dataset_idx": 0,
-  "dataset_offsets": {
-    "wikitext": 15698
->>>>>>> Stashed changes
-=======
-  "current_dataset_idx": 1,
-  "dataset_offsets": {
-    "TinyStories": 10000
->>>>>>> Stashed changes
+    "squad": 10000
   }
 }
