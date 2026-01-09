@@ -13,75 +13,13 @@
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   "current_dataset_idx": 3,
-  "dataset_offsets": {
-    "squad": 10000
 =======
-  "current_dataset_idx": 4,
-  "dataset_offsets": {
-    "imdb": 10000
+  "current_dataset_idx": 22,
 >>>>>>> Stashed changes
-=======
-  "current_dataset_idx": 5,
   "dataset_offsets": {
-    "squad": 10000,
-    "ag_news": 10000
->>>>>>> Stashed changes
-=======
-  "current_dataset_idx": 7,
-  "dataset_offsets": {
-    "cnn_dailymail": 10000
->>>>>>> Stashed changes
-=======
-  "current_dataset_idx": 8,
-  "dataset_offsets": {
-    "billsum": 10000
->>>>>>> Stashed changes
-=======
-  "current_dataset_idx": 9,
-  "dataset_offsets": {
-    "commonsense_qa": 9741
->>>>>>> Stashed changes
-=======
-  "current_dataset_idx": 10,
-  "dataset_offsets": {
-    "hellaswag": 10000
->>>>>>> Stashed changes
-=======
-  "current_dataset_idx": 12,
-  "dataset_offsets": {
-    "boolq": 9427
->>>>>>> Stashed changes
-=======
-  "current_dataset_idx": 13,
-  "dataset_offsets": {
-    "race": 10000
->>>>>>> Stashed changes
-=======
-  "current_dataset_idx": 14,
-  "dataset_offsets": {
-    "coqa": 7199
->>>>>>> Stashed changes
-=======
-  "current_dataset_idx": 16,
-  "dataset_offsets": {
-    "openwebtext": 10000
->>>>>>> Stashed changes
-=======
-  "current_dataset_idx": 17,
-  "dataset_offsets": {
-    "trivia_qa": 10000
->>>>>>> Stashed changes
-=======
-  "current_dataset_idx": 18,
-  "dataset_offsets": {
-    "hotpot_qa": 10000
->>>>>>> Stashed changes
-=======
-  "current_dataset_idx": 20,
-  "dataset_offsets": {
-    "duorc": 10000
->>>>>>> Stashed changes
+    "twitter-financial-news-sentiment": 9543
   }
 =======
   "current_dataset_idx": 21,
