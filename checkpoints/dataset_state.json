@@ -8,6 +8,7 @@
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   "current_dataset_idx": 3,
   "dataset_offsets": {
     "TinyStories": 10000,
@@ -59,6 +60,11 @@
   "current_dataset_idx": 14,
   "dataset_offsets": {
     "coqa": 7199
+>>>>>>> Stashed changes
+=======
+  "current_dataset_idx": 16,
+  "dataset_offsets": {
+    "openwebtext": 10000
 >>>>>>> Stashed changes
   }
 }
