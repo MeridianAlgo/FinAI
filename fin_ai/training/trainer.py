@@ -491,8 +491,9 @@ class FinAITrainer:
             except Exception as e:
                 print(f"Failed to load checkpoint: {e}")
 
-        # 2. Fallback: Check for model.pt or model/model.pt (Hugging Face format)
+        # 2. Fallback: Check for safetensors or classic format
         model_paths = [
+            os.path.join(self.config.output_dir, "model", "model.safetensors"),
             os.path.join(self.config.output_dir, "model", "model.pt"),
             os.path.join(self.config.output_dir, "model.pt"),
             os.path.join(self.config.output_dir, "model", "pytorch_model.bin"),
@@ -501,13 +502,18 @@ class FinAITrainer:
         for path in model_paths:
             if os.path.exists(path):
                 print(
-                    f"📂 Found pretrained model weights at {path}, starting fine-tuning..."
+                    f"Found pretrained model weights at {path}, starting fine-tuning..."
                 )
                 try:
-                    # Load state dict
-                    state_dict = torch.load(
-                        path, map_location=self.device, weights_only=False
-                    )
+                    if path.endswith(".safetensors"):
+                        from safetensors.torch import load_file
+                        state_dict = load_file(path, device=str(self.device))
+                    else:
+                        # Load state dict
+                        state_dict = torch.load(
+                            path, map_location=self.device, weights_only=False
+                        )
+                        
                     # Handle if it's a full checkpoint or just state dict
                     if "model_state_dict" in state_dict:
                         sd = state_dict["model_state_dict"]
