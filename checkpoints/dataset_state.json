@@ -1,6 +1,7 @@
 {
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   "current_dataset_idx": 3,
   "dataset_offsets": {
     "squad": 10000
@@ -14,6 +15,11 @@
   "dataset_offsets": {
     "squad": 10000,
     "ag_news": 10000
+>>>>>>> Stashed changes
+=======
+  "current_dataset_idx": 6,
+  "dataset_offsets": {
+    "yelp_review_full": 10011
 >>>>>>> Stashed changes
   }
 }
