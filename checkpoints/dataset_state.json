@@ -1,25 +1,6 @@
 {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-  "current_dataset_idx": 21,
+  "current_dataset_idx": 3,
   "dataset_offsets": {
-    "amazon_polarity": 10000
-=======
-  "current_dataset_idx": 23,
-  "dataset_offsets": {
-    "sciq": 11156
->>>>>>> Stashed changes
-=======
-  "current_dataset_idx": 0,
-  "dataset_offsets": {
-    "amazon_polarity": 10000,
-    "wikitext": 15698
->>>>>>> Stashed changes
-=======
-  "current_dataset_idx": 1,
-  "dataset_offsets": {
-    "TinyStories": 10000
->>>>>>> Stashed changes
+    "squad": 10000
   }
 }
