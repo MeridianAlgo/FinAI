@@ -1,6 +1,7 @@
 {
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   "current_dataset_idx": 21,
   "dataset_offsets": {
     "amazon_polarity": 10000
@@ -14,6 +15,11 @@
   "dataset_offsets": {
     "amazon_polarity": 10000,
     "wikitext": 15698
+>>>>>>> Stashed changes
+=======
+  "current_dataset_idx": 1,
+  "dataset_offsets": {
+    "TinyStories": 10000
 >>>>>>> Stashed changes
   }
 }
