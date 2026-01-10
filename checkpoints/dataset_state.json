@@ -4,6 +4,7 @@
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   "current_dataset_idx": 3,
   "dataset_offsets": {
     "squad": 10000
@@ -32,6 +33,11 @@
   "current_dataset_idx": 9,
   "dataset_offsets": {
     "commonsense_qa": 9741
+>>>>>>> Stashed changes
+=======
+  "current_dataset_idx": 10,
+  "dataset_offsets": {
+    "hellaswag": 10000
 >>>>>>> Stashed changes
   }
 }
