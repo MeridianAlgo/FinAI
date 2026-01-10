@@ -1,7 +1,7 @@
 import torch
+from fin_ai.model.transformer import FinAIModel
 
 from fin_ai.model.config import FinAIConfig
-from fin_ai.model.transformer import FinAIModel
 
 
 def set_seed(seed: int = 42):

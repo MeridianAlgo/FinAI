@@ -6,9 +6,9 @@ Run locally (quick):
 """
 
 import torch
+from fin_ai.model.transformer import FinAIModel
 
 from fin_ai.model.config import FinAIConfig
-from fin_ai.model.transformer import FinAIModel
 
 
 def overfit_steps(steps=50, lr=1e-3, batch_size=8, seq_len=16):

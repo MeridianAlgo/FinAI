@@ -1,7 +1,7 @@
-
 """FinAI configuration"""
 
 from transformers import PretrainedConfig
+
 
 class FinAIConfig(PretrainedConfig):
     model_type = "finai"
@@ -42,5 +42,5 @@ class FinAIConfig(PretrainedConfig):
         self.pos_encoding = pos_encoding
         self.tie_word_embeddings = tie_word_embeddings
         self.rope_theta = rope_theta
-        
+
         super().__init__(**kwargs)

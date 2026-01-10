@@ -1,8 +1,8 @@
+from fin_ai.model.transformer import FinAIModel
 from torch.utils.data import DataLoader
 
 from fin_ai.data.dataset import FinAIDataset, tokenize_and_chunk
 from fin_ai.model.config import FinAIConfig
-from fin_ai.model.transformer import FinAIModel
 from fin_ai.training.trainer import FinAITrainer, TrainingConfig
 
 

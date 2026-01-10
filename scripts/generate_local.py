@@ -8,9 +8,9 @@ Run:
 import argparse
 
 import torch
+from fin_ai.model.transformer import FinAIModel
 
 from fin_ai.model.config import FinAIConfig
-from fin_ai.model.transformer import FinAIModel
 
 
 def text_to_ids(text: str, vocab_size: int):

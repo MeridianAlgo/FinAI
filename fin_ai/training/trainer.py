@@ -443,11 +443,11 @@ class FinAITrainer:
             self.config.output_dir, f"checkpoint-{self.global_step}.pt"
         )
         torch.save(checkpoint, checkpoint_path)
-        
+
         # Save model in Hugging Face format to 'model' subdir
         model_save_path = os.path.join(self.config.output_dir, "model")
         self.model.save_pretrained(model_save_path)
-        
+
         if (
             self.global_step % (self.config.save_steps * 5) == 0
         ):  # Only log every 5th save
@@ -507,13 +507,14 @@ class FinAITrainer:
                 try:
                     if path.endswith(".safetensors"):
                         from safetensors.torch import load_file
+
                         state_dict = load_file(path, device=str(self.device))
                     else:
                         # Load state dict
                         state_dict = torch.load(
                             path, map_location=self.device, weights_only=False
                         )
-                        
+
                     # Handle if it's a full checkpoint or just state dict
                     if "model_state_dict" in state_dict:
                         sd = state_dict["model_state_dict"]

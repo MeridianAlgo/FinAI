@@ -2,10 +2,9 @@ import os
 import tempfile
 
 import pytest
+from fin_ai.model.transformer import FinAIModel
 from huggingface_hub import HfApi, hf_hub_download
 from transformers import AutoTokenizer
-
-from fin_ai.model.transformer import FinAIModel
 
 HF_REPO = os.environ.get("HF_REPO_ID", "MeridianAlgo/Fin.AI")
 

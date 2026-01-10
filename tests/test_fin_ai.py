@@ -1,18 +1,20 @@
+import os
+import shutil
+import time
 
 import torch
 from huggingface_hub import hf_hub_download
 from transformers import AutoTokenizer
+
 from fin_ai.model import FinAIModel
-import time
-import os
-import shutil
+
 
 def test_fin_ai_model():
     repo_id = "MeridianAlgo/Fin.AI"
     local_dir = "./downloaded_model"
-    
+
     print(f"⬇️  Downloading {repo_id} from Hugging Face...")
-    
+
     # Clean up previous download if exists to ensure fresh test
     if os.path.exists(local_dir):
         shutil.rmtree(local_dir)
@@ -36,31 +38,28 @@ def test_fin_ai_model():
 
     print("🔤 Loading tokenizer (gpt2)...")
     tokenizer = AutoTokenizer.from_pretrained("gpt2")
-    
+
     print("🧪 Testing model generation...")
     input_text = "The future of artificial intelligence in finance is"
     print(f"\n🔮 Input: {input_text}")
-    
+
     input_ids = tokenizer.encode(input_text, return_tensors="pt")
-    
+
     start_time = time.time()
     with torch.no_grad():
         # Using the custom generate method from FinAIModel
         output_ids = model.generate(
-            input_ids, 
-            max_new_tokens=50, 
-            temperature=0.8,
-            top_k=50,
-            top_p=0.9
+            input_ids, max_new_tokens=50, temperature=0.8, top_k=50, top_p=0.9
         )
     end_time = time.time()
-    
+
     generated_text = tokenizer.decode(output_ids[0], skip_special_tokens=True)
     print(f"🤖 Output: {generated_text}")
     print(f"⏱️  Generation time: {end_time - start_time:.2f}s")
-    
+
     model_size = sum(p.numel() for p in model.parameters())
     print(f"📊 Model parameters: {model_size:,}")
+
 
 if __name__ == "__main__":
     test_fin_ai_model()
