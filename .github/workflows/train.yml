@@ -92,9 +92,9 @@ jobs:
               
               os.makedirs("checkpoints/model", exist_ok=True)
               
-              # Download v2 model files (model.pt, config.json, version.json)
-              required_files = ['model.pt', 'config.json']
-              optional_files = ['version.json', 'README.md']
+              # Download v3 model files (safetensors format)
+              required_files = ['config.json']
+              optional_files = ['model.safetensors', 'pytorch_model.bin', 'version.json', 'README.md', 'generation_config.json']
               
               for f in required_files:
                   if f in files:
@@ -114,6 +114,7 @@ jobs:
                   else:
                       print(f"⚠️  Required file {f} not found in repo")
                       print("Will start fresh training...")
+                      # For v3 migration, missing config means fresh start
                       exit(0)
               
               # Download optional files
@@ -256,6 +257,13 @@ jobs:
           
           # Upload to HF
           print(f"Uploading to {repo_id}...")
+          
+          # Ensure root README is the one being uploaded
+          if os.path.exists("README.md"):
+              import shutil
+              shutil.copy("README.md", "checkpoints/model/README.md")
+              print("Updated checkpoints/model/README.md from root README.md")
+
           api.upload_folder(
               folder_path="checkpoints/model",
               repo_id=repo_id,
@@ -349,10 +357,11 @@ jobs:
             
             ### 🚀 Usage
             ```python
-            from huggingface_hub import hf_hub_download
+            from transformers import AutoModelForCausalLM, AutoTokenizer
             
-            # Download model
-            hf_hub_download("MeridianAlgo/Fin.AI", "model.pt", local_dir="./model")
+            # Download model directly 
+            model = AutoModelForCausalLM.from_pretrained("MeridianAlgo/Fin.AI", trust_remote_code=True)
+            tokenizer = AutoTokenizer.from_pretrained("MeridianAlgo/Fin.AI")
             ```
             
             ### 📈 Latest Training Output

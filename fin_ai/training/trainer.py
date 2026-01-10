@@ -135,7 +135,7 @@ class DatasetCycler:
             self.dataset_offsets[name] = current + amount
             self._save_state()
             print(
-                f"📍 Updated offset for {name}: {current} -> {self.dataset_offsets[name]}"
+                f"Updated offset for {name}: {current} -> {self.dataset_offsets[name]}"
             )
 
 
@@ -205,7 +205,7 @@ class FinAITrainer:
                 wandb.define_metric("train/step")
                 wandb.define_metric("train/*", step_metric="train/step")
 
-                print("✅ Wandb initialized with enhanced logging")
+                print("Wandb initialized with enhanced logging")
             except Exception as e:
                 logger.warning(f"Wandb not available: {e}")
 
@@ -243,10 +243,10 @@ class FinAITrainer:
         return torch.optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda)
 
     def train(self):
-        print(f"\n🚀 Starting Fin.AI training on {self.device}")
-        print(f"📊 Model: {self.model.config.num_parameters:,} parameters")
-        print(f"🎯 Target steps: {self.config.max_steps:,}")
-        print(f"💾 Checkpoints: {self.config.output_dir}\n")
+        print(f"\nStarting Fin.AI training on {self.device}")
+        print(f"Model: {self.model.config.num_parameters:,} parameters")
+        print(f"Target steps: {self.config.max_steps:,}")
+        print(f"Checkpoints: {self.config.output_dir}\n")
 
         if self.config.resume_from_checkpoint:
             self._load_checkpoint()
@@ -425,7 +425,7 @@ class FinAITrainer:
         except:
             pass
 
-        print(f"\n✅ Training complete! Final step: {self.global_step}")
+        print(f"\nTraining complete! Final step: {self.global_step}")
 
     def _save_checkpoint(self):
         os.makedirs(self.config.output_dir, exist_ok=True)
@@ -443,11 +443,15 @@ class FinAITrainer:
             self.config.output_dir, f"checkpoint-{self.global_step}.pt"
         )
         torch.save(checkpoint, checkpoint_path)
-        self.model.save_pretrained(os.path.join(self.config.output_dir, "model"))
+        
+        # Save model in Hugging Face format to 'model' subdir
+        model_save_path = os.path.join(self.config.output_dir, "model")
+        self.model.save_pretrained(model_save_path)
+        
         if (
             self.global_step % (self.config.save_steps * 5) == 0
         ):  # Only log every 5th save
-            print(f"💾 Checkpoint saved at step {self.global_step}")
+            print(f"Checkpoint saved at step {self.global_step}")
 
     def _load_checkpoint(self):
         if not os.path.exists(self.config.output_dir):
@@ -482,10 +486,10 @@ class FinAITrainer:
                 self.epoch = checkpoint["epoch"]
                 if self.scaler and "scaler_state_dict" in checkpoint:
                     self.scaler.load_state_dict(checkpoint["scaler_state_dict"])
-                print(f"✅ Resumed from step {self.global_step}")
+                print(f"Resumed from step {self.global_step}")
                 return
             except Exception as e:
-                print(f"⚠️ Failed to load checkpoint: {e}")
+                print(f"Failed to load checkpoint: {e}")
 
         # 2. Fallback: Check for model.pt or model/model.pt (Hugging Face format)
         model_paths = [
@@ -513,13 +517,13 @@ class FinAITrainer:
                     # Filter out causal_mask
                     sd = {k: v for k, v in sd.items() if "causal_mask" not in k}
                     self.model.load_state_dict(sd)
-                    print(f"✅ Loaded weights from {path}")
+                    print(f"Loaded weights from {path}")
                     # Reset optimizer/scheduler since we are starting fresh/fine-tuning
                     self.global_step = 0
                     self.epoch = 0
                     return
                 except Exception as e:
-                    print(f"⚠️ Failed to load pretrained weights: {e} - Starting fresh")
+                    print(f"Failed to load pretrained weights: {e} - Starting fresh")
 
         print("Starting fresh training (random initialization)...")
         self.global_step = 0

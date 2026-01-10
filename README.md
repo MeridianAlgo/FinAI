@@ -101,48 +101,38 @@ python train.py --config config/model_config.yaml --datasets config/datasets.yam
 python train.py --max-steps 1000 --max-samples 50000
 ```
 
-## 📊 Model Architecture
+## Model Architecture
 
-Fin.AI v2 uses a custom-built transformer optimized for CPU training:
+Fin.AI V3 uses a custom-built transformer optimized for performance and Hugging Face integration:
 
-- **Grouped Query Attention (GQA)** - 40% faster than standard attention
-- **SwiGLU Activation** - Better learning than GELU (used in LLaMA, PaLM)
-- **RMSNorm** - 20% faster than LayerNorm
-- **Rotary Position Embeddings (RoPE)** - Better than learned positions
-- **Pre-norm Architecture** - More stable training
-- **Efficient Implementation** - Custom code optimized for CPU
+- **Flash Attention**: Uses native PyTorch `scaled_dot_product_attention` for 2-3x faster inference.
+- **RoPE (Rotary Position Embeddings)**: Improved long-context performance.
+- **SwiGLU Activation**: State-of-the-art activation function used in LLaMA and PaLM.
+- **RMSNorm**: More stable and efficient normalization.
+- **Safetensors**: Fast, safe, and zero-copy model loading.
+- **Hugging Face Compatible**: Inherits from `PreTrainedModel` for seamless integration.
 
-See [Architecture Documentation](docs/ARCHITECTURE_V2.md) for details.
+### Model Sizes (V3)
 
-### Model Sizes (v2)
+| Preset | Parameters | Layers | Heads | Embed Dim | Use Case |
+|--------|-----------|--------|-------|-----------|----------|
+| `tiny` | ~15M | 6 | 4 | 256 | Fast prototyping |
+| `small` | ~40M | 8 | 8 | 512 | **Default** - Balanced (CPU friendly) |
+| `medium` | ~120M | 12 | 12 | 768 | Better quality |
+| `large` | ~350M | 24 | 16 | 1024 | High performance (GPU recommended) |
 
-| Preset | Parameters | Layers | Heads | KV Heads | Embed Dim | Use Case |
-|--------|-----------|--------|-------|----------|-----------|----------|
-| `tiny` | ~15M | 6 | 4 | 2 | 256 | Fast prototyping |
-| `small` | ~40M | 8 | 8 | 4 | 512 | **Default** - Best balance |
-| `medium` | ~120M | 12 | 12 | 4 | 768 | Better quality |
-| `large` | ~400M | 24 | 16 | 8 | 1024 | Best quality, GPU recommended |
+## Training Performance
 
-Current deployment: **small** (optimized for GitHub Actions CPU)
+On GitHub Actions (Standard Runner):
 
-**v2 Improvements**: 40% faster training, better quality, lower memory usage. See [Migration Guide](legacy/MIGRATION_V2.md).
-
-## 📈 Training Performance
-
-On GitHub Actions free tier (Ubuntu CPU) with v2 architecture:
-
-- **Training Speed**: ~11 seconds/step (40% faster than v1!)
-- **Hourly Training**: ~327 steps
-- **Daily Progress**: ~7,800 steps
-- **Monthly Progress**: ~234,000 steps (~120M tokens)
-- **Memory Usage**: 1.6GB (24% less than v1)
+- **Speed**: ~350 steps/hour (improved via Flash Attention)
+- **Memory**: Optimized with gradient accumulation
+- **Schedule**: Retrains every hour on fresh data
 
 ### Expected Metrics
 
-- **Initial Loss**: ~10-15
-- **After 500 steps**: ~2-5
+- **Loss**: Converges to ~3.0-4.0
 - **Learning Rate**: 3e-4 with cosine decay
-- **Batch Size**: 8 (effective)
 
 ## 🛠️ Configuration
 

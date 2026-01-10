@@ -1,33 +1,41 @@
+
 # Fin.AI Model Configuration
-# Optimized for GitHub Actions free tier (CPU) with v2 architecture
+# Optimized for GitHub Actions (CPU) / Cloud (GPU) with V3 architecture
+# Now supporting Flash Attention, RoPE, and Safetensors
 
 model:
+  model_type: "finai"
   size_preset: "small"  # ~40M params, good balance of quality and speed
-  max_seq_len: 512
+  vocab_size: 50257
+  max_seq_len: 2048 # Increased from 512 for better context
+  dropout: 0.1
+  activation: "swiglu"
+  use_flash_attention: true
+  rope_theta: 10000.0
 
 training:
-  batch_size: 4  # Reduced for memory efficiency (CPU)
+  batch_size: 4
   gradient_accumulation_steps: 8  # Effective batch size = 32
-  learning_rate: 5.0e-4  # Higher LR for faster convergence
-  weight_decay: 0.1  # Stronger regularization
-  warmup_steps: 50  # Quick warmup
-  max_steps: 1000  # More training steps
+  learning_rate: 3.0e-4
+  weight_decay: 0.1
+  warmup_steps: 100
+  max_steps: 1000
   eval_steps: 250
   save_steps: 500
   max_grad_norm: 1.0
-  fp16: false  # CPU doesn't support fp16
+  fp16: false  # Auto-detected in trainer, set false here for safety defaults
   optimizer: "adamw"
   adam_beta1: 0.9
-  adam_beta2: 0.95  # Better for transformers
+  adam_beta2: 0.95
   adam_epsilon: 1.0e-8
 
 data:
-  max_seq_len: 512
+  max_seq_len: 2048
   num_workers: 0
 
 checkpointing:
   output_dir: "./checkpoints"
-  save_total_limit: 2  # Keep only 2 checkpoints to save space
+  save_total_limit: 2
   resume_from_checkpoint: true
 
 logging:

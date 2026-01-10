@@ -1,81 +1,41 @@
-#!/usr/bin/env python3
-"""Test downloading and loading model from Hugging Face format"""
-
-import os
-import sys
 
 import torch
-from transformers import AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer
+import time
+import os
 
-print("🧪 Testing Hugging Face Model Download & Load\n")
-
-# Simulate what GitHub Actions does
-print("📥 Simulating GitHub Actions download process...")
-
-# Check if model exists locally
-model_dir = "checkpoints/model"
-if os.path.exists(os.path.join(model_dir, "model.pt")) and os.path.exists(
-    os.path.join(model_dir, "config.json")
-):
-    print(f"✓ Found model files in {model_dir}")
-    print(
-        f"  - model.pt: {os.path.getsize(os.path.join(model_dir, 'model.pt')) / 1024 / 1024:.1f} MB"
-    )
-    print("  - config.json: exists")
-
-    # Try to load the model
-    print("\n🤖 Loading model...")
-    from fin_ai.model import FinAIModel
-
+def test_hf_model(model_name="gpt2"):
+    print(f"⬇️  Downloading {model_name} from Hugging Face...")
     try:
-        model = FinAIModel.from_pretrained(model_dir)
-        print("✅ Model loaded successfully!")
-        print(f"   Parameters: {model.count_parameters():,}")
-        print(f"   Layers: {model.config.n_layers}")
-        print(f"   Heads: {model.config.n_heads}")
-        print(f"   KV Heads: {model.config.n_kv_heads}")
-        print(f"   Embed dim: {model.config.embed_dim}")
-
-        # Test forward pass
-        print("\n🔬 Testing forward pass...")
-        tokenizer = AutoTokenizer.from_pretrained("gpt2")
-        test_input = tokenizer("Hello world", return_tensors="pt")
-
-        model.eval()
-        with torch.no_grad():
-            outputs = model(test_input["input_ids"])
-
-        print("✅ Forward pass works!")
-        print(f"   Output shape: {outputs['logits'].shape}")
-
-        # Test generation
-        print("\n🎯 Testing generation...")
-        generated = model.generate(
-            test_input["input_ids"],
-            max_new_tokens=10,
-            temperature=0.8,
-        )
-        output_text = tokenizer.decode(generated[0], skip_special_tokens=True)
-        print("✅ Generation works!")
-        print("   Input: 'Hello world'")
-        print(f"   Output: '{output_text}'")
-
-        print("\n✅ All tests passed!")
-        print("\n🎯 Summary:")
-        print("   ✓ Model files exist")
-        print("   ✓ Model loads correctly")
-        print("   ✓ Forward pass works")
-        print("   ✓ Generation works")
-        print("\n🚀 Ready for GitHub Actions training!")
-
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        model = AutoModelForCausalLM.from_pretrained(model_name)
+        print(f"✅ Successfully downloaded {model_name}")
     except Exception as e:
-        print(f"❌ Failed to load model: {e}")
-        import traceback
+        print(f"❌ Failed to download: {e}")
+        return
 
-        traceback.print_exc()
-        sys.exit(1)
-else:
-    print(f"⚠️  Model files not found in {model_dir}")
-    print("   This is expected if you haven't uploaded to HuggingFace yet")
-    print("   Run: python scripts/init_v2_model.py")
-    sys.exit(0)
+    print("🧪 Testing model generation...")
+    input_text = "The future of artificial intelligence in finance is"
+    input_ids = tokenizer.encode(input_text, return_tensors="pt")
+    
+    start_time = time.time()
+    with torch.no_grad():
+        output = model.generate(
+            input_ids, 
+            max_length=50, 
+            num_return_sequences=1, 
+            do_sample=True,
+            top_k=50
+        )
+    end_time = time.time()
+    
+    generated_text = tokenizer.decode(output[0], skip_special_tokens=True)
+    print(f"\n🔮 Input: {input_text}")
+    print(f"🤖 Output: {generated_text}")
+    print(f"⏱️  Generation time: {end_time - start_time:.2f}s")
+    
+    model_size = sum(p.numel() for p in model.parameters())
+    print(f"📊 Model parameters: {model_size:,}")
+
+if __name__ == "__main__":
+    test_hf_model()

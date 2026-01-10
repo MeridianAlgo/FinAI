@@ -208,6 +208,33 @@ datasets:
     split: "train"
     text_column: "text"
 
+  # 30 - Financial Phrasebank (Small, High Quality)
+  - name: "financial_phrasebank"
+    subset: "sentences_allagree"
+    split: "train"
+    text_column: "sentence"
+
+  # 31 - Alpaca (Instructions)
+  - name: "tatsu-lab/alpaca"
+    subset: null
+    split: "train"
+    text_column: "text"
+    max_samples: 20000
+
+  # 32 - Dolly 15k
+  - name: "databricks/databricks-dolly-15k"
+    subset: null
+    split: "train"
+    text_column: "context"  # fallback to instruction if context empty
+    max_samples: 15000
+    
+  # 33 - OpenAssistant Guanaco
+  - name: "timdettmers/openassistant-guanaco"
+    subset: null
+    split: "train"
+    text_column: "text"
+    max_samples: 10000
+
 tokenizer:
   pretrained: "gpt2"
 

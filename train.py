@@ -14,7 +14,7 @@ import sys
 from transformers import AutoTokenizer
 
 from fin_ai.data import create_dataloader, load_datasets_from_config
-from fin_ai.model import FinAIConfig, FinAIModel
+from fin_ai.model import FinAIConfig, FinAIForCausalLM
 from fin_ai.training import DatasetCycler, FinAITrainer, TrainingConfig
 
 logging.basicConfig(
@@ -68,7 +68,7 @@ def main():
     args = parser.parse_args()
 
     # Load configs
-    print("⚙️  Loading configurations...")
+    print("Loading configurations...")
     model_config = FinAIConfig.from_yaml(args.config)
     training_config = TrainingConfig.from_yaml(args.config)
 
@@ -79,7 +79,7 @@ def main():
         training_config.max_steps = args.max_steps
 
     # Load tokenizer
-    print("🔤 Loading tokenizer...")
+    print("Loading tokenizer...")
     tokenizer = AutoTokenizer.from_pretrained("gpt2", verbose=False)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
@@ -91,10 +91,10 @@ def main():
         state_file=os.path.join(training_config.output_dir, "dataset_state.json"),
     )
 
-    print(f"📚 Dataset: {dataset_cycler.current_dataset_name}")
+    print(f"Dataset: {dataset_cycler.current_dataset_name}")
 
     # Load datasets
-    print("📥 Loading datasets...")
+    print("Loading datasets...")
     current_offset = dataset_cycler.get_current_offset()
 
     dataset, new_offset = load_datasets_from_config(
@@ -114,11 +114,11 @@ def main():
     )
 
     # Create model
-    print("🤖 Creating model...")
-    model = FinAIModel(model_config)
+    print("Creating model...")
+    model = FinAIForCausalLM(model_config)
 
     total_params = sum(p.numel() for p in model.parameters())
-    print(f"✨ Model ready: {total_params:,} parameters")
+    print(f"Model ready: {total_params:,} parameters")
 
     # Create trainer
     trainer = FinAITrainer(
@@ -133,7 +133,7 @@ def main():
 
     # Update dataset state
     if new_offset > current_offset:
-        print(f"📍 Updating dataset offset: {current_offset} -> {new_offset}")
+        print(f"Updating dataset offset: {current_offset} -> {new_offset}")
         dataset_cycler.dataset_offsets[dataset_cycler.current_dataset_name] = new_offset
         dataset_cycler._save_state()
 
