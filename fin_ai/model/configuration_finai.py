@@ -50,3 +50,13 @@ class FinAIConfig(PretrainedConfig):
         self.output_hidden_states = output_hidden_states
 
         super().__init__(**kwargs)
+
+    @classmethod
+    def from_yaml(cls, yaml_path):
+        import yaml
+
+        with open(yaml_path, "r") as f:
+            config = yaml.safe_load(f)
+
+        model_config = config.get("model", {})
+        return cls(**model_config)

@@ -5,6 +5,7 @@ Unit tests for training configuration and utilities
 import pytest
 import yaml
 
+from fin_ai.model import FinAIConfig
 from fin_ai.training.trainer import DatasetCycler, TrainingConfig
 
 
@@ -52,6 +53,33 @@ class TestTrainingConfig:
         assert config.batch_size == 16
         assert config.learning_rate == 5e-4
         assert config.max_steps == 5000
+
+
+@pytest.mark.unit
+class TestModelConfig:
+    """Test FinAIConfig class"""
+
+    def test_model_config_from_yaml(self, tmp_path):
+        """Test loading model config from YAML file"""
+        config_path = tmp_path / "model_config.yaml"
+        config_data = {
+            "model": {
+                "n_layers": 12,
+                "embed_dim": 768,
+                "n_heads": 12,
+                "dropout": 0.2,
+            }
+        }
+
+        with open(config_path, "w") as f:
+            yaml.dump(config_data, f)
+
+        config = FinAIConfig.from_yaml(str(config_path))
+
+        assert config.n_layers == 12
+        assert config.embed_dim == 768
+        assert config.n_heads == 12
+        assert config.dropout == 0.2
 
 
 @pytest.mark.unit

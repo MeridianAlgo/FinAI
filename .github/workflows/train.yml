@@ -141,8 +141,18 @@ jobs:
         env:
           WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
         run: |
-          if [ -n "$WANDB_API_KEY" ]; then
-            wandb login $WANDB_API_KEY
+          if [ -z "$WANDB_API_KEY" ]; then
+            echo "❌ ERROR: WANDB_API_KEY is not set in repository secrets."
+            echo "Training cannot proceed without logging. Stopping action."
+            exit 1
+          fi
+          
+          echo "Setting up Wandb..."
+          if wandb login --relogin "$WANDB_API_KEY"; then
+            echo "✅ Wandb configured successfully"
+          else
+            echo "❌ ERROR: Wandb login failed. Check your API key. Stopping action."
+            exit 1
           fi
       
       - name: Train model
@@ -150,6 +160,7 @@ jobs:
         env:
           WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
           WANDB_PROJECT: "fin-ai"
+          WANDB_SILENT: "true"
           TOKENIZERS_PARALLELISM: "false"
           HF_DATASETS_CACHE: "/tmp/hf_cache"
           HF_HOME: "/tmp/hf_home"
