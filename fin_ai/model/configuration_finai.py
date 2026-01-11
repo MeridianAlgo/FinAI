@@ -24,6 +24,9 @@ class FinAIConfig(PretrainedConfig):
         pos_encoding="rotary",
         tie_word_embeddings=True,
         rope_theta=10000.0,
+        use_cache=True,
+        output_attentions=False,
+        output_hidden_states=False,
         **kwargs,
     ):
         self.vocab_size = vocab_size
@@ -42,5 +45,8 @@ class FinAIConfig(PretrainedConfig):
         self.pos_encoding = pos_encoding
         self.tie_word_embeddings = tie_word_embeddings
         self.rope_theta = rope_theta
+        self.use_cache = use_cache
+        self.output_attentions = output_attentions
+        self.output_hidden_states = output_hidden_states
 
         super().__init__(**kwargs)

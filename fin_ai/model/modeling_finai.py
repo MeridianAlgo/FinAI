@@ -402,7 +402,9 @@ class FinAIModel(FinAIPreTrainedModel):
                 if v is not None
             )
 
-        return CausalLMOutputWithPast(
+        from transformers.modeling_outputs import BaseModelOutputWithPast
+
+        return BaseModelOutputWithPast(
             last_hidden_state=hidden_states,
             past_key_values=next_decoder_cache,
             hidden_states=all_hidden_states,
@@ -485,3 +487,40 @@ class FinAIForCausalLM(FinAIPreTrainedModel):
             hidden_states=outputs.hidden_states,
             attentions=outputs.attentions,
         )
+
+    def prepare_inputs_for_generation(
+        self, input_ids, past_key_values=None, attention_mask=None, **kwargs
+    ):
+        """Prepare inputs for generation"""
+        # Only use the last token if past_key_values is not None
+        if past_key_values is not None:
+            input_ids = input_ids[:, -1:]
+
+        position_ids = kwargs.get("position_ids", None)
+        if attention_mask is not None and position_ids is None:
+            # Create position_ids on the fly for batch generation
+            position_ids = attention_mask.long().cumsum(-1) - 1
+            position_ids.masked_fill_(attention_mask == 0, 1)
+            if past_key_values:
+                position_ids = position_ids[:, -1].unsqueeze(-1)
+
+        return {
+            "input_ids": input_ids,
+            "past_key_values": past_key_values,
+            "use_cache": kwargs.get("use_cache"),
+            "position_ids": position_ids,
+            "attention_mask": attention_mask,
+        }
+
+    @staticmethod
+    def _reorder_cache(past_key_values, beam_idx):
+        """Reorder cache for beam search"""
+        reordered_past = ()
+        for layer_past in past_key_values:
+            reordered_past += (
+                tuple(
+                    past_state.index_select(0, beam_idx.to(past_state.device))
+                    for past_state in layer_past
+                ),
+            )
+        return reordered_past

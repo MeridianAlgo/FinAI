@@ -1,24 +1,54 @@
-import os
+"""
+Shared test fixtures and configuration for Fin.AI tests
+"""
 
-# Disable TensorFlow/TF-related imports from transformers to avoid heavy deps
-os.environ.setdefault("TRANSFORMERS_NO_TF", "1")
-os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
-os.environ.setdefault("TF_ENABLE_ONEDNN_OPTS", "0")
-os.environ.setdefault("TRANSFORMERS_VERBOSITY", "error")
-os.environ.setdefault("WANDB_MODE", "offline")
-os.environ.setdefault("HF_DATASETS_OFFLINE", "1")
-os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
+import pytest
+import torch
 
 
-def pytest_configure(config):
-    # register markers
-    config.addinivalue_line(
-        "markers", "slow: mark test as slow (network or large downloads)"
+@pytest.fixture
+def device():
+    """Get the appropriate device for testing"""
+    return torch.device("cpu")  # Use CPU for tests
+
+
+@pytest.fixture
+def sample_config():
+    """Sample model configuration for testing"""
+    from fin_ai.model import FinAIConfig
+
+    return FinAIConfig(
+        vocab_size=1000,  # Small vocab for testing
+        n_layers=2,
+        n_heads=4,
+        n_kv_heads=2,
+        embed_dim=128,
+        ff_dim=512,
+        max_seq_len=128,
+        dropout=0.1,
     )
-    try:
-        # also silence transformers python logger
-        from transformers.utils import logging as hf_logging
 
-        hf_logging.set_verbosity_error()
-    except Exception:
-        pass
+
+@pytest.fixture
+def sample_model(sample_config, device):
+    """Create a small model for testing"""
+    from fin_ai.model import FinAIForCausalLM
+
+    model = FinAIForCausalLM(sample_config)
+    model.to(device)
+    model.eval()
+    return model
+
+
+@pytest.fixture
+def sample_batch(device):
+    """Create a sample batch for testing"""
+    batch_size = 2
+    seq_len = 32
+    vocab_size = 1000
+
+    return {
+        "input_ids": torch.randint(0, vocab_size, (batch_size, seq_len), device=device),
+        "attention_mask": torch.ones(batch_size, seq_len, device=device),
+        "labels": torch.randint(0, vocab_size, (batch_size, seq_len), device=device),
+    }
