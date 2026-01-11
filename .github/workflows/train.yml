@@ -237,40 +237,76 @@ jobs:
           except Exception as e:
               print(f"Repo creation note: {e}")
           
-          # Update README with current timestamp
-          readme_path = "checkpoints/model/README.md"
-          if os.path.exists(readme_path):
-              with open(readme_path, 'r', encoding='utf-8') as f:
-                  content = f.read()
-              
-              # Update timestamp
-              current_time = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
-              content = content.replace(
-                  "**Last Updated**: Auto-updated with each training run",
-                  f"**Last Updated**: {current_time}"
-              )
-              
-              with open(readme_path, 'w', encoding='utf-8') as f:
-                  f.write(content)
-              
-              print(f"✅ Updated README timestamp: {current_time}")
-          
-          # Upload to HF
-          print(f"Uploading to {repo_id}...")
-          
-          # Ensure root README is the one being uploaded
-          if os.path.exists("README.md"):
+          # Copy model card to model directory as README
+          if os.path.exists("MODEL_CARD.md"):
+              import shutil
+              shutil.copy("MODEL_CARD.md", "checkpoints/model/README.md")
+              print("✅ Copied MODEL_CARD.md to model directory as README.md")
+          elif os.path.exists("README.md"):
               import shutil
               shutil.copy("README.md", "checkpoints/model/README.md")
-              print("Updated checkpoints/model/README.md from root README.md")
-
+              print("✅ Copied README.md to model directory")
+          
+          # Copy generation config if it exists
+          if os.path.exists("fin_ai/model/generation_config.json"):
+              import shutil
+              shutil.copy("fin_ai/model/generation_config.json", "checkpoints/model/generation_config.json")
+              print("✅ Copied generation_config.json to model directory")
+          
+          # Verify V3 files exist
+          model_dir = "checkpoints/model"
+          required_files = ["config.json"]
+          model_files = ["model.safetensors", "pytorch_model.bin"]
+          
+          print("\n📦 Checking V3 model files...")
+          for f in required_files:
+              path = os.path.join(model_dir, f)
+              if os.path.exists(path):
+                  print(f"  ✅ {f}")
+              else:
+                  print(f"  ❌ Missing: {f}")
+          
+          has_model = False
+          for f in model_files:
+              path = os.path.join(model_dir, f)
+              if os.path.exists(path):
+                  print(f"  ✅ {f}")
+                  has_model = True
+                  break
+          
+          if not has_model:
+              print("  ⚠️  No model weights found (model.safetensors or pytorch_model.bin)")
+          
+          # Upload to HF
+          print(f"\n📤 Uploading to {repo_id}...")
+          
           api.upload_folder(
               folder_path="checkpoints/model",
               repo_id=repo_id,
               token=token,
-              commit_message=f"Training update - Run ${{ github.run_number }} - {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}"
+              commit_message=f"V3 Training - Run #{${{ github.run_number }}} - {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}",
+              ignore_patterns=["*.pt", "checkpoint-*.pt"]  # Don't upload training checkpoints
           )
-          print(f"Model uploaded to https://huggingface.co/{repo_id}")
+          print(f"✅ Model uploaded to https://huggingface.co/{repo_id}")
+          
+          # Clean up legacy V2 files if they exist
+          print("\n🧹 Cleaning up legacy V2 files...")
+          legacy_files = ["final_config.json", "model.pt"]
+          for file_path in legacy_files:
+              try:
+                  api.delete_file(
+                      path_in_repo=file_path,
+                      repo_id=repo_id,
+                      token=token,
+                      commit_message=f"Remove legacy V2 file: {file_path}"
+                  )
+                  print(f"  ✅ Deleted: {file_path}")
+              except Exception as e:
+                  # File might not exist, which is fine
+                  if "404" not in str(e):
+                      print(f"  ℹ️  {file_path}: {e}")
+          
+          print("\n✨ Upload complete!")
           EOF
       
       - name: Update version and push
