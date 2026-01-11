@@ -14,7 +14,7 @@ class FinAIConfig(PretrainedConfig):
         n_kv_heads=4,
         embed_dim=512,
         ff_dim=1792,
-        max_seq_len=1024,
+        max_seq_len=2048,
         dropout=0.1,
         activation="swiglu",
         layer_norm_eps=1e-6,
