@@ -1,3 +1,22 @@
+---
+language:
+- en
+license: mit
+tags:
+- transformer
+- pytorch
+- causal-lm
+- finance
+datasets:
+- wikitext
+- c4
+pipeline_tag: text-generation
+inference:
+  parameters:
+    temperature: 0.8
+    max_length: 100
+---
+
 # Fin.AI
 
 **WORK IN PROGRESS – EXPERIMENTAL RESEARCH PROJECT**
