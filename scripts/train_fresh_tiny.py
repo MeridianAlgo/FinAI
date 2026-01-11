@@ -6,9 +6,8 @@ This is a smoke/validation training run with slightly improved defaults.
 import os
 
 import torch
-from fin_ai.model.transformer import FinAIModel
-
 from fin_ai.model.config import FinAIConfig
+from fin_ai.model.transformer import FinAIModel
 
 
 def synthetic_dataloader(vocab_size, seq_len, dataset_size=1000, batch_size=8):

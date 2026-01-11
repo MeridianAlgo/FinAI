@@ -6,9 +6,8 @@ This is CPU-friendly and intended to show qualitative improvement compared to ra
 import os
 
 import torch
-from fin_ai.model.transformer import FinAIModel
-
 from fin_ai.model.config import FinAIConfig
+from fin_ai.model.transformer import FinAIModel
 
 CORPUS = [
     "Market volatility measures how much prices change over time.",
