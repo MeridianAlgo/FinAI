@@ -51,6 +51,36 @@ class FinAIConfig(PretrainedConfig):
 
         super().__init__(**kwargs)
 
+    @property
+    def num_parameters(self):
+        """Calculate approximate number of parameters based on architecture."""
+        # Embedding layer
+        embed_params = self.vocab_size * self.embed_dim
+        
+        # Output layer (if not tied)
+        output_params = 0 if self.tie_word_embeddings else self.vocab_size * self.embed_dim
+        
+        # Per transformer layer:
+        # - Attention: Q, K, V projections + output projection
+        # - FFN: 2 linear layers (up and down projection)
+        # - Layer norms: 2 per layer
+        per_layer_params = (
+            # Attention (Q, K, V, O)
+            self.embed_dim * self.embed_dim * 4 +
+            # FFN (up + down projection)
+            self.embed_dim * self.ff_dim * 2 +
+            # Layer norms (2 per layer, each has 2 * embed_dim for weight and bias)
+            self.embed_dim * 4
+        )
+        
+        transformer_params = per_layer_params * self.n_layers
+        
+        # Final layer norm
+        final_ln_params = self.embed_dim * 2
+        
+        total = embed_params + transformer_params + final_ln_params + output_params
+        return int(total)
+
     @classmethod
     def from_yaml(cls, yaml_path):
         import yaml
