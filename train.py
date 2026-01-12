@@ -7,10 +7,12 @@ Usage:
 """
 
 import argparse
+import gc
 import logging
 import os
 import sys
 
+import torch
 from transformers import AutoTokenizer
 
 from fin_ai.data import create_dataloader, load_datasets_from_config
@@ -31,6 +33,16 @@ import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
+
+def cleanup_memory():
+    """Aggressive memory cleanup before training"""
+    print("🧹 Cleaning memory and cache...")
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        torch.cuda.synchronize()
+    print("✅ Memory cleaned")
 
 
 def main():
@@ -66,6 +78,9 @@ def main():
         help="Limit dataset samples (for testing)",
     )
     args = parser.parse_args()
+
+    # Clean memory before starting
+    cleanup_memory()
 
     # Load configs
     print("Loading configurations...")

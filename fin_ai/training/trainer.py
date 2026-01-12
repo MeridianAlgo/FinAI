@@ -1,5 +1,6 @@
 """Simplified trainer for Fin.AI"""
 
+import gc
 import json
 import logging
 import math
@@ -243,6 +244,12 @@ class FinAITrainer:
         return torch.optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda)
 
     def train(self):
+        # Clean memory before training
+        print("🧹 Pre-training memory cleanup...")
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
         print(f"\nStarting Fin.AI training on {self.device}")
         print(f"Model: {self.model.config.num_parameters:,} parameters")
         print(f"Target steps: {self.config.max_steps:,}")
@@ -299,6 +306,12 @@ class FinAITrainer:
 
             # Free memory
             del outputs
+
+            # Periodic garbage collection to prevent memory buildup
+            if self.global_step % 50 == 0:
+                gc.collect()
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
 
             accumulation_loss += loss.item()
 

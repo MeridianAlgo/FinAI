@@ -14,8 +14,8 @@ model:
   rope_theta: 10000.0
 
 training:
-  batch_size: 4
-  gradient_accumulation_steps: 8  # Effective batch size = 32
+  batch_size: 2  # Reduced from 4 to save memory
+  gradient_accumulation_steps: 16  # Increased from 8 to maintain effective batch size = 32
   learning_rate: 3.0e-4
   weight_decay: 0.1
   warmup_steps: 100
