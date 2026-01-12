@@ -155,6 +155,24 @@ jobs:
             exit 1
           fi
       
+      - name: Clean up incompatible checkpoints
+        run: |
+          echo "🧹 Checking for incompatible checkpoints..."
+          if [ -f "checkpoints/model/model.safetensors" ] || [ -f "checkpoints/model/model.pt" ]; then
+            # Check if it's GPT-2 architecture by looking at config
+            if [ -f "checkpoints/model/config.json" ]; then
+              if grep -q '"model_type".*"gpt2"' checkpoints/model/config.json; then
+                echo "⚠️  Found incompatible GPT-2 checkpoint, removing..."
+                rm -rf checkpoints/model
+                echo "✅ Cleaned up incompatible checkpoint"
+              else
+                echo "✅ Checkpoint appears compatible"
+              fi
+            fi
+          else
+            echo "ℹ️  No existing checkpoint found"
+          fi
+      
       - name: Train model
         id: train
         env:
