@@ -520,28 +520,38 @@ class FinAITrainer:
 
                     # Filter out causal_mask
                     sd = {k: v for k, v in sd.items() if "causal_mask" not in k}
-                    
+
                     # Check if architecture matches by looking at key patterns
                     model_keys = set(self.model.state_dict().keys())
                     checkpoint_keys = set(sd.keys())
-                    
+
                     # Check for architecture mismatch (e.g., GPT-2 style vs FinAI style)
                     if any(k.startswith("transformer.") for k in checkpoint_keys):
-                        print(f"⚠️  Skipping incompatible checkpoint at {path} (GPT-2 architecture)")
-                        print("   Current model uses FinAI architecture. Starting fresh...")
+                        print(
+                            f"⚠️  Skipping incompatible checkpoint at {path} (GPT-2 architecture)"
+                        )
+                        print(
+                            "   Current model uses FinAI architecture. Starting fresh..."
+                        )
                         continue
-                    
+
                     # Try to load the state dict
-                    missing_keys, unexpected_keys = self.model.load_state_dict(sd, strict=False)
-                    
+                    missing_keys, unexpected_keys = self.model.load_state_dict(
+                        sd, strict=False
+                    )
+
                     if len(missing_keys) > 10 or len(unexpected_keys) > 10:
                         print(f"⚠️  Too many mismatched keys in {path}, skipping...")
-                        print(f"   Missing: {len(missing_keys)}, Unexpected: {len(unexpected_keys)}")
+                        print(
+                            f"   Missing: {len(missing_keys)}, Unexpected: {len(unexpected_keys)}"
+                        )
                         continue
-                    
+
                     print(f"✓ Loaded pretrained weights from {path}")
                     if missing_keys:
-                        print(f"   Note: {len(missing_keys)} keys not found in checkpoint (will be randomly initialized)")
+                        print(
+                            f"   Note: {len(missing_keys)} keys not found in checkpoint (will be randomly initialized)"
+                        )
                     # Reset optimizer/scheduler since we are starting fresh/fine-tuning
                     self.global_step = 0
                     self.epoch = 0

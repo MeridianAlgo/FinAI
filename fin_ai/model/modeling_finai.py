@@ -73,12 +73,12 @@ def apply_rotary_pos_emb(q, k, cos, sin, position_ids):
     # The first two dimensions of cos and sin are always 1, so we can `squeeze` them.
     cos = cos[position_ids].squeeze(1)  # [batch_size, seq_len, head_dim]
     sin = sin[position_ids].squeeze(1)  # [batch_size, seq_len, head_dim]
-    
+
     # Unsqueeze to add head dimension for broadcasting
     # cos/sin: [batch_size, 1, seq_len, head_dim]
     cos = cos.unsqueeze(1)
     sin = sin.unsqueeze(1)
-    
+
     q_embed = (q * cos) + (rotate_half(q) * sin)
     k_embed = (k * cos) + (rotate_half(k) * sin)
     return q_embed, k_embed
@@ -359,6 +359,8 @@ class FinAIModel(FinAIPreTrainedModel):
             # Basic handling to ensure it works with efficient attention
             if attention_mask.dim() == 2:
                 attention_mask = attention_mask.unsqueeze(1).unsqueeze(2)
+            # Convert to bool dtype for SDPA compatibility
+            attention_mask = attention_mask.to(dtype=torch.bool)
 
         hidden_states = inputs_embeds
 
