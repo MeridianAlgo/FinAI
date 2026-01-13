@@ -1,12 +1,4 @@
 {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-  "current_dataset_idx": 8,
-=======
-  "current_dataset_idx": 10,
->>>>>>> Stashed changes
-=======
-  "current_dataset_idx": 11,
->>>>>>> Stashed changes
+  "current_dataset_idx": 13,
   "dataset_offsets": {}
 }
