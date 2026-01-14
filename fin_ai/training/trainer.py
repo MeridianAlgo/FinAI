@@ -30,6 +30,7 @@ class TrainingConfig:
     adam_beta2: float = 0.95
     adam_epsilon: float = 1e-8
     eval_steps: int = 500
+    eval_batches: int = 25
     output_dir: str = "./checkpoints"
     save_steps: int = 1000
     save_total_limit: int = 3
@@ -231,17 +232,66 @@ class FinAITrainer:
         )
 
     def _create_scheduler(self):
+        total_optimizer_steps = max(
+            1,
+            math.ceil(
+                self.config.max_steps / max(1, self.config.gradient_accumulation_steps)
+            ),
+        )
+        warmup_optimizer_steps = max(
+            0,
+            math.ceil(
+                self.config.warmup_steps
+                / max(1, self.config.gradient_accumulation_steps)
+            ),
+        )
+
         def lr_lambda(step):
-            if step < self.config.warmup_steps:
-                # Linear warmup
-                return float(step) / float(max(1, self.config.warmup_steps))
-            # Cosine decay after warmup
-            progress = float(step - self.config.warmup_steps) / float(
-                max(1, self.config.max_steps - self.config.warmup_steps)
+            if step < warmup_optimizer_steps:
+                return float(step) / float(max(1, warmup_optimizer_steps))
+            progress = float(step - warmup_optimizer_steps) / float(
+                max(1, total_optimizer_steps - warmup_optimizer_steps)
             )
             return max(0.01, 0.5 * (1.0 + math.cos(math.pi * progress)))
 
         return torch.optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda)
+
+    @torch.no_grad()
+    def _evaluate(self):
+        dataloader = self.eval_dataloader or self.train_dataloader
+        self.model.eval()
+        total_loss = 0.0
+        total_batches = 0
+        for batch in dataloader:
+            batch = {k: v.to(self.device) for k, v in batch.items()}
+            outputs = self.model(
+                input_ids=batch["input_ids"],
+                attention_mask=batch["attention_mask"],
+                labels=batch["labels"],
+            )
+            total_loss += float(outputs["loss"].detach().cpu().item())
+            total_batches += 1
+            if total_batches >= self.config.eval_batches:
+                break
+
+        avg_loss = total_loss / max(1, total_batches)
+        perplexity = math.exp(min(avg_loss, 20))
+
+        try:
+            import wandb
+
+            wandb.log(
+                {
+                    "eval/step": self.global_step,
+                    "eval/loss": avg_loss,
+                    "eval/perplexity": perplexity,
+                },
+                step=self.global_step,
+            )
+        except Exception:
+            pass
+
+        self.model.train()
 
     def train(self):
         # Clean memory before training
@@ -260,7 +310,9 @@ class FinAITrainer:
 
         self.model.train()
         train_iter = iter(self.train_dataloader)
-        accumulation_loss = 0.0
+        log_loss_sum = 0.0
+        log_loss_count = 0
+        last_logged_loss = None
         start_time = time.time()
 
         # Detect CI environment
@@ -297,7 +349,8 @@ class FinAITrainer:
                     attention_mask=batch["attention_mask"],
                     labels=batch["labels"],
                 )
-                loss = outputs["loss"] / self.config.gradient_accumulation_steps
+                raw_loss = outputs["loss"]
+                loss = raw_loss / self.config.gradient_accumulation_steps
 
             if self.scaler:
                 self.scaler.scale(loss).backward()
@@ -313,7 +366,8 @@ class FinAITrainer:
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
 
-            accumulation_loss += loss.item()
+            log_loss_sum += float(raw_loss.detach().cpu().item())
+            log_loss_count += 1
 
             if (self.global_step + 1) % self.config.gradient_accumulation_steps == 0:
                 if self.scaler:
@@ -353,23 +407,23 @@ class FinAITrainer:
                 if not is_ci:
                     pbar.set_postfix(
                         {
-                            "loss": f"{accumulation_loss:.4f}",
+                            "loss": f"{(log_loss_sum / max(1, log_loss_count)):.4f}",
                             "lr": f"{current_lr:.2e}",
                             "tok/s": f"{tokens_per_sec:.0f}",
                         }
                     )
                 else:
                     print(
-                        f"Items processed: {self.global_step * self.config.batch_size} | Step {self.global_step}/{self.config.max_steps} | Loss: {accumulation_loss:.4f} | LR: {current_lr:.2e} | Tokens/s: {tokens_per_sec:.0f}"
+                        f"Items processed: {self.global_step * self.config.batch_size} | Step {self.global_step}/{self.config.max_steps} | Loss: {(log_loss_sum / max(1, log_loss_count)):.4f} | LR: {current_lr:.2e} | Tokens/s: {tokens_per_sec:.0f}"
                     )
 
                 try:
                     import wandb
 
                     # Calculate additional metrics
-                    perplexity = math.exp(
-                        min(accumulation_loss, 20)
-                    )  # Cap to avoid overflow
+                    mean_loss = log_loss_sum / max(1, log_loss_count)
+                    last_logged_loss = mean_loss
+                    perplexity = math.exp(min(mean_loss, 20))
                     progress = (self.global_step / self.config.max_steps) * 100
 
                     # Enhanced logging with descriptive names
@@ -377,7 +431,7 @@ class FinAITrainer:
                         {
                             # Core metrics
                             "train/step": self.global_step,
-                            "train/loss": accumulation_loss,
+                            "train/loss": mean_loss,
                             "train/perplexity": perplexity,
                             "train/learning_rate": current_lr,
                             # Performance metrics
@@ -414,8 +468,12 @@ class FinAITrainer:
                 except Exception:
                     pass
 
-                accumulation_loss = 0.0
+                log_loss_sum = 0.0
+                log_loss_count = 0
                 start_time = time.time()
+
+            if self.global_step % self.config.eval_steps == 0:
+                self._evaluate()
 
             if self.global_step % self.config.save_steps == 0:
                 self._save_checkpoint()
@@ -431,7 +489,7 @@ class FinAITrainer:
                 {
                     "summary/final_step": self.global_step,
                     "summary/total_epochs": self.epoch,
-                    "summary/final_loss": accumulation_loss,
+                    "summary/final_loss": last_logged_loss,
                 }
             )
             wandb.finish()

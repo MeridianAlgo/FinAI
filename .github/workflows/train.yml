@@ -136,6 +136,33 @@ jobs:
               print(f"Could not download model: {e}")
               print("Starting fresh training...")
           EOF
+
+      - name: Smoke test downloaded model
+        run: |
+          python << 'EOF'
+          import os
+          import torch
+          from transformers import AutoTokenizer
+          from fin_ai.model import FinAIForCausalLM
+
+          model_dir = os.path.join("checkpoints", "model")
+          if not os.path.exists(os.path.join(model_dir, "config.json")):
+              print("No downloaded model found, skipping smoke test")
+              raise SystemExit(0)
+
+          model = FinAIForCausalLM.from_pretrained(model_dir)
+          model.eval()
+          tok = AutoTokenizer.from_pretrained("gpt2")
+          if tok.pad_token is None:
+              tok.pad_token = tok.eos_token
+
+          prompt = "The market"
+          inputs = tok(prompt, return_tensors="pt")
+          with torch.no_grad():
+              _ = model(**inputs, labels=inputs["input_ids"])
+              out = model.generate(**inputs, max_new_tokens=8, do_sample=False)
+          print(tok.decode(out[0], skip_special_tokens=True))
+          EOF
       
       - name: Setup Wandb
         env:
@@ -281,6 +308,31 @@ jobs:
               import shutil
               shutil.copy("fin_ai/model/generation_config.json", "checkpoints/model/generation_config.json")
               print("✅ Copied generation_config.json to model directory")
+
+          # Copy remote-code modules required for AutoModel* loading
+          import shutil
+          shutil.copy("fin_ai/model/configuration_finai.py", "checkpoints/model/configuration_finai.py")
+          shutil.copy("fin_ai/model/modeling_finai.py", "checkpoints/model/modeling_finai.py")
+          shutil.copy("fin_ai/model/__init__.py", "checkpoints/model/__init__.py")
+          print("✅ Copied remote-code modules to model directory")
+
+          # Ensure config.json contains auto_map for trust_remote_code
+          config_path = os.path.join("checkpoints", "model", "config.json")
+          if os.path.exists(config_path):
+              with open(config_path, "r", encoding="utf-8") as f:
+                  cfg = json.load(f)
+
+              cfg["auto_map"] = {
+                  "AutoConfig": "configuration_finai.FinAIConfig",
+                  "AutoModelForCausalLM": "modeling_finai.FinAIForCausalLM",
+              }
+              cfg.setdefault("architectures", [])
+              if "FinAIForCausalLM" not in cfg["architectures"]:
+                  cfg["architectures"].append("FinAIForCausalLM")
+
+              with open(config_path, "w", encoding="utf-8") as f:
+                  json.dump(cfg, f, indent=2)
+              print("✅ Updated config.json with auto_map")
           
           # Verify V3 files exist
           model_dir = "checkpoints/model"
@@ -313,7 +365,7 @@ jobs:
               folder_path="checkpoints/model",
               repo_id=repo_id,
               token=token,
-              commit_message=f"V3 Training - Run #{${{ github.run_number }}} - {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}",
+              commit_message=f"V3 Training - Run #${{ github.run_number }} - {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}",
               ignore_patterns=["*.pt", "checkpoint-*.pt"]  # Don't upload training checkpoints
           )
           print(f"✅ Model uploaded to https://huggingface.co/{repo_id}")

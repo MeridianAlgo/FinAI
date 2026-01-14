@@ -11,7 +11,7 @@ import argparse
 import torch
 from transformers import AutoTokenizer
 
-from fin_ai.model import FinAIModel
+from fin_ai.model import FinAIForCausalLM
 
 
 def main():
@@ -62,7 +62,7 @@ def main():
     # Load model
     print(f"Loading model from {args.model}...")
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    model = FinAIModel.from_pretrained(args.model, device=device)
+    model = FinAIForCausalLM.from_pretrained(args.model)
     model.to(device)
     model.eval()
 

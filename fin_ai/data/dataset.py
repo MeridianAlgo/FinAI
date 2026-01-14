@@ -22,9 +22,11 @@ class FinAIDataset(Dataset):
         self,
         tokenized_data: List[List[int]],
         max_seq_len: int = 512,
+        pad_token_id: int = 0,
     ):
         self.data = tokenized_data
         self.max_seq_len = max_seq_len
+        self.pad_token_id = pad_token_id
 
     def __len__(self) -> int:
         return len(self.data)
@@ -33,16 +35,22 @@ class FinAIDataset(Dataset):
         tokens = self.data[idx][: self.max_seq_len]
 
         if len(tokens) < self.max_seq_len:
-            padding = [0] * (self.max_seq_len - len(tokens))
+            padding = [self.pad_token_id] * (self.max_seq_len - len(tokens))
             attention_mask = [1] * len(tokens) + [0] * len(padding)
-            tokens = tokens + padding
+            input_ids = tokens + padding
         else:
             attention_mask = [1] * self.max_seq_len
+            input_ids = tokens
+
+        labels = list(input_ids)
+        for i, m in enumerate(attention_mask):
+            if m == 0:
+                labels[i] = -100
 
         return {
-            "input_ids": torch.tensor(tokens, dtype=torch.long),
+            "input_ids": torch.tensor(input_ids, dtype=torch.long),
             "attention_mask": torch.tensor(attention_mask, dtype=torch.long),
-            "labels": torch.tensor(tokens, dtype=torch.long),
+            "labels": torch.tensor(labels, dtype=torch.long),
         }
 
 
@@ -60,7 +68,8 @@ def get_todays_dataset(datasets: List[Dict]) -> tuple[Dict, int]:
     selected = datasets[dataset_idx]
 
     print(
-        f"📅 Hour: {current_hour:02d}:00 → Dataset #{dataset_idx + 1}/{len(datasets)}: {selected['name']}"
+        f"📅 Hour: {current_hour:02d}:00 → Dataset #{dataset_idx + 1}/{len(datasets)}: "
+        f"{selected['name']}"
     )
 
     return selected, dataset_idx
@@ -290,9 +299,18 @@ def load_datasets_from_config(
         min_length=min_length,
     )
 
-    print(f"🔢 Created {len(tokenized_chunks):,} training sequences")
+    print(f"\ud83d\udd22 Created {len(tokenized_chunks):,} training sequences")
 
-    return FinAIDataset(tokenized_chunks, max_seq_len), new_offset
+    pad_token_id = tokenizer.pad_token_id
+    if pad_token_id is None:
+        pad_token_id = tokenizer.eos_token_id
+    if pad_token_id is None:
+        pad_token_id = 0
+
+    return (
+        FinAIDataset(tokenized_chunks, max_seq_len, pad_token_id=pad_token_id),
+        new_offset,
+    )
 
 
 def tokenize_and_chunk(

@@ -11,7 +11,10 @@ import torch.nn.functional as F
 from transformers import PreTrainedModel
 from transformers.modeling_outputs import CausalLMOutputWithPast
 
-from .configuration_finai import FinAIConfig
+try:
+    from .configuration_finai import FinAIConfig
+except ImportError:
+    from configuration_finai import FinAIConfig
 
 
 class FinAIRMSNorm(nn.Module):

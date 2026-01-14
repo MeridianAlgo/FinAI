@@ -30,6 +30,8 @@ class TestDataProcessing:
     def test_batch_tokenization(self):
         """Test batch tokenization"""
         tokenizer = AutoTokenizer.from_pretrained("gpt2")
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
         texts = [
             "The future of AI is bright",
             "Machine learning is transforming the world",

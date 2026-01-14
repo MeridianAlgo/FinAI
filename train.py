@@ -130,7 +130,14 @@ def main():
 
     # Create model
     print("Creating model...")
-    model = FinAIForCausalLM(model_config)
+
+    model_dir = os.path.join(training_config.output_dir, "model")
+    if os.path.exists(os.path.join(model_dir, "config.json")):
+        print(f"\ud83e\udee0 Loading model from {model_dir}...")
+        model = FinAIForCausalLM.from_pretrained(model_dir)
+        model_config = model.config
+    else:
+        model = FinAIForCausalLM(model_config)
 
     total_params = sum(p.numel() for p in model.parameters())
     print(f"Model ready: {total_params:,} parameters")
