@@ -10,6 +10,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from transformers import PreTrainedModel
 from transformers.generation.utils import GenerationMixin
+from transformers.generation.configuration_utils import GenerationConfig
 from transformers.modeling_outputs import CausalLMOutputWithPast
 
 try:
@@ -74,14 +75,11 @@ def rotate_half(x):
 
 
 def apply_rotary_pos_emb(q, k, cos, sin, position_ids):
-    # The first two dimensions of cos and sin are always 1, so we can `squeeze` them.
-    cos = cos[position_ids].squeeze(1)  # [batch_size, seq_len, head_dim]
-    sin = sin[position_ids].squeeze(1)  # [batch_size, seq_len, head_dim]
-
-    # Unsqueeze to add head dimension for broadcasting
-    # cos/sin: [batch_size, 1, seq_len, head_dim]
-    cos = cos.unsqueeze(1)
-    sin = sin.unsqueeze(1)
+    # cos/sin come from `FinAIRotaryEmbedding` with shape [seq_len, head_dim].
+    # Index by `position_ids` ([batch_size, seq_len]) to get [batch_size, seq_len, head_dim],
+    # then add a singleton head dimension for broadcasting with q/k: [batch_size, n_heads, seq_len, head_dim].
+    cos = cos[position_ids].unsqueeze(1)  # [batch_size, 1, seq_len, head_dim]
+    sin = sin[position_ids].unsqueeze(1)  # [batch_size, 1, seq_len, head_dim]
 
     q_embed = (q * cos) + (rotate_half(q) * sin)
     k_embed = (k * cos) + (rotate_half(k) * sin)
@@ -266,10 +264,17 @@ class FinAIBlock(nn.Module):
         hidden_states = self.feed_forward(hidden_states)
         hidden_states = residual + self.dropout(hidden_states)
 
-        if use_cache:
-            outputs = (hidden_states,) + outputs
+        # `FinAIAttention` returns: (attn_output, attn_weights_or_None, past_key_value_or_None)
+        # Make the block output match HF conventions:
+        # - if output_attentions=False, return (hidden_states, past_key_value) when use_cache else (hidden_states,)
+        # - if output_attentions=True,  return (hidden_states, attn_weights, past_key_value) when use_cache else (hidden_states, attn_weights)
+        if output_attentions:
+            attn_weights = outputs[0]
+            past = outputs[1]
+            outputs = (hidden_states, attn_weights, past) if use_cache else (hidden_states, attn_weights)
         else:
-            outputs = (hidden_states,) + outputs[1:]
+            past = outputs[1]
+            outputs = (hidden_states, past) if use_cache else (hidden_states,)
 
         return outputs
 
@@ -290,6 +295,14 @@ class FinAIPreTrainedModel(PreTrainedModel, GenerationMixin):
             module.weight.data.normal_(mean=0.0, std=std)
             if module.padding_idx is not None:
                 module.weight.data[module.padding_idx].zero_()
+
+    def post_init(self):
+        # Let PreTrainedModel handle weight init / tie weights first.
+        super().post_init()
+        # Transformers' GenerationMixin expects a non-None `generation_config`.
+        # (CI was failing with: AttributeError: 'NoneType' object has no attribute '_from_model_config')
+        if getattr(self, "generation_config", None) is None:
+            self.generation_config = GenerationConfig.from_model_config(self.config)
 
 
 class FinAIModel(FinAIPreTrainedModel):
