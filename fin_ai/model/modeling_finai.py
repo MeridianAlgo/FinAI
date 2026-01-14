@@ -9,8 +9,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from transformers import PreTrainedModel
-from transformers.generation.utils import GenerationMixin
 from transformers.generation.configuration_utils import GenerationConfig
+from transformers.generation.utils import GenerationMixin
 from transformers.modeling_outputs import CausalLMOutputWithPast
 
 try:
@@ -271,7 +271,11 @@ class FinAIBlock(nn.Module):
         if output_attentions:
             attn_weights = outputs[0]
             past = outputs[1]
-            outputs = (hidden_states, attn_weights, past) if use_cache else (hidden_states, attn_weights)
+            outputs = (
+                (hidden_states, attn_weights, past)
+                if use_cache
+                else (hidden_states, attn_weights)
+            )
         else:
             past = outputs[1]
             outputs = (hidden_states, past) if use_cache else (hidden_states,)
