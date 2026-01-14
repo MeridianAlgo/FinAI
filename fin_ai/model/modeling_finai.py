@@ -9,6 +9,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from transformers import PreTrainedModel
+from transformers.generation.utils import GenerationMixin
 from transformers.modeling_outputs import CausalLMOutputWithPast
 
 try:
@@ -273,7 +274,7 @@ class FinAIBlock(nn.Module):
         return outputs
 
 
-class FinAIPreTrainedModel(PreTrainedModel):
+class FinAIPreTrainedModel(PreTrainedModel, GenerationMixin):
     config_class = FinAIConfig
     base_model_prefix = "model"
     supports_gradient_checkpointing = True
