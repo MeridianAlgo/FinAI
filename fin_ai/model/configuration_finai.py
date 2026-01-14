@@ -48,6 +48,12 @@ class FinAIConfig(PretrainedConfig):
         self.use_cache = use_cache
         self.output_attentions = output_attentions
         self.output_hidden_states = output_hidden_states
+        
+        # Set standard Transformers attribute names for compatibility with GenerationMixin
+        # These must be actual attributes (not properties) for Transformers' __getattribute__ checks
+        self.num_hidden_layers = n_layers
+        self.hidden_size = embed_dim
+        self.num_attention_heads = n_heads
 
         super().__init__(**kwargs)
 
