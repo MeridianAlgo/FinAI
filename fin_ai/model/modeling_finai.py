@@ -126,6 +126,31 @@ class FinAIAttention(nn.Module):
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[Tuple[torch.Tensor]]]:
         bsz, q_len, _ = hidden_states.size()
 
+        if position_ids is None:
+            past_len = 0
+            if past_key_value is not None and past_key_value[0] is not None:
+                past_len = past_key_value[0].shape[-2]
+            position_ids = torch.arange(
+                past_len,
+                past_len + q_len,
+                dtype=torch.long,
+                device=hidden_states.device,
+            )
+            position_ids = position_ids.unsqueeze(0).expand(bsz, -1)
+
+        if attention_mask is not None and attention_mask.dim() == 2:
+            # HF typically supplies an attention mask of shape [batch, seq] where 1 means
+            # "keep" and 0 means "mask". Convert it to a broadcastable 4D mask.
+            #
+            # - For the flash/SDPA path we pass a bool mask.
+            # - For the eager matmul path we add an additive mask (0 or -inf) to logits.
+            attention_mask_4d = attention_mask[:, None, None, :]
+            if self.config.use_flash_attention:
+                attention_mask = attention_mask_4d.to(dtype=torch.bool)
+            else:
+                attention_mask = 1.0 - attention_mask_4d.to(dtype=hidden_states.dtype)
+                attention_mask = attention_mask * torch.finfo(hidden_states.dtype).min
+
         query_states = self.q_proj(hidden_states)
         key_states = self.k_proj(hidden_states)
         value_states = self.v_proj(hidden_states)
@@ -144,7 +169,15 @@ class FinAIAttention(nn.Module):
         if past_key_value is not None and past_key_value[0] is not None:
             kv_seq_len += past_key_value[0].shape[-2]
 
-        cos, sin = self.rotary_emb(value_states, seq_len=kv_seq_len)
+        rotary_seq_len = kv_seq_len
+        if position_ids is not None:
+            # Generation can surface edge cases where the cache length and the provided
+            # `position_ids` get temporarily out of sync (e.g. empty caches or alternate
+            # cache containers). Make RoPE robust by ensuring the cache covers the
+            # maximum position id we will index.
+            rotary_seq_len = max(rotary_seq_len, int(position_ids.max()) + 1)
+
+        cos, sin = self.rotary_emb(value_states, seq_len=rotary_seq_len)
         query_states, key_states = apply_rotary_pos_emb(
             query_states, key_states, cos, sin, position_ids
         )
@@ -157,12 +190,18 @@ class FinAIAttention(nn.Module):
         past_key_value = (key_states, value_states) if use_cache else None
 
         # Repeat K/V heads for GQA
-        key_states = torch.repeat_interleave(
-            key_states, self.n_heads // self.n_kv_heads, dim=1
-        )
-        value_states = torch.repeat_interleave(
-            value_states, self.n_heads // self.n_kv_heads, dim=1
-        )
+        if key_states.size(1) != query_states.size(1):
+            repeat_factor = query_states.size(1) // key_states.size(1)
+            key_states = torch.repeat_interleave(key_states, repeat_factor, dim=1)
+
+        if value_states.size(1) != key_states.size(1):
+            if value_states.size(1) == 1:
+                value_states = value_states.expand(-1, key_states.size(1), -1, -1)
+            else:
+                repeat_factor = key_states.size(1) // value_states.size(1)
+                value_states = torch.repeat_interleave(
+                    value_states, repeat_factor, dim=1
+                )
 
         # Flash Attention / SDPA
         # This implementation automatically leverages FlashAttention-2 kernels if available on GPU
@@ -202,6 +241,18 @@ class FinAIAttention(nn.Module):
             attn_weights = nn.functional.dropout(
                 attn_weights, p=self.config.attention_dropout, training=self.training
             )
+
+            if value_states.dim() == 3:
+                value_states = value_states.unsqueeze(1)
+
+            if value_states.size(1) != attn_weights.size(1):
+                if value_states.size(1) == 1:
+                    value_states = value_states.expand(-1, attn_weights.size(1), -1, -1)
+                else:
+                    repeat_factor = attn_weights.size(1) // value_states.size(1)
+                    value_states = torch.repeat_interleave(
+                        value_states, repeat_factor, dim=1
+                    )
             attn_output = torch.matmul(attn_weights, value_states)
 
         attn_output = attn_output.transpose(1, 2).contiguous()
@@ -283,7 +334,7 @@ class FinAIBlock(nn.Module):
         return outputs
 
 
-class FinAIPreTrainedModel(PreTrainedModel, GenerationMixin):
+class FinAIPreTrainedModel(PreTrainedModel):
     config_class = FinAIConfig
     base_model_prefix = "model"
     supports_gradient_checkpointing = True
@@ -309,7 +360,7 @@ class FinAIPreTrainedModel(PreTrainedModel, GenerationMixin):
             self.generation_config = GenerationConfig.from_model_config(self.config)
 
 
-class FinAIModel(FinAIPreTrainedModel):
+class FinAIModel(FinAIPreTrainedModel, GenerationMixin):
     def __init__(self, config: FinAIConfig):
         super().__init__(config)
         self.embed_tokens = nn.Embedding(config.vocab_size, config.embed_dim)
@@ -441,7 +492,7 @@ class FinAIModel(FinAIPreTrainedModel):
         )
 
 
-class FinAIForCausalLM(FinAIPreTrainedModel):
+class FinAIForCausalLM(FinAIPreTrainedModel, GenerationMixin):
     _tied_weights_keys = ["lm_head.weight"]
 
     def __init__(self, config: FinAIConfig):
@@ -521,8 +572,11 @@ class FinAIForCausalLM(FinAIPreTrainedModel):
         self, input_ids, past_key_values=None, attention_mask=None, **kwargs
     ):
         """Prepare inputs for generation"""
-        # Only use the last token if past_key_values is not None
-        if past_key_values is not None:
+        has_past = past_key_values is not None and len(past_key_values) > 0
+
+        # Only use the last token if we actually have a cache to append to.
+        # Some generation flows may pass an empty tuple for `past_key_values`.
+        if has_past:
             input_ids = input_ids[:, -1:]
 
         position_ids = kwargs.get("position_ids", None)
@@ -530,7 +584,7 @@ class FinAIForCausalLM(FinAIPreTrainedModel):
             # Create position_ids on the fly for batch generation
             position_ids = attention_mask.long().cumsum(-1) - 1
             position_ids.masked_fill_(attention_mask == 0, 1)
-            if past_key_values:
+            if has_past:
                 position_ids = position_ids[:, -1].unsqueeze(-1)
 
         return {
