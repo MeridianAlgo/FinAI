@@ -138,18 +138,31 @@ class FinAIAttention(nn.Module):
             )
             position_ids = position_ids.unsqueeze(0).expand(bsz, -1)
 
-        if attention_mask is not None and attention_mask.dim() == 2:
-            # HF typically supplies an attention mask of shape [batch, seq] where 1 means
-            # "keep" and 0 means "mask". Convert it to a broadcastable 4D mask.
-            #
-            # - For the flash/SDPA path we pass a bool mask.
-            # - For the eager matmul path we add an additive mask (0 or -inf) to logits.
-            attention_mask_4d = attention_mask[:, None, None, :]
-            if self.config.use_flash_attention:
-                attention_mask = attention_mask_4d.to(dtype=torch.bool)
+        if attention_mask is not None:
+            if attention_mask.dim() == 2:
+                # [batch, seq] -> [batch, 1, 1, seq]
+                attention_mask = attention_mask[:, None, None, :]
+
+            if self.config.use_flash_attention and not output_attentions:
+                # For SDPA, we want a boolean mask where True means "keep"
+                if attention_mask.dtype != torch.bool:
+                    attention_mask = attention_mask.to(torch.bool)
             else:
-                attention_mask = 1.0 - attention_mask_4d.to(dtype=hidden_states.dtype)
-                attention_mask = attention_mask * torch.finfo(hidden_states.dtype).min
+                # For manual path, we want an additive mask
+                if attention_mask.dtype == torch.bool:
+                    new_mask = torch.zeros_like(
+                        attention_mask, dtype=hidden_states.dtype
+                    )
+                    new_mask.masked_fill_(
+                        ~attention_mask, torch.finfo(hidden_states.dtype).min
+                    )
+                    attention_mask = new_mask
+                elif not torch.is_floating_point(attention_mask):
+                    # Likely 0/1 mask
+                    new_mask = (
+                        1.0 - attention_mask.to(dtype=hidden_states.dtype)
+                    ) * torch.finfo(hidden_states.dtype).min
+                    attention_mask = new_mask
 
         query_states = self.q_proj(hidden_states)
         key_states = self.k_proj(hidden_states)
@@ -203,18 +216,23 @@ class FinAIAttention(nn.Module):
                     value_states, repeat_factor, dim=1
                 )
 
+        # Decide whether to use causal masking
+        # In generation (q_len=1), is_causal should be False because we only have one query
+        # that should attend to everything in the past KV cache.
+        # In training/initial pass (q_len > 1), we need causal masking.
+        is_causal_processing = self.is_causal and q_len > 1 and past_key_value is None
+
         # Flash Attention / SDPA
-        # This implementation automatically leverages FlashAttention-2 kernels if available on GPU
-        # and efficient memory-mapped attention on CPU.
-        if self.config.use_flash_attention:
+        if self.config.use_flash_attention and not output_attentions:
             attn_output = F.scaled_dot_product_attention(
                 query_states,
                 key_states,
                 value_states,
                 attn_mask=attention_mask,
                 dropout_p=self.config.attention_dropout if self.training else 0.0,
-                is_causal=self.is_causal if attention_mask is None else False,
+                is_causal=is_causal_processing if attention_mask is None else False,
             )
+            attn_weights = None
         else:
             # Fallback for legacy / specific debug cases
             attn_weights = torch.matmul(
@@ -224,7 +242,7 @@ class FinAIAttention(nn.Module):
             if attention_mask is not None:
                 attn_weights = attn_weights + attention_mask
 
-            if attention_mask is None and q_len > 1:
+            if attention_mask is None and is_causal_processing:
                 casual_mask = torch.triu(
                     torch.ones(
                         q_len, kv_seq_len, dtype=torch.bool, device=hidden_states.device
@@ -423,19 +441,7 @@ class FinAIModel(FinAIPreTrainedModel, GenerationMixin):
         if inputs_embeds is None:
             inputs_embeds = self.embed_tokens(input_ids)
 
-        # Attention mask handling for SDPA
-        # If using SDPA, we often don't need a mask for causal if passing is_causal=True
-        # But if padding exists, we need it.
-        # Minimal support for now:
-        if attention_mask is not None and self.config.use_flash_attention:
-            # Basic handling to ensure it works with efficient attention
-            if attention_mask.dim() == 2:
-                attention_mask = attention_mask.unsqueeze(1).unsqueeze(2)
-            # Convert to bool dtype for SDPA compatibility
-            attention_mask = attention_mask.to(dtype=torch.bool)
-
         hidden_states = inputs_embeds
-
         all_hidden_states = () if output_hidden_states else None
         all_self_attns = () if output_attentions else None
         next_decoder_cache = () if use_cache else None
