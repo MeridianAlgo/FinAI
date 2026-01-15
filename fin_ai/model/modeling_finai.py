@@ -182,6 +182,29 @@ class FinAIAttention(nn.Module):
         if past_key_value is not None and past_key_value[0] is not None:
             kv_seq_len += past_key_value[0].shape[-2]
 
+        # Update attention mask to match kv_seq_len if needed
+        if attention_mask is not None and attention_mask.shape[-1] != kv_seq_len:
+            # Expand mask to cover full kv_seq_len (including past_key_value)
+            original_mask_len = attention_mask.shape[-1]
+            if kv_seq_len > original_mask_len:
+                # Need to expand mask - pad with True/1.0 for past positions
+                if attention_mask.dtype == torch.bool:
+                    # Boolean mask: pad with True (allow attention to past)
+                    padding = torch.ones(
+                        attention_mask.shape[:-1] + (kv_seq_len - original_mask_len,),
+                        dtype=torch.bool,
+                        device=attention_mask.device
+                    )
+                    attention_mask = torch.cat([padding, attention_mask], dim=-1)
+                else:
+                    # Additive mask: pad with 0.0 (no penalty for past positions)
+                    padding = torch.zeros(
+                        attention_mask.shape[:-1] + (kv_seq_len - original_mask_len,),
+                        dtype=attention_mask.dtype,
+                        device=attention_mask.device
+                    )
+                    attention_mask = torch.cat([padding, attention_mask], dim=-1)
+
         rotary_seq_len = kv_seq_len
         if position_ids is not None:
             # Generation can surface edge cases where the cache length and the provided
