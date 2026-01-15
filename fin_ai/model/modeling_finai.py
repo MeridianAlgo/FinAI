@@ -138,31 +138,7 @@ class FinAIAttention(nn.Module):
             )
             position_ids = position_ids.unsqueeze(0).expand(bsz, -1)
 
-        if attention_mask is not None:
-            if attention_mask.dim() == 2:
-                # [batch, seq] -> [batch, 1, 1, seq]
-                attention_mask = attention_mask[:, None, None, :]
-
-            if self.config.use_flash_attention and not output_attentions:
-                # For SDPA, we want a boolean mask where True means "keep"
-                if attention_mask.dtype != torch.bool:
-                    attention_mask = attention_mask.to(torch.bool)
-            else:
-                # For manual path, we want an additive mask
-                if attention_mask.dtype == torch.bool:
-                    new_mask = torch.zeros_like(
-                        attention_mask, dtype=hidden_states.dtype
-                    )
-                    new_mask.masked_fill_(
-                        ~attention_mask, torch.finfo(hidden_states.dtype).min
-                    )
-                    attention_mask = new_mask
-                elif not torch.is_floating_point(attention_mask):
-                    # Likely 0/1 mask
-                    new_mask = (
-                        1.0 - attention_mask.to(dtype=hidden_states.dtype)
-                    ) * torch.finfo(hidden_states.dtype).min
-                    attention_mask = new_mask
+        # Don't reshape attention_mask here - we'll handle it after we know kv_seq_len
 
         query_states = self.q_proj(hidden_states)
         key_states = self.k_proj(hidden_states)
@@ -182,28 +158,82 @@ class FinAIAttention(nn.Module):
         if past_key_value is not None and past_key_value[0] is not None:
             kv_seq_len += past_key_value[0].shape[-2]
 
-        # Update attention mask to match kv_seq_len if needed
-        if attention_mask is not None and attention_mask.shape[-1] != kv_seq_len:
-            # Expand mask to cover full kv_seq_len (including past_key_value)
-            original_mask_len = attention_mask.shape[-1]
-            if kv_seq_len > original_mask_len:
-                # Need to expand mask - pad with True/1.0 for past positions
+        # Handle attention mask shape for SDPA vs manual attention
+        if attention_mask is not None:
+            # First, ensure mask covers kv_seq_len (including past)
+            if attention_mask.dim() == 2:
+                # [batch, seq] - expand to cover past positions if needed
+                original_mask_len = attention_mask.shape[-1]
+                if kv_seq_len > original_mask_len:
+                    # Pad with True/1.0 for past positions (they're already computed)
+                    if attention_mask.dtype == torch.bool:
+                        padding = torch.ones(
+                            (attention_mask.shape[0], kv_seq_len - original_mask_len),
+                            dtype=torch.bool,
+                            device=attention_mask.device
+                        )
+                        attention_mask = torch.cat([padding, attention_mask], dim=-1)
+                    else:
+                        padding = torch.zeros(
+                            (attention_mask.shape[0], kv_seq_len - original_mask_len),
+                            dtype=attention_mask.dtype,
+                            device=attention_mask.device
+                        )
+                        attention_mask = torch.cat([padding, attention_mask], dim=-1)
+                elif kv_seq_len < original_mask_len:
+                    # Truncate mask if needed (shouldn't happen normally)
+                    attention_mask = attention_mask[:, -kv_seq_len:]
+            
+            # Reshape mask based on attention type
+            if self.config.use_flash_attention and not output_attentions:
+                # For SDPA: mask must be [batch, q_len, kv_len]
+                # Normalize to 2D first if needed
+                while attention_mask.dim() > 2:
+                    attention_mask = attention_mask.squeeze(1)
+                # Now should be [batch, kv_len] or [batch, q_len_in, kv_len]
+                if attention_mask.dim() == 2:
+                    # [batch, kv_len] -> [batch, q_len, kv_len]
+                    attention_mask = attention_mask.unsqueeze(1).expand(bsz, q_len, -1)
+                elif attention_mask.dim() == 3:
+                    # [batch, q_len_in, kv_len] - take first q_len rows
+                    attention_mask = attention_mask[:, :q_len, :kv_seq_len]
+                    # If q_len_in < q_len, repeat last row
+                    if attention_mask.shape[1] < q_len:
+                        last_row = attention_mask[:, -1:, :]
+                        padding = last_row.repeat(1, q_len - attention_mask.shape[1], 1)
+                        attention_mask = torch.cat([attention_mask, padding], dim=1)
+                # Final check: ensure exact shape
+                if attention_mask.shape != (bsz, q_len, kv_seq_len):
+                    attention_mask = attention_mask[:, :q_len, :kv_seq_len]
+                    if attention_mask.shape[1] < q_len:
+                        attention_mask = attention_mask.repeat(1, (q_len + attention_mask.shape[1] - 1) // attention_mask.shape[1], 1)[:, :q_len, :]
+                    if attention_mask.shape[2] < kv_seq_len:
+                        attention_mask = attention_mask.repeat(1, 1, (kv_seq_len + attention_mask.shape[2] - 1) // attention_mask.shape[2])[:, :, :kv_seq_len]
+                # Convert to bool for SDPA
+                if attention_mask.dtype != torch.bool:
+                    attention_mask = attention_mask.to(torch.bool)
+            else:
+                # For manual attention: [batch, 1, q_len, kv_len] or [batch, num_heads, q_len, kv_len]
+                if attention_mask.dim() == 2:
+                    attention_mask = attention_mask[:, None, None, :].expand(bsz, 1, q_len, kv_seq_len)
+                elif attention_mask.dim() == 3:
+                    attention_mask = attention_mask[:, None, :q_len, :kv_seq_len]
+                elif attention_mask.dim() == 4:
+                    attention_mask = attention_mask[:, :, :q_len, :kv_seq_len]
+                # Convert to additive mask if boolean
                 if attention_mask.dtype == torch.bool:
-                    # Boolean mask: pad with True (allow attention to past)
-                    padding = torch.ones(
-                        attention_mask.shape[:-1] + (kv_seq_len - original_mask_len,),
-                        dtype=torch.bool,
-                        device=attention_mask.device
+                    new_mask = torch.zeros_like(
+                        attention_mask, dtype=hidden_states.dtype
                     )
-                    attention_mask = torch.cat([padding, attention_mask], dim=-1)
-                else:
-                    # Additive mask: pad with 0.0 (no penalty for past positions)
-                    padding = torch.zeros(
-                        attention_mask.shape[:-1] + (kv_seq_len - original_mask_len,),
-                        dtype=attention_mask.dtype,
-                        device=attention_mask.device
+                    new_mask.masked_fill_(
+                        ~attention_mask, torch.finfo(hidden_states.dtype).min
                     )
-                    attention_mask = torch.cat([padding, attention_mask], dim=-1)
+                    attention_mask = new_mask
+                elif not torch.is_floating_point(attention_mask):
+                    new_mask = (
+                        1.0 - attention_mask.to(dtype=hidden_states.dtype)
+                    ) * torch.finfo(hidden_states.dtype).min
+                    attention_mask = new_mask
 
         rotary_seq_len = kv_seq_len
         if position_ids is not None:
@@ -225,19 +255,31 @@ class FinAIAttention(nn.Module):
 
         past_key_value = (key_states, value_states) if use_cache else None
 
-        # Repeat K/V heads for GQA
+        # Repeat K/V heads for GQA to match query heads
+        # Shapes: query [batch, n_heads, q_len, head_dim], key/value [batch, n_kv_heads, kv_len, head_dim]
         if key_states.size(1) != query_states.size(1):
             repeat_factor = query_states.size(1) // key_states.size(1)
-            key_states = torch.repeat_interleave(key_states, repeat_factor, dim=1)
-
-        if value_states.size(1) != key_states.size(1):
-            if value_states.size(1) == 1:
-                value_states = value_states.expand(-1, key_states.size(1), -1, -1)
+            if repeat_factor > 1:
+                key_states = torch.repeat_interleave(key_states, repeat_factor, dim=1)
             else:
-                repeat_factor = key_states.size(1) // value_states.size(1)
-                value_states = torch.repeat_interleave(
-                    value_states, repeat_factor, dim=1
-                )
+                # This shouldn't happen, but handle it gracefully
+                raise ValueError(f"Key heads ({key_states.size(1)}) must be <= query heads ({query_states.size(1)})")
+
+        if value_states.size(1) != query_states.size(1):
+            if value_states.size(1) == 1:
+                value_states = value_states.expand(-1, query_states.size(1), -1, -1)
+            else:
+                repeat_factor = query_states.size(1) // value_states.size(1)
+                if repeat_factor > 1:
+                    value_states = torch.repeat_interleave(
+                        value_states, repeat_factor, dim=1
+                    )
+                else:
+                    raise ValueError(f"Value heads ({value_states.size(1)}) must be <= query heads ({query_states.size(1)})")
+        
+        # Ensure all have the same number of heads
+        assert query_states.size(1) == key_states.size(1) == value_states.size(1), \
+            f"Head mismatch: q={query_states.size(1)}, k={key_states.size(1)}, v={value_states.size(1)}"
 
         # Decide whether to use causal masking
         # In generation (q_len=1), is_causal should be False because we only have one query
@@ -247,13 +289,54 @@ class FinAIAttention(nn.Module):
 
         # Flash Attention / SDPA
         if self.config.use_flash_attention and not output_attentions:
+            # For SDPA with GQA, we need to be careful with mask shapes
+            # If using causal attention and no explicit mask, use is_causal
+            # Otherwise, ensure mask is [batch, q_len, kv_len] or None
+            sdp_mask = None
+            use_causal = False
+            
+            if attention_mask is not None:
+                # Try to create proper mask shape [batch, q_len, kv_len]
+                try:
+                    if attention_mask.dim() == 2:
+                        # [batch, kv_len] -> [batch, q_len, kv_len]
+                        sdp_mask = attention_mask.unsqueeze(1).expand(bsz, q_len, kv_seq_len)
+                    elif attention_mask.dim() == 3:
+                        # [batch, q_len_in, kv_len] -> ensure it matches
+                        if attention_mask.shape[1] == q_len and attention_mask.shape[2] == kv_seq_len:
+                            sdp_mask = attention_mask
+                        else:
+                            # Reshape to match
+                            sdp_mask = attention_mask[:, :q_len, :kv_seq_len]
+                            if sdp_mask.shape[1] < q_len:
+                                sdp_mask = sdp_mask.repeat(1, (q_len + sdp_mask.shape[1] - 1) // sdp_mask.shape[1], 1)[:, :q_len, :]
+                            if sdp_mask.shape[2] < kv_seq_len:
+                                sdp_mask = sdp_mask.repeat(1, 1, (kv_seq_len + sdp_mask.shape[2] - 1) // sdp_mask.shape[2])[:, :, :kv_seq_len]
+                    elif attention_mask.dim() == 4:
+                        # [batch, 1, q_len, kv_len] or similar -> squeeze and reshape
+                        sdp_mask = attention_mask.squeeze(1)[:, :q_len, :kv_seq_len]
+                    
+                    # Convert to bool if needed
+                    if sdp_mask is not None and sdp_mask.dtype != torch.bool:
+                        sdp_mask = sdp_mask.to(torch.bool)
+                except Exception:
+                    # If mask handling fails, fall back to causal
+                    sdp_mask = None
+            
+            # Use causal if no mask and it's appropriate
+            if sdp_mask is None and is_causal_processing:
+                use_causal = True
+            
+            # Debug: print shapes before SDPA
+            # print(f"SDPA shapes: q={query_states.shape}, k={key_states.shape}, v={value_states.shape}, mask={sdp_mask.shape if sdp_mask is not None else None}")
+            
             attn_output = F.scaled_dot_product_attention(
                 query_states,
                 key_states,
                 value_states,
-                attn_mask=attention_mask,
+                attn_mask=sdp_mask if sdp_mask is not None and sdp_mask.dim() == 3 else None,
                 dropout_p=self.config.attention_dropout if self.training else 0.0,
-                is_causal=is_causal_processing if attention_mask is None else False,
+                is_causal=use_causal or (sdp_mask is None and is_causal_processing),
             )
             attn_weights = None
         else:
