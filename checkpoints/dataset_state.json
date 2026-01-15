@@ -1,40 +1,4 @@
 {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-  "current_dataset_idx": 13,
-=======
-  "current_dataset_idx": 14,
->>>>>>> Stashed changes
-=======
-  "current_dataset_idx": 16,
->>>>>>> Stashed changes
-=======
-  "current_dataset_idx": 17,
->>>>>>> Stashed changes
-=======
-  "current_dataset_idx": 19,
->>>>>>> Stashed changes
-=======
-  "current_dataset_idx": 20,
->>>>>>> Stashed changes
-=======
-  "current_dataset_idx": 21,
->>>>>>> Stashed changes
-=======
-  "current_dataset_idx": 23,
->>>>>>> Stashed changes
-=======
-  "current_dataset_idx": 0,
->>>>>>> Stashed changes
-=======
-  "current_dataset_idx": 2,
->>>>>>> Stashed changes
+  "current_dataset_idx": 4,
   "dataset_offsets": {}
 }
