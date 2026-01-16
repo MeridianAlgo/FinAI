@@ -134,11 +134,13 @@ def main():
     model_dir = os.path.join(training_config.output_dir, "model")
     if os.path.exists(os.path.join(model_dir, "config.json")):
         try:
-    print(f"Loading model from {model_dir}...")
-except UnicodeEncodeError:
-    print(f"Loading model from {model_dir}...")
-        model = FinAIForCausalLM.from_pretrained(model_dir)
-        model_config = model.config
+            print(f"Loading model from {model_dir}...")
+            model = FinAIForCausalLM.from_pretrained(model_dir)
+            model_config = model.config
+        except UnicodeEncodeError:
+            print(f"Loading model from {model_dir}...")
+            model = FinAIForCausalLM.from_pretrained(model_dir)
+            model_config = model.config
     else:
         model = FinAIForCausalLM(model_config)
 
