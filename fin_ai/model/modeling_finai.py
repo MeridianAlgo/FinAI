@@ -222,18 +222,21 @@ class FinAIAttention(nn.Module):
                     attention_mask = attention_mask[:, :, :q_len, :kv_seq_len]
                 # Convert to additive mask if boolean
                 if attention_mask.dtype == torch.bool:
-                    new_mask = torch.zeros_like(
-                        attention_mask, dtype=hidden_states.dtype
+                    # Boolean mask: pad with True (allow attention to past)
+                    padding = torch.ones(
+                        attention_mask.shape[:-1] + (kv_seq_len - original_mask_len,),
+                        dtype=torch.bool,
+                        device=attention_mask.device,
                     )
-                    new_mask.masked_fill_(
-                        ~attention_mask, torch.finfo(hidden_states.dtype).min
+                    attention_mask = torch.cat([padding, attention_mask], dim=-1)
+                else:
+                    # Additive mask: pad with 0.0 (no penalty for past positions)
+                    padding = torch.zeros(
+                        attention_mask.shape[:-1] + (kv_seq_len - original_mask_len,),
+                        dtype=attention_mask.dtype,
+                        device=attention_mask.device,
                     )
-                    attention_mask = new_mask
-                elif not torch.is_floating_point(attention_mask):
-                    new_mask = (
-                        1.0 - attention_mask.to(dtype=hidden_states.dtype)
-                    ) * torch.finfo(hidden_states.dtype).min
-                    attention_mask = new_mask
+                    attention_mask = torch.cat([padding, attention_mask], dim=-1)
 
         rotary_seq_len = kv_seq_len
         if position_ids is not None:
