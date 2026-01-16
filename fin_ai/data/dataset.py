@@ -299,11 +299,7 @@ def load_datasets_from_config(
         min_length=min_length,
     )
 
-    # Use safe print for Unicode symbols
-try:
-    print(f"🔢 Created {len(tokenized_chunks):,} training sequences")
-except UnicodeEncodeError:
-    print(f"Created {len(tokenized_chunks):,} training sequences")
+    print(f"\ud83d\udd22 Created {len(tokenized_chunks):,} training sequences")
 
     pad_token_id = tokenizer.pad_token_id
     if pad_token_id is None:

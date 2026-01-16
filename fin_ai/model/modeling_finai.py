@@ -170,20 +170,20 @@ class FinAIAttention(nn.Module):
                         padding = torch.ones(
                             (attention_mask.shape[0], kv_seq_len - original_mask_len),
                             dtype=torch.bool,
-                            device=attention_mask.device
+                            device=attention_mask.device,
                         )
                         attention_mask = torch.cat([padding, attention_mask], dim=-1)
                     else:
                         padding = torch.zeros(
                             (attention_mask.shape[0], kv_seq_len - original_mask_len),
                             dtype=attention_mask.dtype,
-                            device=attention_mask.device
+                            device=attention_mask.device,
                         )
                         attention_mask = torch.cat([padding, attention_mask], dim=-1)
                 elif kv_seq_len < original_mask_len:
                     # Truncate mask if needed (shouldn't happen normally)
                     attention_mask = attention_mask[:, -kv_seq_len:]
-            
+
             # Reshape mask based on attention type
             if self.config.use_flash_attention and not output_attentions:
                 # For SDPA: mask must be [batch, q_len, kv_len]
@@ -206,16 +206,28 @@ class FinAIAttention(nn.Module):
                 if attention_mask.shape != (bsz, q_len, kv_seq_len):
                     attention_mask = attention_mask[:, :q_len, :kv_seq_len]
                     if attention_mask.shape[1] < q_len:
-                        attention_mask = attention_mask.repeat(1, (q_len + attention_mask.shape[1] - 1) // attention_mask.shape[1], 1)[:, :q_len, :]
+                        attention_mask = attention_mask.repeat(
+                            1,
+                            (q_len + attention_mask.shape[1] - 1)
+                            // attention_mask.shape[1],
+                            1,
+                        )[:, :q_len, :]
                     if attention_mask.shape[2] < kv_seq_len:
-                        attention_mask = attention_mask.repeat(1, 1, (kv_seq_len + attention_mask.shape[2] - 1) // attention_mask.shape[2])[:, :, :kv_seq_len]
+                        attention_mask = attention_mask.repeat(
+                            1,
+                            1,
+                            (kv_seq_len + attention_mask.shape[2] - 1)
+                            // attention_mask.shape[2],
+                        )[:, :, :kv_seq_len]
                 # Convert to bool for SDPA
                 if attention_mask.dtype != torch.bool:
                     attention_mask = attention_mask.to(torch.bool)
             else:
                 # For manual attention: [batch, 1, q_len, kv_len] or [batch, num_heads, q_len, kv_len]
                 if attention_mask.dim() == 2:
-                    attention_mask = attention_mask[:, None, None, :].expand(bsz, 1, q_len, kv_seq_len)
+                    attention_mask = attention_mask[:, None, None, :].expand(
+                        bsz, 1, q_len, kv_seq_len
+                    )
                 elif attention_mask.dim() == 3:
                     attention_mask = attention_mask[:, None, :q_len, :kv_seq_len]
                 elif attention_mask.dim() == 4:
@@ -266,7 +278,9 @@ class FinAIAttention(nn.Module):
                 key_states = torch.repeat_interleave(key_states, repeat_factor, dim=1)
             else:
                 # This shouldn't happen, but handle it gracefully
-                raise ValueError(f"Key heads ({key_states.size(1)}) must be <= query heads ({query_states.size(1)})")
+                raise ValueError(
+                    f"Key heads ({key_states.size(1)}) must be <= query heads ({query_states.size(1)})"
+                )
 
         if value_states.size(1) != query_states.size(1):
             if value_states.size(1) == 1:
@@ -278,11 +292,14 @@ class FinAIAttention(nn.Module):
                         value_states, repeat_factor, dim=1
                     )
                 else:
-                    raise ValueError(f"Value heads ({value_states.size(1)}) must be <= query heads ({query_states.size(1)})")
-        
+                    raise ValueError(
+                        f"Value heads ({value_states.size(1)}) must be <= query heads ({query_states.size(1)})"
+                    )
+
         # Ensure all have the same number of heads
-        assert query_states.size(1) == key_states.size(1) == value_states.size(1), \
-            f"Head mismatch: q={query_states.size(1)}, k={key_states.size(1)}, v={value_states.size(1)}"
+        assert (
+            query_states.size(1) == key_states.size(1) == value_states.size(1)
+        ), f"Head mismatch: q={query_states.size(1)}, k={key_states.size(1)}, v={value_states.size(1)}"
 
         # Decide whether to use causal masking
         # In generation (q_len=1), is_causal should be False because we only have one query
@@ -297,47 +314,64 @@ class FinAIAttention(nn.Module):
             # Otherwise, ensure mask is [batch, q_len, kv_len] or None
             sdp_mask = None
             use_causal = False
-            
+
             if attention_mask is not None:
                 # Try to create proper mask shape [batch, q_len, kv_len]
                 try:
                     if attention_mask.dim() == 2:
                         # [batch, kv_len] -> [batch, q_len, kv_len]
-                        sdp_mask = attention_mask.unsqueeze(1).expand(bsz, q_len, kv_seq_len)
+                        sdp_mask = attention_mask.unsqueeze(1).expand(
+                            bsz, q_len, kv_seq_len
+                        )
                     elif attention_mask.dim() == 3:
                         # [batch, q_len_in, kv_len] -> ensure it matches
-                        if attention_mask.shape[1] == q_len and attention_mask.shape[2] == kv_seq_len:
+                        if (
+                            attention_mask.shape[1] == q_len
+                            and attention_mask.shape[2] == kv_seq_len
+                        ):
                             sdp_mask = attention_mask
                         else:
                             # Reshape to match
                             sdp_mask = attention_mask[:, :q_len, :kv_seq_len]
                             if sdp_mask.shape[1] < q_len:
-                                sdp_mask = sdp_mask.repeat(1, (q_len + sdp_mask.shape[1] - 1) // sdp_mask.shape[1], 1)[:, :q_len, :]
+                                sdp_mask = sdp_mask.repeat(
+                                    1,
+                                    (q_len + sdp_mask.shape[1] - 1)
+                                    // sdp_mask.shape[1],
+                                    1,
+                                )[:, :q_len, :]
                             if sdp_mask.shape[2] < kv_seq_len:
-                                sdp_mask = sdp_mask.repeat(1, 1, (kv_seq_len + sdp_mask.shape[2] - 1) // sdp_mask.shape[2])[:, :, :kv_seq_len]
+                                sdp_mask = sdp_mask.repeat(
+                                    1,
+                                    1,
+                                    (kv_seq_len + sdp_mask.shape[2] - 1)
+                                    // sdp_mask.shape[2],
+                                )[:, :, :kv_seq_len]
                     elif attention_mask.dim() == 4:
                         # [batch, 1, q_len, kv_len] or similar -> squeeze and reshape
                         sdp_mask = attention_mask.squeeze(1)[:, :q_len, :kv_seq_len]
-                    
+
                     # Convert to bool if needed
                     if sdp_mask is not None and sdp_mask.dtype != torch.bool:
                         sdp_mask = sdp_mask.to(torch.bool)
                 except Exception:
                     # If mask handling fails, fall back to causal
                     sdp_mask = None
-            
+
             # Use causal if no mask and it's appropriate
             if sdp_mask is None and is_causal_processing:
                 use_causal = True
-            
+
             # Debug: print shapes before SDPA
             # print(f"SDPA shapes: q={query_states.shape}, k={key_states.shape}, v={value_states.shape}, mask={sdp_mask.shape if sdp_mask is not None else None}")
-            
+
             attn_output = F.scaled_dot_product_attention(
                 query_states,
                 key_states,
                 value_states,
-                attn_mask=sdp_mask if sdp_mask is not None and sdp_mask.dim() == 3 else None,
+                attn_mask=(
+                    sdp_mask if sdp_mask is not None and sdp_mask.dim() == 3 else None
+                ),
                 dropout_p=self.config.attention_dropout if self.training else 0.0,
                 is_causal=use_causal or (sdp_mask is None and is_causal_processing),
             )
