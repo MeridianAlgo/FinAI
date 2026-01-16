@@ -68,7 +68,7 @@ def get_todays_dataset(datasets: List[Dict]) -> tuple[Dict, int]:
     selected = datasets[dataset_idx]
 
     print(
-        f"📅 Hour: {current_hour:02d}:00 → Dataset #{dataset_idx + 1}/{len(datasets)}: "
+        f"Hour: {current_hour:02d}:00 - Dataset #{dataset_idx + 1}/{len(datasets)}: "
         f"{selected['name']}"
     )
 
@@ -142,12 +142,12 @@ def load_datasets_from_config(
     ds_max_samples = ds_config.get("max_samples")
     use_streaming = ds_config.get("streaming", False)
 
-    print(f"📚 Loading: {name}")
+    print(f"Loading: {name}")
     if offset > 0:
-        print(f"⏭️  Skipping first {offset:,} samples (Resuming)")
+        print(f"Skipping first {offset:,} samples (Resuming)")
 
     if use_streaming:
-        print("🌊 Using streaming mode (memory efficient)")
+        print("Using streaming mode (memory efficient)")
 
     # Track how far we scanned to update offset correctly
     new_offset = offset
@@ -212,7 +212,7 @@ def load_datasets_from_config(
 
             # If we reached end of dataset and have no texts, reset offset
             if not texts and offset > 0:
-                print("⚠️  Reached end of dataset! Resetting offset to 0...")
+                print("WARNING: Reached end of dataset! Resetting offset to 0...")
                 return load_datasets_from_config(
                     config_path, tokenizer, max_seq_len, max_samples, offset=0
                 )
@@ -221,13 +221,11 @@ def load_datasets_from_config(
             # For regular datasets
             total_len = len(dataset)
             if offset >= total_len:
-                print("⚠️  Offset beyond dataset length! Resetting offset to 0...")
+                print("WARNING: Offset beyond dataset length! Resetting offset to 0...")
                 offset = 0
 
             new_offset = min(offset + chunk_size, total_len)
-            print(
-                f"📊 Selecting range {offset:,} - {new_offset:,} (Total: {total_len:,})"
-            )
+            print(f"Selecting range {offset:,} - {new_offset:,} (Total: {total_len:,})")
 
             subset_indices = range(offset, new_offset)
             dataset_slice = dataset.select(subset_indices)
@@ -237,19 +235,21 @@ def load_datasets_from_config(
                 if text and len(str(text).strip()) > 10:
                     texts.append(str(text))
 
-        print(f"📊 Loaded {len(texts):,} samples. New offset: {new_offset:,}")
+        print(f"Loaded {len(texts):,} samples. New offset: {new_offset:,}")
 
     except Exception as e:
         error_msg = str(e)
-        print(f"❌ Failed to load {name}: {error_msg}")
+        print(f"ERROR: Failed to load {name}: {error_msg}")
 
         # Fallback logic
         if (
             "Dataset scripts are no longer supported" in error_msg
             or "trust_remote_code" in error_msg
         ):
-            print(f"⚠️  Dataset {name} uses legacy format or requires trust_remote_code")
-            print("🔄 Falling back to wikitext-2 as safe alternative...")
+            print(
+                f"WARNING: Dataset {name} uses legacy format or requires trust_remote_code"
+            )
+            print("Falling back to wikitext-2 as safe alternative...")
 
             try:
                 dataset = load_dataset("wikitext", "wikitext-2-raw-v1", split="train")
@@ -270,16 +270,16 @@ def load_datasets_from_config(
                         config_path, tokenizer, max_seq_len, max_samples, offset=0
                     )
 
-                print(f"✅ Fallback successful: {len(texts):,} samples from wikitext-2")
+                print(f"Fallback successful: {len(texts):,} samples from wikitext-2")
             except Exception as fallback_error:
-                print(f"❌ Fallback also failed: {fallback_error}")
+                print(f"ERROR: Fallback also failed: {fallback_error}")
                 raise
         else:
             raise
 
     if not texts:
         if offset > 0:
-            print("⚠️ No texts found at this offset, resetting to 0")
+            print("WARNING: No texts found at this offset, resetting to 0")
             return load_datasets_from_config(
                 config_path, tokenizer, max_seq_len, max_samples, offset=0
             )
@@ -299,7 +299,7 @@ def load_datasets_from_config(
         min_length=min_length,
     )
 
-    print(f"\ud83d\udd22 Created {len(tokenized_chunks):,} training sequences")
+    print(f"Created {len(tokenized_chunks):,} training sequences")
 
     pad_token_id = tokenizer.pad_token_id
     if pad_token_id is None:

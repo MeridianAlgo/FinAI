@@ -599,7 +599,7 @@ class FinAITrainer:
                     # Check for architecture mismatch (e.g., GPT-2 style vs FinAI style)
                     if any(k.startswith("transformer.") for k in checkpoint_keys):
                         print(
-                            f"⚠️  Skipping incompatible checkpoint at {path} (GPT-2 architecture)"
+                            f"WARNING: Skipping incompatible checkpoint at {path} (GPT-2 architecture)"
                         )
                         print(
                             "   Current model uses FinAI architecture. Starting fresh..."
@@ -612,13 +612,15 @@ class FinAITrainer:
                     )
 
                     if len(missing_keys) > 10 or len(unexpected_keys) > 10:
-                        print(f"⚠️  Too many mismatched keys in {path}, skipping...")
+                        print(
+                            f"WARNING: Too many mismatched keys in {path}, skipping..."
+                        )
                         print(
                             f"   Missing: {len(missing_keys)}, Unexpected: {len(unexpected_keys)}"
                         )
                         continue
 
-                    print(f"✓ Loaded pretrained weights from {path}")
+                    print(f"Loaded pretrained weights from {path}")
                     if missing_keys:
                         print(
                             f"   Note: {len(missing_keys)} keys not found in checkpoint (will be randomly initialized)"

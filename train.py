@@ -37,12 +37,12 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 def cleanup_memory():
     """Aggressive memory cleanup before training"""
-    print("🧹 Cleaning memory and cache...")
+    print("Cleaning memory and cache...")
     gc.collect()
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
         torch.cuda.synchronize()
-    print("✅ Memory cleaned")
+    print("Memory cleaned")
 
 
 def main():
