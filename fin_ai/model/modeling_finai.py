@@ -275,6 +275,7 @@ class FinAIAttention(nn.Module):
         if key_states.size(1) != query_states.size(1):
             repeat_factor = query_states.size(1) // key_states.size(1)
             if repeat_factor > 1:
+                # Use repeat_interleave to match heads (proper GQA expansion)
                 key_states = torch.repeat_interleave(key_states, repeat_factor, dim=1)
             else:
                 # This shouldn't happen, but handle it gracefully
@@ -283,18 +284,14 @@ class FinAIAttention(nn.Module):
                 )
 
         if value_states.size(1) != query_states.size(1):
-            if value_states.size(1) == 1:
-                value_states = value_states.expand(-1, query_states.size(1), -1, -1)
+            repeat_factor = query_states.size(1) // value_states.size(1)
+            if repeat_factor > 1:
+                # Use repeat_interleave to match heads (proper GQA expansion)
+                value_states = torch.repeat_interleave(value_states, repeat_factor, dim=1)
             else:
-                repeat_factor = query_states.size(1) // value_states.size(1)
-                if repeat_factor > 1:
-                    value_states = torch.repeat_interleave(
-                        value_states, repeat_factor, dim=1
-                    )
-                else:
-                    raise ValueError(
-                        f"Value heads ({value_states.size(1)}) must be <= query heads ({query_states.size(1)})"
-                    )
+                raise ValueError(
+                    f"Value heads ({value_states.size(1)}) must be <= query heads ({query_states.size(1)})"
+                )
 
         # Ensure all have the same number of heads
         assert (

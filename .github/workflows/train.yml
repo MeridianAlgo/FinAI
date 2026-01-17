@@ -180,26 +180,15 @@ jobs:
           else
             echo "❌ ERROR: Wandb login failed. Check your API key. Stopping action."
             exit 1
-          fi
-      
-      - name: Clean up incompatible checkpoints
+fi
+       
+      - name: Force fresh start for V3 migration
         run: |
-          echo "🧹 Checking for incompatible checkpoints..."
-          if [ -f "checkpoints/model/model.safetensors" ] || [ -f "checkpoints/model/model.pt" ]; then
-            # Check if it's GPT-2 architecture by looking at config
-            if [ -f "checkpoints/model/config.json" ]; then
-              if grep -q '"model_type".*"gpt2"' checkpoints/model/config.json; then
-                echo "⚠️  Found incompatible GPT-2 checkpoint, removing..."
-                rm -rf checkpoints/model
-                echo "✅ Cleaned up incompatible checkpoint"
-              else
-                echo "✅ Checkpoint appears compatible"
-              fi
-            fi
-          else
-            echo "ℹ️  No existing checkpoint found"
-          fi
-      
+          echo "🧹 Forcing fresh start to ensure V3 architecture..."
+          echo "Removing any existing checkpoints to avoid architecture conflicts"
+          rm -rf checkpoints/model || true
+          echo "✅ Ready for fresh V3 training"
+       
       - name: Train model
         id: train
         env:
