@@ -365,12 +365,18 @@ class FinAIAttention(nn.Module):
             # Debug: print shapes before SDPA
             # print(f"SDPA shapes: q={query_states.shape}, k={key_states.shape}, v={value_states.shape}, mask={sdp_mask.shape if sdp_mask is not None else None}")
 
+            if sdp_mask is not None and sdp_mask.dim() == 3:
+                # SDPA expects a mask broadcastable to [bsz, n_heads, q_len, kv_len].
+                # A 3D mask [bsz, q_len, kv_len] would left-pad to
+                # [1, bsz, q_len, kv_len] and incorrectly try to match `bsz` to `n_heads`.
+                sdp_mask = sdp_mask.unsqueeze(1)
+
             attn_output = F.scaled_dot_product_attention(
                 query_states,
                 key_states,
                 value_states,
                 attn_mask=(
-                    sdp_mask if sdp_mask is not None and sdp_mask.dim() == 3 else None
+                    sdp_mask if sdp_mask is not None and sdp_mask.dim() == 4 else None
                 ),
                 dropout_p=self.config.attention_dropout if self.training else 0.0,
                 is_causal=use_causal or (sdp_mask is None and is_causal_processing),

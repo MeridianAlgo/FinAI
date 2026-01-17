@@ -67,6 +67,9 @@ artifacts/
 # Keep version.json (small metadata file)
 !checkpoints/version.json
 
+# Local training state
+checkpoints/dataset_state.json
+
 # Datasets
 datasets/
 *.csv
