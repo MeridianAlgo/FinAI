@@ -1,24 +1,4 @@
 {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-  "current_dataset_idx": 3,
-=======
-  "current_dataset_idx": 4,
->>>>>>> Stashed changes
-=======
-  "current_dataset_idx": 5,
->>>>>>> Stashed changes
-=======
-  "current_dataset_idx": 7,
->>>>>>> Stashed changes
-=======
-  "current_dataset_idx": 8,
->>>>>>> Stashed changes
-=======
-  "current_dataset_idx": 10,
->>>>>>> Stashed changes
+  "current_dataset_idx": 11,
   "dataset_offsets": {}
 }
