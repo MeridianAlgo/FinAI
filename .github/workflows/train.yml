@@ -1,14 +1,12 @@
 name: Train Fin.AI
 
 on:
-  # Every 85 minutes (56 min training + 29 min buffer)
-  # Runs at: 00:00, 01:25, 02:50, 04:15, 05:40, 07:05, 08:30, 09:55, 11:20, 12:45, 14:10, 15:35, 17:00, 18:25, 19:50, 21:15, 22:40
+  # Every 80 minutes (18 runs per day)
+  # Runs at: 0:00, 1:20, 2:40, 4:00, 5:20, 6:40, 8:00, 9:20, 10:40, 12:00, 13:20, 14:40, 16:00, 17:20, 18:40, 20:00, 21:20, 22:40
   schedule:
-    - cron: '0 0,7,14,21 * * *'       # Hours: 0, 7, 14, 21 at minute 0
-    - cron: '25 1,8,15,22 * * *'      # Hours: 1, 8, 15, 22 at minute 25
-    - cron: '50 2,9,16,23 * * *'      # Hours: 2, 9, 16, 23 at minute 50
-    - cron: '15 4,11,18 * * *'        # Hours: 4, 11, 18 at minute 15
-    - cron: '40 5,12,19 * * *'        # Hours: 5, 12, 19 at minute 40
+    - cron: '0 0,4,8,12,16,20 * * *'
+    - cron: '20 1,5,9,13,17,21 * * *'
+    - cron: '40 2,6,10,14,18,22 * * *'
   
   # Manual trigger
   workflow_dispatch:
@@ -178,17 +176,16 @@ jobs:
           if wandb login --relogin "$WANDB_API_KEY"; then
             echo "✅ Wandb configured successfully"
           else
-            echo "❌ ERROR: Wandb login failed. Check your API key. Stopping action."
             exit 1
-fi
-       
+          fi
+
       - name: Force fresh start for V3 migration
         run: |
           echo "🧹 Forcing fresh start to ensure V3 architecture..."
           echo "Removing any existing checkpoints to avoid architecture conflicts"
           rm -rf checkpoints/model || true
           echo "✅ Ready for fresh V3 training"
-       
+
       - name: Train model
         id: train
         env:
@@ -202,6 +199,7 @@ fi
           HF_DATASETS_OFFLINE: "0"
           TMPDIR: "/tmp"
         run: |
+          set -o pipefail
           MAX_STEPS="${{ github.event.inputs.max_steps || '800' }}"
           
           # Create temp cache directories
@@ -213,14 +211,22 @@ fi
           df -h
           
           # Set timeout for training (80 minutes max)
+          # We use pipefail to catch errors in train.py even when piped to tee
           timeout 80m python train.py \
             --config config/model_config.yaml \
             --datasets config/datasets.yaml \
             --max-steps $MAX_STEPS \
-            --output-dir checkpoints 2>&1 | tee training_output.txt || {
-              echo "Training completed or timed out"
-              echo "Exit code: $?"
-          }
+            --output-dir checkpoints 2>&1 | tee training_output.txt
+          
+          TRAIN_STATUS=$?
+          if [ $TRAIN_STATUS -ne 0 ] && [ $TRAIN_STATUS -ne 124 ]; then
+            echo "❌ Training failed with exit code $TRAIN_STATUS"
+            exit $TRAIN_STATUS
+          elif [ $TRAIN_STATUS -eq 124 ]; then
+            echo "⚠️ Training timed out after 80 minutes"
+          else
+            echo "✅ Training completed successfully"
+          fi
           
           # Clean cache immediately after training to free space
           echo "Cleaning cache to free disk space..."
@@ -388,15 +394,21 @@ fi
           git config user.name "GitHub Action"
           
           # Stash local changes (like dataset_state.json) before pulling
+          # If stash fails, it just means no changes to stash
           git add .
-          git stash
+          git stash || echo "Nothing to stash"
           
           # Pull latest changes to avoid conflicts
           git fetch origin main
           git pull --rebase origin main
           
           # Restore local changes
-          git stash pop || echo "No changes to restore"
+          # If pop fails (e.g. merge conflict), we force it to keep local version
+          # This avoids corrupted files with merge markers
+          if ! git stash pop; then
+             echo "⚠️ Merge conflict during stash pop, favoring local changes"
+             git checkout --ours . || git checkout --theirs . || true
+          fi
           
           # Get run number for versioning
           RUN_NUM=${{ github.run_number }}
