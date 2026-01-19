@@ -8,10 +8,9 @@ and will fall back to a freshly-initialized model. It will try to load state dic
 import os
 
 import torch
-from transformers import AutoTokenizer
-
 from fin_ai.model.config import FinAIConfig
 from fin_ai.model.transformer import FinAIModel
+from transformers import AutoTokenizer
 
 QUESTIONS = [
     "What is the definition of market volatility?",

@@ -287,7 +287,9 @@ class FinAIAttention(nn.Module):
             repeat_factor = query_states.size(1) // value_states.size(1)
             if repeat_factor > 1:
                 # Use repeat_interleave to match heads (proper GQA expansion)
-                value_states = torch.repeat_interleave(value_states, repeat_factor, dim=1)
+                value_states = torch.repeat_interleave(
+                    value_states, repeat_factor, dim=1
+                )
             else:
                 raise ValueError(
                     f"Value heads ({value_states.size(1)}) must be <= query heads ({query_states.size(1)})"
@@ -362,13 +364,22 @@ class FinAIAttention(nn.Module):
             # Debug: print shapes before SDPA
             # print(f"SDPA shapes: q={query_states.shape}, k={key_states.shape}, v={value_states.shape}, mask={sdp_mask.shape if sdp_mask is not None else None}")
 
+            sdpa_attn_mask = None
+            if sdp_mask is not None:
+                # For 4D q/k/v ([batch, heads, q_len, head_dim]), PyTorch SDPA expects
+                # a mask that is broadcastable to [batch, heads, q_len, kv_len].
+                # Passing a 3D mask [batch, q_len, kv_len] can be interpreted as having
+                # its second dimension be heads, causing head-size mismatches.
+                if sdp_mask.dim() == 3:
+                    sdpa_attn_mask = sdp_mask.unsqueeze(1)
+                elif sdp_mask.dim() == 4:
+                    sdpa_attn_mask = sdp_mask
+
             attn_output = F.scaled_dot_product_attention(
                 query_states,
                 key_states,
                 value_states,
-                attn_mask=(
-                    sdp_mask if sdp_mask is not None and sdp_mask.dim() == 3 else None
-                ),
+                attn_mask=sdpa_attn_mask,
                 dropout_p=self.config.attention_dropout if self.training else 0.0,
                 is_causal=use_causal or (sdp_mask is None and is_causal_processing),
             )

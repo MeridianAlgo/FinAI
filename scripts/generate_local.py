@@ -8,7 +8,6 @@ Run:
 import argparse
 
 import torch
-
 from fin_ai.model.config import FinAIConfig
 from fin_ai.model.transformer import FinAIModel
 
