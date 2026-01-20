@@ -28,7 +28,7 @@ concurrency:
 jobs:
   train:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 100
     permissions:
       contents: write
     
@@ -210,10 +210,10 @@ jobs:
           echo "Disk space before training:"
           df -h
           
-          # Set timeout for training (80 minutes max)
+          # Set timeout for training (90 minutes max)
           # We use pipefail to catch errors in train.py even when piped to tee
           set +e
-          timeout 80m python train.py \
+          timeout 90m python train.py \
             --config config/model_config.yaml \
             --datasets config/datasets.yaml \
             --max-steps $MAX_STEPS \
@@ -224,7 +224,7 @@ jobs:
           if [ $TRAIN_STATUS -eq 0 ]; then
             echo "✅ Training completed successfully"
           elif [ $TRAIN_STATUS -eq 124 ]; then
-            echo "❌ Training timed out after 80 minutes"
+            echo "❌ Training timed out after 90 minutes"
             exit 124
           else
             echo "❌ Training failed with exit code $TRAIN_STATUS"
@@ -500,6 +500,7 @@ jobs:
     if: failure()
     steps:
       - name: Send failure email
+        if: ${{ secrets.EMAIL_FROM != '' }}
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: ${{ secrets.SMTP_SERVER }}
