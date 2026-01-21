@@ -13,7 +13,7 @@ A continuously learning transformer language model that trains automatically eve
 <div align="center">
 
 [![Model on Hugging Face](https://img.shields.io/badge/🤗_Model-Fin.AI-yellow)](https://huggingface.co/MeridianAlgo/Fin.AI)
-[![CI - Tests & Lint](https://github.com/MeridianAlgo/FinAI/actions/workflows/ci.yml/badge.svg)](https://github.com/MeridianAlgo/FinAI/actions/workflows/ci.yml)
+[![CI - Tests and Lint](https://github.com/MeridianAlgo/FinAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/MeridianAlgo/FinAI/actions/workflows/ci.yml)
 [![Training Workflow](https://github.com/MeridianAlgo/FinAI/actions/workflows/train.yml/badge.svg)](https://github.com/MeridianAlgo/FinAI/actions)
 [![Comet ML](https://img.shields.io/badge/Comet_ML-Experiments-blue?logo=comet)](https://www.comet.com/meridianalgo/fin-ai)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -210,7 +210,7 @@ python train.py --config config/model_config.yaml --datasets config/datasets.yam
 
 ### CI Status
 
-[![CI - Tests & Lint](https://github.com/MeridianAlgo/FinAI/actions/workflows/ci.yml/badge.svg)](https://github.com/MeridianAlgo/FinAI/actions/workflows/ci.yml)
+[![CI - Tests and Lint](https://github.com/MeridianAlgo/FinAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/MeridianAlgo/FinAI/actions/workflows/ci.yml)
 
 - **Tests**: Passing ✅
 - **Linting**: Passing ✅ (Black, Ruff, isort)
