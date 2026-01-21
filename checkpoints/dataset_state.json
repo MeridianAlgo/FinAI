@@ -1,5 +1,5 @@
 {
-  "current_dataset_idx": 12,
+  "current_dataset_idx": 13,
   "dataset_offsets": {
     "TinyStories": 10000,
     "gsm8k": 7473,
@@ -11,6 +11,7 @@
     "commonsense_qa": 9741,
     "hellaswag": 10000,
     "winogrande": 10000,
-    "boolq": 9427
+    "boolq": 9427,
+    "race": 10000
   }
 }
