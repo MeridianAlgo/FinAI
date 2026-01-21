@@ -1,5 +1,5 @@
 {
-  "current_dataset_idx": 9,
+  "current_dataset_idx": 10,
   "dataset_offsets": {
     "TinyStories": 10000,
     "gsm8k": 7473,
@@ -8,6 +8,7 @@
     "yelp_review_full": 10011,
     "cnn_dailymail": 10000,
     "billsum": 10000,
-    "commonsense_qa": 9741
+    "commonsense_qa": 9741,
+    "hellaswag": 10000
   }
 }
