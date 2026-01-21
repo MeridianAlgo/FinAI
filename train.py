@@ -94,7 +94,9 @@ def main():
     training_config = TrainingConfig.from_yaml(args.config)
 
     if args.size_preset:
-        model_config = FinAIConfig(**{**model_config.to_dict(), "size_preset": args.size_preset})
+        model_config = FinAIConfig(
+            **{**model_config.to_dict(), "size_preset": args.size_preset}
+        )
 
     # Apply overrides
     if args.output_dir:

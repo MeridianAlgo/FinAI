@@ -611,6 +611,7 @@ class FinAIModel(FinAIPreTrainedModel, GenerationMixin):
             )
 
             if self.gradient_checkpointing and self.training and not use_cache:
+
                 def custom_forward(*inputs):
                     return layer(
                         inputs[0],
