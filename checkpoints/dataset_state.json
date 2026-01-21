@@ -1,7 +1,8 @@
 {
-  "current_dataset_idx": 2,
+  "current_dataset_idx": 4,
   "dataset_offsets": {
     "TinyStories": 10000,
-    "gsm8k": 7473
+    "gsm8k": 7473,
+    "imdb": 10000
   }
 }
