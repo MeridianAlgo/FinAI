@@ -1,5 +1,5 @@
 {
-  "current_dataset_idx": 8,
+  "current_dataset_idx": 9,
   "dataset_offsets": {
     "TinyStories": 10000,
     "gsm8k": 7473,
@@ -7,6 +7,7 @@
     "ag_news": 10000,
     "yelp_review_full": 10011,
     "cnn_dailymail": 10000,
-    "billsum": 10000
+    "billsum": 10000,
+    "commonsense_qa": 9741
   }
 }
