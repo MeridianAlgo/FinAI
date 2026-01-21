@@ -6,9 +6,37 @@ from transformers import PretrainedConfig
 class FinAIConfig(PretrainedConfig):
     model_type = "finai"
 
+    PRESETS = {
+        # CPU-friendly, fast iteration
+        "micro": {
+            "n_layers": 4,
+            "n_heads": 4,
+            "n_kv_heads": 2,
+            "embed_dim": 256,
+            "ff_dim": 1024,
+        },
+        # Small but capable; good quality-per-FLOP on consumer CPUs
+        "small": {
+            "n_layers": 8,
+            "n_heads": 8,
+            "n_kv_heads": 4,
+            "embed_dim": 512,
+            "ff_dim": 1792,
+        },
+        # Heavier; better quality but slower on CPU
+        "base": {
+            "n_layers": 12,
+            "n_heads": 12,
+            "n_kv_heads": 6,
+            "embed_dim": 768,
+            "ff_dim": 3072,
+        },
+    }
+
     def __init__(
         self,
         vocab_size=50257,
+        size_preset: str | None = None,
         n_layers=8,
         n_heads=8,
         n_kv_heads=4,
@@ -29,6 +57,20 @@ class FinAIConfig(PretrainedConfig):
         output_hidden_states=False,
         **kwargs,
     ):
+        # Apply preset first, then allow explicit args to override.
+        self.size_preset = size_preset
+        if size_preset:
+            preset = self.PRESETS.get(str(size_preset).lower())
+            if preset is None:
+                raise ValueError(
+                    f"Unknown size_preset={size_preset!r}. Valid: {sorted(self.PRESETS.keys())}"
+                )
+            n_layers = preset.get("n_layers", n_layers)
+            n_heads = preset.get("n_heads", n_heads)
+            n_kv_heads = preset.get("n_kv_heads", n_kv_heads)
+            embed_dim = preset.get("embed_dim", embed_dim)
+            ff_dim = preset.get("ff_dim", ff_dim)
+
         self.vocab_size = vocab_size
         self.n_layers = n_layers
         self.n_heads = n_heads

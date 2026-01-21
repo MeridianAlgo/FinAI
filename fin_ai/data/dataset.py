@@ -184,7 +184,12 @@ def load_datasets_from_config(
 
         texts = []
         # Chunk size to load in memory
-        chunk_size = min(ds_max_samples or 10000, 10000)
+        effective_max_samples = (
+            max_samples
+            if max_samples is not None
+            else (ds_max_samples if ds_max_samples is not None else 10000)
+        )
+        chunk_size = min(int(effective_max_samples), 10000)
 
         if force_streaming:
             # For streaming, skip 'offset' items from source
@@ -348,6 +353,15 @@ def tokenize_and_chunk(
         chunk = all_tokens[i : i + max_seq_len]
         if len(chunk) == max_seq_len:  # Only use complete chunks
             chunks.append(chunk)
+
+    if not chunks and all_tokens:
+        chunk = all_tokens[:max_seq_len]
+        if len(chunk) < max_seq_len:
+            pad_id = tokenizer.eos_token_id
+            if pad_id is None:
+                pad_id = 0
+            chunk = chunk + [pad_id] * (max_seq_len - len(chunk))
+        chunks = [chunk]
 
     return chunks
 

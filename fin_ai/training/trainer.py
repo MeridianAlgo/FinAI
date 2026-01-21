@@ -40,6 +40,7 @@ class TrainingConfig:
     wandb_project: str = "fin-ai"
     fp16: bool = True
     plot_steps: int = 500
+    gradient_checkpointing: bool = False
 
     @classmethod
     def from_yaml(cls, path: str):
@@ -159,6 +160,17 @@ class FinAITrainer:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model.to(self.device)
 
+        # Enable gradient checkpointing on CPU by default for better memory efficiency
+        if self.device.type != "cuda":
+            self.config.gradient_checkpointing = True
+        if getattr(self.config, "gradient_checkpointing", False) and hasattr(
+            self.model, "gradient_checkpointing_enable"
+        ):
+            try:
+                self.model.gradient_checkpointing_enable()
+            except Exception:
+                pass
+
         self.optimizer = self._create_optimizer()
         self.scheduler = self._create_scheduler()
         self.scaler = (
@@ -169,7 +181,12 @@ class FinAITrainer:
         self.epoch = 0
 
         # Wandb
-        if self.config.use_wandb:
+        wandb_disabled = os.environ.get("WANDB_DISABLED", "false").lower() in {
+            "1",
+            "true",
+            "yes",
+        }
+        if self.config.use_wandb and not wandb_disabled:
             try:
                 import wandb
 
@@ -517,7 +534,7 @@ class FinAITrainer:
 
         # Save model in Hugging Face format to 'model' subdir
         model_save_path = os.path.join(self.config.output_dir, "model")
-        self.model.save_pretrained(model_save_path)
+        self.model.save_pretrained(model_save_path, safe_serialization=True)
 
         if (
             self.global_step % (self.config.save_steps * 5) == 0

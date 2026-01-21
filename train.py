@@ -77,6 +77,12 @@ def main():
         default=None,
         help="Limit dataset samples (for testing)",
     )
+    parser.add_argument(
+        "--size-preset",
+        type=str,
+        default=None,
+        help="Override model size preset (e.g. micro, small, base)",
+    )
     args = parser.parse_args()
 
     # Clean memory before starting
@@ -86,6 +92,9 @@ def main():
     print("Loading configurations...")
     model_config = FinAIConfig.from_yaml(args.config)
     training_config = TrainingConfig.from_yaml(args.config)
+
+    if args.size_preset:
+        model_config = FinAIConfig(**{**model_config.to_dict(), "size_preset": args.size_preset})
 
     # Apply overrides
     if args.output_dir:
@@ -99,6 +108,10 @@ def main():
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     model_config.vocab_size = len(tokenizer)
+
+    # CPU-friendly defaults
+    if not torch.cuda.is_available():
+        model_config.use_flash_attention = False
 
     # Initialize dataset cycler
     dataset_cycler = DatasetCycler(

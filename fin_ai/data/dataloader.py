@@ -1,5 +1,6 @@
 """DataLoader utilities for Fin.AI"""
 
+import torch
 from torch.utils.data import DataLoader
 
 from fin_ai.data.dataset import FinAIDataset
@@ -17,5 +18,5 @@ def create_dataloader(
         batch_size=batch_size,
         shuffle=shuffle,
         num_workers=num_workers,
-        pin_memory=True,
+        pin_memory=torch.cuda.is_available(),
     )

@@ -77,6 +77,10 @@ datasets/
 # Training outputs
 training_output.txt
 
+# Local smoke-test outputs
+checkpoints_smoketest*/
+checkpoints_smoketest2/
+
 # Misc
 *.tmp
 *.temp

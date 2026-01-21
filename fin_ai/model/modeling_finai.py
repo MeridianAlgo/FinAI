@@ -8,6 +8,7 @@ from typing import Optional, Tuple, Union
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.utils.checkpoint
 from transformers import PreTrainedModel
 from transformers.generation.configuration_utils import GenerationConfig
 from transformers.generation.utils import GenerationMixin
@@ -540,6 +541,10 @@ class FinAIModel(FinAIPreTrainedModel, GenerationMixin):
         self.gradient_checkpointing = False
         self.post_init()
 
+    def _set_gradient_checkpointing(self, module, value=False):
+        if isinstance(module, FinAIModel):
+            module.gradient_checkpointing = value
+
     def get_input_embeddings(self):
         return self.embed_tokens
 
@@ -605,14 +610,33 @@ class FinAIModel(FinAIPreTrainedModel, GenerationMixin):
                 past_key_values[idx] if past_key_values is not None else None
             )
 
-            layer_outputs = layer(
-                hidden_states,
-                attention_mask=attention_mask,
-                position_ids=position_ids,
-                past_key_value=past_key_value,
-                output_attentions=output_attentions,
-                use_cache=use_cache,
-            )
+            if self.gradient_checkpointing and self.training and not use_cache:
+                def custom_forward(*inputs):
+                    return layer(
+                        inputs[0],
+                        attention_mask=inputs[1],
+                        position_ids=inputs[2],
+                        past_key_value=None,
+                        output_attentions=output_attentions,
+                        use_cache=False,
+                    )
+
+                layer_outputs = torch.utils.checkpoint.checkpoint(
+                    custom_forward,
+                    hidden_states,
+                    attention_mask,
+                    position_ids,
+                    use_reentrant=False,
+                )
+            else:
+                layer_outputs = layer(
+                    hidden_states,
+                    attention_mask=attention_mask,
+                    position_ids=position_ids,
+                    past_key_value=past_key_value,
+                    output_attentions=output_attentions,
+                    use_cache=use_cache,
+                )
 
             hidden_states = layer_outputs[0]
 

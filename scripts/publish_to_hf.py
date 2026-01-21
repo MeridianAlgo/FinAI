@@ -20,6 +20,19 @@ def main():
     args = parser.parse_args()
 
     token = os.environ.get("HF_TOKEN")
+    if not token and os.path.exists(".env"):
+        try:
+            with open(".env", "r", encoding="utf-8") as f:
+                for line in f:
+                    s = line.strip()
+                    if not s or s.startswith("#") or "=" not in s:
+                        continue
+                    k, v = s.split("=", 1)
+                    if k.strip() == "HF_TOKEN":
+                        token = v.strip().strip('"').strip("'")
+                        break
+        except Exception:
+            token = token
     if not token:
         raise RuntimeError(
             "HF_TOKEN not set in env. Provide a token with write access."

@@ -7,7 +7,7 @@ model:
   model_type: "finai"
   size_preset: "small"  # ~40M params, good balance of quality and speed
   vocab_size: 50257
-  max_seq_len: 2048 # Increased from 512 for better context
+  max_seq_len: 1024 # Reduced for much cheaper CPU training; can be increased on GPU
   dropout: 0.1
   activation: "swiglu"
   use_flash_attention: true
@@ -30,7 +30,7 @@ training:
   adam_epsilon: 1.0e-8
 
 data:
-  max_seq_len: 2048
+  max_seq_len: 1024
   num_workers: 0
 
 checkpointing:
