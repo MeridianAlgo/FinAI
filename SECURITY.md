@@ -104,7 +104,7 @@ Send a detailed report to the repository maintainers via:
 
 ### API Keys
 
-- **Wandb API Key**: Store in GitHub Secrets
+- **Comet ML API Key**: Store in GitHub Secrets
 - **Hugging Face Token**: Optional, store securely if used
 
 ### File Operations

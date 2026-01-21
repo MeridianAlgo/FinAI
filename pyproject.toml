@@ -16,7 +16,7 @@ dependencies = [
     "datasets",
     "tqdm",
     "pyyaml",
-    "wandb",
+    "comet-ml",
     "pytest",
 ]
 

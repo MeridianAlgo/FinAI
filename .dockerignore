@@ -10,7 +10,7 @@ env/
 checkpoints/
 .git/
 .github/
-wandb/
+.comet/
 downloaded_model/
 *.log
 *.sqlite

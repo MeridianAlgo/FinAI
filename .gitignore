@@ -47,7 +47,7 @@ Thumbs.db
 # Logs
 *.log
 logs/
-wandb/
+.comet/
 
 # Model files (stored on Hugging Face, not GitHub)
 checkpoints/*.pt
