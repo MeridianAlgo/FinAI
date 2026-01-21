@@ -2,7 +2,7 @@
 
 **WORK IN PROGRESS – EXPERIMENTAL RESEARCH PROJECT**
 
-A continuously learning transformer language model that trains automatically every ~1.5 hours on diverse datasets using GitHub Actions.
+A continuously learning transformer language model that trains automatically every hour on diverse datasets using GitHub Actions.
 
 > **Important Notice**  
 > Fin.AI is an **experimental research prototype** and **work in progress**.  
@@ -24,29 +24,55 @@ A continuously learning transformer language model that trains automatically eve
 
 ## Overview
 
-Fin.AI is an experimental GPT-style language model that trains **24/7** with a rotating curriculum of 24 different dataset families.
+Fin.AI is an experimental GPT-style language model that trains **24/7** with a rotating curriculum of diverse datasets. The model is designed for efficiency on CPU and consumer hardware, using modern transformer architecture with gradient checkpointing and safetensors for safe, fast model distribution.
 
 **Core characteristics:**
 
 - Fully automated hourly training (GitHub Actions)
 - 24 diverse dataset categories (news, math, code, dialogue, science, instructions...)
-- Focus rotates every ~1.5 hours → targeted capability improvement
+- Focus rotates every hour → targeted capability improvement
 - Models automatically pushed to Hugging Face after each run
 - Training metrics publicly visible on Weights & Biases
-- Designed to run efficiently even on free GitHub runners
+- CPU-optimized with gradient checkpointing for memory efficiency
+- Safe serialization using safetensors format
 
 > This is **not** a production-ready model. Expect evolving (and sometimes unstable) behavior.
+
+## Model Architecture (V3)
+
+Fin.AI V3 features a modern transformer architecture optimized for CPU/consumer hardware:
+
+- **Architecture**: GPT-style decoder-only transformer
+- **Attention**: Grouped Query Attention (GQA) with Flash Attention support
+- **Position Encoding**: Rotary Position Embeddings (RoPE)
+- **Activation**: SwiGLU
+- **Normalization**: RMSNorm
+- **Framework**: Built on HuggingFace Transformers
+- **Memory Optimization**: Gradient checkpointing enabled by default on CPU
+- **Safe Serialization**: Uses safetensors for secure, efficient model storage
+
+### Model Sizes (Size Presets)
+
+| Preset | Parameters | Layers | Heads | KV Heads | Hidden Dim | FF Dim | Recommended Use Case |
+|--------|------------|--------|-------|----------|------------|--------|----------------------|
+| micro  | ~16M       | 4      | 4     | 2        | 256        | 1024   | Very fast experiments, CI training |
+| small  | ~48M       | 8      | 8     | 4        | 512        | 1792   | Default – good CPU performance |
+| base   | ~124M      | 12     | 12    | 6        | 768        | 3072   | Higher quality (GPU recommended) |
+
+**Current deployment**: Micro (16M parameters) - optimized for GitHub Actions CPU runners
 
 ## Key Features
 
 | Feature                  | Description                                                                |
 |--------------------------|----------------------------------------------------------------------------|
-| Automated Continuous Training | Trains every ~1.5 hours – completely hands-free                         |
+| Automated Continuous Training | Trains every hour – completely hands-free                                 |
 | Rotating Curriculum      | 24 dataset families covering very different capabilities                  |
 | Hugging Face Integration | Latest checkpoint pushed automatically after every training cycle        |
 | Real-time Monitoring     | Full metrics, loss curves and samples on Weights & Biases                 |
-| Flexible Scale           | Easily switch between ~15M and ~350M+ parameters                           |
+| Flexible Scale           | Easily switch between ~16M and ~124M parameters                            |
 | CPU-friendly             | Optimized to train efficiently on standard GitHub Actions runners         |
+| Gradient Checkpointing   | Memory-efficient training on consumer hardware                            |
+| Safe Serialization       | Uses safetensors for secure, fast model loading                           |
 
 ## Training Curriculum (24-cycle daily rotation)
 
@@ -65,49 +91,190 @@ Fin.AI is an experimental GPT-style language model that trains **24/7** with a r
 
 ## Quick Start
 
-### Download Latest Model
+### Installation
+
+```bash
+pip install transformers torch huggingface_hub
+```
+
+### Download Latest Model from Hugging Face
 
 ```python
-from huggingface_hub import hf_hub_download
+from huggingface_hub import snapshot_download
 
-hf_hub_download("MeridianAlgo/Fin.AI", "model.pt",   local_dir="./model")
-hf_hub_download("MeridianAlgo/Fin.AI", "config.json", local_dir="./model")
+# Download the entire model directory
+model_path = snapshot_download(repo_id="MeridianAlgo/Fin.AI")
+
+# Or download specific files
+from huggingface_hub import hf_hub_download
+config_path = hf_hub_download("MeridianAlgo/Fin.AI", "config.json")
+model_path = hf_hub_download("MeridianAlgo/Fin.AI", "model.safetensors")
 ```
 
 ### Basic Inference Example
 
 ```python
-from fin_ai.model import FinAIModel
+from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
 
-model = FinAIModel.from_pretrained("./model")
-tokenizer = model.tokenizer
+# Load model and tokenizer from Hugging Face
+model = AutoModelForCausalLM.from_pretrained(
+    "MeridianAlgo/Fin.AI",
+    trust_remote_code=True,
+    torch_dtype=torch.float32
+)
+tokenizer = AutoTokenizer.from_pretrained("gpt2")
 
+# Set padding token if not set
+if tokenizer.pad_token is None:
+    tokenizer.pad_token = tokenizer.eos_token
+
+# Generate text
 prompt = "The future of artificial intelligence is"
 inputs = tokenizer(prompt, return_tensors="pt")
 
-outputs = model.generate(**inputs, max_length=100, temperature=0.8)
-print(tokenizer.decode(outputs[0]))
+with torch.no_grad():
+    outputs = model.generate(
+        **inputs,
+        max_length=100,
+        temperature=0.8,
+        top_p=0.95,
+        do_sample=True,
+        pad_token_id=tokenizer.pad_token_id
+    )
+
+print(tokenizer.decode(outputs[0], skip_special_tokens=True))
 ```
 
-> **Warning**: Output quality is experimental and may contain factual errors, biases, or inappropriate content.
+### Advanced Usage with Custom Generation Config
 
-## Model Sizes (V3)
+```python
+from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig
 
-| Preset  | Parameters | Layers | Heads | Hidden Dim | Recommended Use Case             |
-|---------|------------|--------|-------|------------|----------------------------------|
-| tiny    | ~15M       | 6      | 4     | 256        | Very fast experiments            |
-| small   | ~40M       | 8      | 8     | 512        | Default – good CPU performance   |
-| medium  | ~120M      | 12     | 12    | 768        | Noticeably higher quality        |
-| large   | ~350M      | 24     | 16    | 1024       | Best results (GPU recommended)   |
+model = AutoModelForCausalLM.from_pretrained(
+    "MeridianAlgo/Fin.AI",
+    trust_remote_code=True
+)
+tokenizer = AutoTokenizer.from_pretrained("gpt2")
+
+# Custom generation config
+generation_config = GenerationConfig(
+    max_new_tokens=200,
+    temperature=0.7,
+    top_k=50,
+    top_p=0.95,
+    repetition_penalty=1.1,
+    do_sample=True,
+    pad_token_id=tokenizer.eos_token_id
+)
+
+prompt = "Explain machine learning in simple terms:"
+inputs = tokenizer(prompt, return_tensors="pt")
+
+outputs = model.generate(**inputs, generation_config=generation_config)
+print(tokenizer.decode(outputs[0], skip_special_tokens=True))
+```
+
+### Local Training
+
+```bash
+# Clone the repository
+git clone https://github.com/MeridianAlgo/FinAI.git
+cd FinAI
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run training with default settings
+python train.py --config config/model_config.yaml --datasets config/datasets.yaml
+
+# Run training with specific size preset
+python train.py --config config/model_config.yaml --datasets config/datasets.yaml --size-preset micro --max-steps 1000
+```
 
 ## Current Project Status
 
-[![Status](https://github.com/MeridianAlgo/FinAI/actions/workflows/train.yml/badge.svg)](https://github.com/MeridianAlgo/FinAI/actions)
+### Training Status
 
-- Latest checkpoint: [huggingface.co/MeridianAlgo/Fin.AI](https://huggingface.co/MeridianAlgo/Fin.AI)
-- Training pipeline runs: [GitHub Actions](https://github.com/MeridianAlgo/FinAI/actions)
-- Live metrics & samples: [Weights & Biases](https://wandb.ai/meridianalgo-meridianalgo/fin-ai)
+[![Training Workflow](https://github.com/MeridianAlgo/FinAI/actions/workflows/train.yml/badge.svg)](https://github.com/MeridianAlgo/FinAI/actions)
+
+- **Latest checkpoint**: [huggingface.co/MeridianAlgo/Fin.AI](https://huggingface.co/MeridianAlgo/Fin.AI)
+- **Training pipeline**: [GitHub Actions](https://github.com/MeridianAlgo/FinAI/actions)
+- **Live metrics & samples**: [Weights & Biases](https://wandb.ai/meridianalgo-meridianalgo/fin-ai)
+- **Current model size**: Micro (~16M parameters)
+- **Training frequency**: Every hour
+- **Last training run**: See GitHub Actions for latest status
+
+### CI Status
+
+[![CI - Tests & Lint](https://github.com/MeridianAlgo/FinAI/actions/workflows/ci.yml/badge.svg)](https://github.com/MeridianAlgo/FinAI/actions/workflows/ci.yml)
+
+- **Tests**: Passing ✅
+- **Linting**: Passing ✅ (Black, Ruff, isort)
+- **Python versions**: 3.10, 3.11, 3.12
+
+## Limitations
+
+- **Experimental**: This is a research project, not production-ready
+- **Accuracy**: May produce factual errors or hallucinations
+- **Bias**: May reflect biases present in training data
+- **Safety**: No safety alignment or RLHF applied
+- **Context**: Limited to 1024 tokens (configurable)
+- **Scale**: Relatively small (16M parameters in current deployment)
+- **Training**: Continuously evolving model with unstable behavior
+
+## Technical Details
+
+### Model Configuration
+
+```yaml
+model:
+  size_preset: micro  # micro, small, or base
+  vocab_size: 50257
+  max_seq_len: 1024
+  dropout: 0.1
+  activation: swiglu
+  use_flash_attention: true  # Auto-disabled on CPU
+  rope_theta: 10000.0
+
+training:
+  batch_size: 4
+  gradient_accumulation_steps: 8
+  learning_rate: 5e-4
+  max_steps: 800
+  gradient_checkpointing: true  # Auto-enabled on CPU
+  use_wandb: true
+```
+
+### Hardware Requirements
+
+- **Minimum**: 4GB RAM, any modern CPU
+- **Recommended**: 8GB+ RAM, multi-core CPU
+- **GPU**: Optional but recommended for larger models (small, base presets)
+- **Storage**: ~500MB for model files
+
+### Performance Characteristics
+
+- **Training speed**: ~100-200 steps/hour on GitHub Actions CPU runners (micro preset)
+- **Inference speed**: ~50-100 tokens/second on modern CPU
+- **Memory usage**: ~200MB RAM during inference (micro preset)
+
+## Contributing
+
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## License
+
+MIT License - See [LICENSE](LICENSE)
+
+
+## Links
+
+- **GitHub**: [MeridianAlgo/FinAI](https://github.com/MeridianAlgo/FinAI)
+- **Hugging Face**: [MeridianAlgo/Fin.AI](https://huggingface.co/MeridianAlgo/Fin.AI)
+- **Training Metrics**: [Weights & Biases](https://wandb.ai/meridianalgo-meridianalgo/fin-ai)
+- **Issues**: [GitHub Issues](https://github.com/MeridianAlgo/FinAI/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/MeridianAlgo/FinAI/discussions)
 
 ---
 
