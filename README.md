@@ -198,6 +198,7 @@ python train.py --config config/model_config.yaml --datasets config/datasets.yam
 ### Training Status
 
 [![Training Workflow](https://github.com/MeridianAlgo/FinAI/actions/workflows/train.yml/badge.svg)](https://github.com/MeridianAlgo/FinAI/actions/workflows/train.yml)
+[![Daily Evaluation](https://github.com/MeridianAlgo/FinAI/actions/workflows/daily-eval.yml/badge.svg)](https://github.com/MeridianAlgo/FinAI/actions/workflows/daily-eval.yml)
 [![Comet ML](https://img.shields.io/badge/Comet_ML-Experiments-blue?logo=comet)](https://www.comet.com/meridianalgo/fin-ai)
 
 - **Latest checkpoint**: [huggingface.co/MeridianAlgo/Fin.AI](https://huggingface.co/MeridianAlgo/Fin.AI)
@@ -214,6 +215,22 @@ python train.py --config config/model_config.yaml --datasets config/datasets.yam
 - **Tests**: Passing ✅
 - **Linting**: Passing ✅ (Black, Ruff, isort)
 - **Python versions**: 3.10, 3.11, 3.12
+
+<!-- DAILY_EVAL_START -->
+### 🤖 Daily Model Evolution
+
+Track how the model's responses evolve as it trains continuously!
+
+**Test Prompt:** "The future of artificial intelligence is"
+
+**Latest Responses (Last 7 Days):**
+
+| Date | Response Preview |
+|------|------------------|
+| *Awaiting first evaluation* | Run the daily-eval workflow to see results |
+
+*The model is evaluated daily with the same prompt to showcase its learning progress.*
+<!-- DAILY_EVAL_END -->
 
 ## Limitations
 

@@ -1,0 +1,215 @@
+name: Daily Model Evaluation
+
+on:
+  # Run daily at 6 AM UTC (after several training runs)
+  schedule:
+    - cron: '0 6 * * *'
+  
+  # Manual trigger
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: '3.10'
+  HF_REPO_ID: 'MeridianAlgo/Fin.AI'
+  TEST_PROMPT: 'The future of artificial intelligence is'
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install transformers torch huggingface_hub
+
+      - name: Download latest model from Hugging Face
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python << 'EOF'
+          import os
+          from huggingface_hub import snapshot_download
+          
+          token = os.environ.get("HF_TOKEN")
+          repo_id = "${{ env.HF_REPO_ID }}"
+          
+          print(f"Downloading model from {repo_id}...")
+          try:
+              model_path = snapshot_download(
+                  repo_id=repo_id,
+                  token=token,
+                  local_dir="eval_model",
+                  ignore_patterns=["*.md", "*.txt", "*.json"]
+              )
+              print(f"✅ Model downloaded to {model_path}")
+          except Exception as e:
+              print(f"❌ Failed to download model: {e}")
+              exit(1)
+          EOF
+
+      - name: Run model evaluation
+        id: eval
+        run: |
+          python << 'EOF'
+          import torch
+          from transformers import AutoModelForCausalLM, AutoTokenizer
+          from datetime import datetime
+          import json
+          import os
+          
+          prompt = "${{ env.TEST_PROMPT }}"
+          
+          print(f"Loading model from eval_model...")
+          try:
+              model = AutoModelForCausalLM.from_pretrained(
+                  "eval_model",
+                  trust_remote_code=True,
+                  torch_dtype=torch.float32
+              )
+              tokenizer = AutoTokenizer.from_pretrained("gpt2")
+              
+              if tokenizer.pad_token is None:
+                  tokenizer.pad_token = tokenizer.eos_token
+              
+              model.eval()
+              
+              print(f"\n{'='*60}")
+              print(f"DAILY EVALUATION - {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}")
+              print(f"{'='*60}")
+              print(f"Prompt: {prompt}")
+              print(f"{'='*60}\n")
+              
+              inputs = tokenizer(prompt, return_tensors="pt")
+              
+              with torch.no_grad():
+                  outputs = model.generate(
+                      **inputs,
+                      max_new_tokens=100,
+                      temperature=0.8,
+                      top_p=0.95,
+                      do_sample=True,
+                      pad_token_id=tokenizer.pad_token_id
+                  )
+              
+              generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+              
+              print(f"Generated Text:\n{generated_text}\n")
+              print(f"{'='*60}\n")
+              
+              # Save result
+              result = {
+                  "date": datetime.utcnow().strftime('%Y-%m-%d'),
+                  "timestamp": datetime.utcnow().isoformat(),
+                  "prompt": prompt,
+                  "response": generated_text,
+                  "model_params": model.config.num_parameters if hasattr(model.config, 'num_parameters') else "unknown"
+              }
+              
+              # Append to history file
+              history_file = "daily_eval_history.json"
+              history = []
+              if os.path.exists(history_file):
+                  with open(history_file, 'r') as f:
+                      history = json.load(f)
+              
+              history.append(result)
+              
+              # Keep only last 30 days
+              history = history[-30:]
+              
+              with open(history_file, 'w') as f:
+                  json.dump(history, f, indent=2)
+              
+              # Set output for badge
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                  f.write(f"status=success\n")
+                  f.write(f"date={result['date']}\n")
+                  # Truncate response for badge (first 50 chars)
+                  short_response = generated_text[len(prompt):].strip()[:50]
+                  f.write(f"response={short_response}...\n")
+              
+              print("✅ Evaluation complete!")
+              
+          except Exception as e:
+              print(f"❌ Evaluation failed: {e}")
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                  f.write(f"status=failed\n")
+                  f.write(f"date={datetime.utcnow().strftime('%Y-%m-%d')}\n")
+              exit(1)
+          EOF
+
+      - name: Update README with latest evaluation
+        if: success()
+        run: |
+          python << 'EOF'
+          import json
+          from datetime import datetime
+          
+          # Read history
+          with open('daily_eval_history.json', 'r') as f:
+              history = json.load(f)
+          
+          # Generate markdown table for last 7 days
+          table = "| Date | Response Preview |\n|------|------------------|\n"
+          for entry in history[-7:]:
+              date = entry['date']
+              response = entry['response'][len(entry['prompt']):].strip()[:80]
+              table += f"| {date} | {response}... |\n"
+          
+          # Read README
+          with open('README.md', 'r', encoding='utf-8') as f:
+              readme = f.read()
+          
+          # Find and replace the daily eval section
+          start_marker = "<!-- DAILY_EVAL_START -->"
+          end_marker = "<!-- DAILY_EVAL_END -->"
+          
+          if start_marker in readme and end_marker in readme:
+              start_idx = readme.index(start_marker)
+              end_idx = readme.index(end_marker) + len(end_marker)
+              
+              new_section = f"{start_marker}\n### 🤖 Daily Model Evolution\n\n"
+              new_section += f"**Test Prompt:** \"{history[-1]['prompt']}\"\n\n"
+              new_section += f"**Latest Responses (Last 7 Days):**\n\n{table}\n"
+              new_section += f"\n*Updated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}*\n{end_marker}"
+              
+              readme = readme[:start_idx] + new_section + readme[end_idx:]
+              
+              with open('README.md', 'w', encoding='utf-8') as f:
+                  f.write(readme)
+              
+              print("✅ README updated with latest evaluation")
+          else:
+              print("⚠️  Daily eval markers not found in README")
+          EOF
+
+      - name: Commit and push changes
+        if: success()
+        run: |
+          git config user.email "action@github.com"
+          git config user.name "GitHub Action"
+          
+          git add daily_eval_history.json README.md
+          
+          if ! git diff --quiet --cached; then
+            git commit -m "🤖 Daily model evaluation - $(date +'%Y-%m-%d') [skip ci]"
+            git push origin main
+          else
+            echo "No changes to commit"
+          fi
+
