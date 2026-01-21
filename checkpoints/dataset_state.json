@@ -1,5 +1,5 @@
 {
-  "current_dataset_idx": 20,
+  "current_dataset_idx": 21,
   "dataset_offsets": {
     "TinyStories": 10000,
     "gsm8k": 7473,
@@ -19,6 +19,7 @@
     "trivia_qa": 10000,
     "hotpot_qa": 10000,
     "ms_marco": 10007,
-    "duorc": 10000
+    "duorc": 10000,
+    "amazon_polarity": 10000
   }
 }
