@@ -84,3 +84,4 @@ checkpoints_smoketest2/
 # Misc
 *.tmp
 *.temp
+/node_modules
