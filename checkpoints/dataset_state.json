@@ -1,5 +1,5 @@
 {
-  "current_dataset_idx": 18,
+  "current_dataset_idx": 19,
   "dataset_offsets": {
     "TinyStories": 10000,
     "gsm8k": 7473,
@@ -17,6 +17,7 @@
     "c4": 10000,
     "openwebtext": 10000,
     "trivia_qa": 10000,
-    "hotpot_qa": 10000
+    "hotpot_qa": 10000,
+    "ms_marco": 10007
   }
 }
