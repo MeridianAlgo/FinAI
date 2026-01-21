@@ -517,18 +517,28 @@ class FinAITrainer:
 
     def _save_checkpoint(self):
         os.makedirs(self.config.output_dir, exist_ok=True)
+
+        # Get current dataset name for dataset-specific checkpoints
+        dataset_name = (
+            self.dataset_cycler.current_dataset_name
+            if self.dataset_cycler
+            else "unknown"
+        )
+
         checkpoint = {
             "model_state_dict": self.model.state_dict(),
             "optimizer_state_dict": self.optimizer.state_dict(),
             "scheduler_state_dict": self.scheduler.state_dict(),
             "global_step": self.global_step,
             "epoch": self.epoch,
+            "dataset": dataset_name,
         }
         if self.scaler:
             checkpoint["scaler_state_dict"] = self.scaler.state_dict()
 
+        # Save with dataset-specific name
         checkpoint_path = os.path.join(
-            self.config.output_dir, f"checkpoint-{self.global_step}.pt"
+            self.config.output_dir, f"checkpoint-{dataset_name}-{self.global_step}.pt"
         )
         torch.save(checkpoint, checkpoint_path)
 
@@ -536,15 +546,15 @@ class FinAITrainer:
         model_save_path = os.path.join(self.config.output_dir, "model")
         self.model.save_pretrained(model_save_path, safe_serialization=True)
 
-        # Clean up old checkpoints based on save_total_limit
+        # Clean up old checkpoints for this dataset based on save_total_limit
         if self.config.save_total_limit > 0:
             checkpoints = [
                 f
                 for f in os.listdir(self.config.output_dir)
-                if f.startswith("checkpoint-") and f.endswith(".pt")
+                if f.startswith(f"checkpoint-{dataset_name}-") and f.endswith(".pt")
             ]
             if len(checkpoints) > self.config.save_total_limit:
-                checkpoints.sort(key=lambda x: int(x.split("-")[1].split(".")[0]))
+                checkpoints.sort(key=lambda x: int(x.split("-")[-1].split(".")[0]))
                 for old_checkpoint in checkpoints[: -self.config.save_total_limit]:
                     old_path = os.path.join(self.config.output_dir, old_checkpoint)
                     try:
@@ -555,24 +565,33 @@ class FinAITrainer:
         if (
             self.global_step % (self.config.save_steps * 5) == 0
         ):  # Only log every 5th save
-            print(f"Checkpoint saved at step {self.global_step}")
+            print(
+                f"Checkpoint saved at step {self.global_step} for dataset {dataset_name}"
+            )
 
     def _load_checkpoint(self):
         if not os.path.exists(self.config.output_dir):
             return
 
-        # 1. Try to find the latest checkpoint-*.pt (FULL TRAINING STATE)
+        # Get current dataset name to load dataset-specific checkpoint
+        dataset_name = (
+            self.dataset_cycler.current_dataset_name
+            if self.dataset_cycler
+            else "unknown"
+        )
+
+        # 1. Try to find the latest checkpoint for THIS dataset
         checkpoints = [
             f
             for f in os.listdir(self.config.output_dir)
-            if f.startswith("checkpoint-") and f.endswith(".pt")
+            if f.startswith(f"checkpoint-{dataset_name}-") and f.endswith(".pt")
         ]
 
         if checkpoints:
-            checkpoints.sort(key=lambda x: int(x.split("-")[1].split(".")[0]))
+            checkpoints.sort(key=lambda x: int(x.split("-")[-1].split(".")[0]))
             latest = checkpoints[-1]
             checkpoint_path = os.path.join(self.config.output_dir, latest)
-            print(f"📂 Resuming from full checkpoint: {latest}")
+            print(f"Resuming from dataset-specific checkpoint: {latest}")
 
             try:
                 checkpoint = torch.load(
@@ -590,13 +609,15 @@ class FinAITrainer:
                 self.epoch = checkpoint["epoch"]
                 if self.scaler and "scaler_state_dict" in checkpoint:
                     self.scaler.load_state_dict(checkpoint["scaler_state_dict"])
-                print(f"✅ Resumed from step {self.global_step} (continuous training)")
+                print(
+                    f"Resumed from step {self.global_step} (continuous training on {dataset_name})"
+                )
                 return
             except Exception as e:
-                print(f"Failed to load full checkpoint: {e}")
+                print(f"Failed to load dataset-specific checkpoint: {e}")
 
         # 2. Fallback: Check for safetensors or classic format (WEIGHTS ONLY)
-        # This is used when full checkpoint is not available (e.g., first run after HF download)
+        # This is used when full checkpoint is not available (e.g., first run for this dataset)
         model_paths = [
             os.path.join(self.config.output_dir, "model", "model.safetensors"),
             os.path.join(self.config.output_dir, "model", "model.pt"),
@@ -661,15 +682,19 @@ class FinAITrainer:
                         )
 
                     # IMPORTANT: When loading weights-only (no full checkpoint), we start fresh training
-                    # This happens on first run after downloading from HF
-                    print("   ⚠️  Weights-only load detected (no full checkpoint)")
-                    print("   Starting fresh training with these weights (step 0)")
+                    # This happens on first run for this dataset
+                    print(
+                        f"   Weights-only load detected (no checkpoint for {dataset_name})"
+                    )
+                    print(
+                        f"   Starting fresh training on {dataset_name} with these weights (step 0)"
+                    )
                     self.global_step = 0
                     self.epoch = 0
                     return
                 except Exception as e:
                     print(f"Failed to load from {path}: {e}")
 
-        print("Starting fresh training (random initialization)...")
+        print(f"Starting fresh training on {dataset_name} (random initialization)...")
         self.global_step = 0
         self.epoch = 0
