@@ -210,20 +210,22 @@ class FinAITrainer:
                 }
 
                 run_name = f"train-{comet_config['dataset']}-run{os.environ.get('GITHUB_RUN_NUMBER', 'local')}"
-                
+
                 self.experiment = Experiment(
                     api_key=os.environ.get("COMET_API_KEY"),
                     project_name=self.config.comet_project,
                     workspace=self.config.comet_workspace,
                 )
-                
+
                 self.experiment.set_name(run_name)
                 self.experiment.log_parameters(comet_config)
-                self.experiment.add_tags([
-                    "continuous-training",
-                    comet_config["dataset"],
-                    f"v{os.environ.get('GITHUB_RUN_NUMBER', '0')}",
-                ])
+                self.experiment.add_tags(
+                    [
+                        "continuous-training",
+                        comet_config["dataset"],
+                        f"v{os.environ.get('GITHUB_RUN_NUMBER', '0')}",
+                    ]
+                )
 
                 print("Comet ML initialized with enhanced logging")
             except Exception as e:
@@ -454,10 +456,14 @@ class FinAITrainer:
                                 # Performance metrics
                                 "tokens_per_second": tokens_per_sec,
                                 "steps_per_second": (
-                                    self.config.log_steps / elapsed if elapsed > 0 else 0
+                                    self.config.log_steps / elapsed
+                                    if elapsed > 0
+                                    else 0
                                 ),
                                 "time_per_step": (
-                                    elapsed / self.config.log_steps if elapsed > 0 else 0
+                                    elapsed / self.config.log_steps
+                                    if elapsed > 0
+                                    else 0
                                 ),
                                 # Progress metrics
                                 "percent_complete": progress,
