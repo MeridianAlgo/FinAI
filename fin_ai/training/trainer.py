@@ -536,6 +536,22 @@ class FinAITrainer:
         model_save_path = os.path.join(self.config.output_dir, "model")
         self.model.save_pretrained(model_save_path, safe_serialization=True)
 
+        # Clean up old checkpoints based on save_total_limit
+        if self.config.save_total_limit > 0:
+            checkpoints = [
+                f
+                for f in os.listdir(self.config.output_dir)
+                if f.startswith("checkpoint-") and f.endswith(".pt")
+            ]
+            if len(checkpoints) > self.config.save_total_limit:
+                checkpoints.sort(key=lambda x: int(x.split("-")[1].split(".")[0]))
+                for old_checkpoint in checkpoints[: -self.config.save_total_limit]:
+                    old_path = os.path.join(self.config.output_dir, old_checkpoint)
+                    try:
+                        os.remove(old_path)
+                    except Exception:
+                        pass
+
         if (
             self.global_step % (self.config.save_steps * 5) == 0
         ):  # Only log every 5th save

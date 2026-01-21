@@ -440,11 +440,13 @@ jobs:
           }
           EOF
           
+          # Add checkpoint files for continuous training
+          git add checkpoints/checkpoint-*.pt 2>/dev/null || true
           git add checkpoints/version.json
           git add checkpoints/dataset_state.json || true
           
           if ! git diff --quiet --cached; then
-            git commit -m "🤖 Training run #$RUN_NUM - $(date +'%Y-%m-%d') [skip ci]"
+            git commit -m "Training run #$RUN_NUM - $(date +'%Y-%m-%d') [skip ci]"
             git push origin main
           fi
       

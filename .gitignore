@@ -50,7 +50,8 @@ logs/
 .comet/
 
 # Model files (stored on Hugging Face, not GitHub)
-checkpoints/*.pt
+# Keep checkpoint-*.pt files for continuous training state
+checkpoints/model.pt
 checkpoints/*.pth
 checkpoints/*.bin
 checkpoints/*.safetensors
