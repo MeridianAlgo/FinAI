@@ -457,30 +457,154 @@ jobs:
           tag_name: ${{ steps.version.outputs.NEW_VERSION }}
           name: "Fin.AI Release ${{ steps.version.outputs.NEW_VERSION }}"
           body: |
-            ## 🤖 Fin.AI Training Milestone
+            # Fin.AI Release ${{ steps.version.outputs.NEW_VERSION }}
             
-            **15 Training Runs Complete!**
+            ## Release Information
             
-            ### 📦 Model Location
-            **Hugging Face**: [MeridianAlgo/Fin.AI](https://huggingface.co/MeridianAlgo/Fin.AI)
+            This release represents a training milestone after 15 continuous hourly training runs.
             
-            ### 📊 Training Stats
-            - **Version**: ${{ steps.version.outputs.NEW_VERSION }}
-            - **Total Runs**: ${{ github.run_number }}
-            - **Datasets Trained**: Multiple datasets cycled hourly
+            ### Model Availability
             
-            ### 🚀 Usage
-            ```python
-            from transformers import AutoModelForCausalLM, AutoTokenizer
+            [![Model on Hugging Face](https://img.shields.io/badge/🤗_Model-Fin.AI-yellow)](https://huggingface.co/MeridianAlgo/Fin.AI)
+            [![Training Workflow](https://github.com/MeridianAlgo/FinAI/actions/workflows/train.yml/badge.svg)](https://github.com/MeridianAlgo/FinAI/actions/workflows/train.yml)
+            [![Comet ML](https://img.shields.io/badge/Comet_ML-Experiments-blue?logo=comet)](https://www.comet.com/meridianalgo/fin-ai)
             
-            # Download model directly 
-            model = AutoModelForCausalLM.from_pretrained("MeridianAlgo/Fin.AI", trust_remote_code=True)
-            tokenizer = AutoTokenizer.from_pretrained("MeridianAlgo/Fin.AI")
+            **Hugging Face Repository**: [MeridianAlgo/Fin.AI](https://huggingface.co/MeridianAlgo/Fin.AI)
+            
+            ### Training Statistics
+            
+            | Metric | Value |
+            |--------|-------|
+            | Release Version | ${{ steps.version.outputs.NEW_VERSION }} |
+            | Total Training Runs | ${{ github.run_number }} |
+            | Model Size | ~16M parameters (micro preset) |
+            | Training Frequency | Hourly |
+            | Dataset Rotation | 24 diverse datasets |
+            
+            ### Model Architecture
+            
+            - **Type**: GPT-style decoder-only transformer
+            - **Attention**: Grouped Query Attention (GQA)
+            - **Position Encoding**: Rotary Position Embeddings (RoPE)
+            - **Activation**: SwiGLU
+            - **Normalization**: RMSNorm
+            - **Format**: SafeTensors
+            
+            ### Installation and Usage
+            
+            ```bash
+            pip install transformers torch huggingface_hub
             ```
             
-            ### 📈 Latest Training Output
+            ```python
+            from transformers import AutoModelForCausalLM, AutoTokenizer
+            import torch
+            
+            # Load model from Hugging Face
+            model = AutoModelForCausalLM.from_pretrained(
+                "MeridianAlgo/Fin.AI",
+                trust_remote_code=True,
+                torch_dtype=torch.float32
+            )
+            tokenizer = AutoTokenizer.from_pretrained("gpt2")
+            
+            if tokenizer.pad_token is None:
+                tokenizer.pad_token = tokenizer.eos_token
+            
+            # Generate text
+            prompt = "The future of artificial intelligence is"
+            inputs = tokenizer(prompt, return_tensors="pt")
+            
+            with torch.no_grad():
+                outputs = model.generate(
+                    **inputs,
+                    max_length=100,
+                    temperature=0.8,
+                    top_p=0.95,
+                    do_sample=True,
+                    pad_token_id=tokenizer.pad_token_id
+                )
+            
+            print(tokenizer.decode(outputs[0], skip_special_tokens=True))
+            ```
+            
+            ### Latest Training Output
+            
             ```
             ${{ steps.train.outputs.TRAINING_OUTPUT }}
             ```
+            
+            ### Resources
+            
+            - **Documentation**: [GitHub Repository](https://github.com/MeridianAlgo/FinAI)
+            - **Training Metrics**: [Comet ML Dashboard](https://www.comet.com/meridianalgo/fin-ai)
+            - **Model Card**: [Hugging Face Model Card](https://huggingface.co/MeridianAlgo/Fin.AI)
+            - **Issues**: [Report Issues](https://github.com/MeridianAlgo/FinAI/issues)
+            
+            ### Notes
+            
+            This is an experimental research model under continuous development. The model trains hourly on diverse datasets and may produce inaccurate or biased outputs. Not recommended for production use.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Create issue on training failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runNumber = context.runNumber;
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            
+            const issueTitle = `Training Run #${runNumber} Failed`;
+            const issueBody = `## Training Failure Report
+            
+            **Run Number**: #${runNumber}
+            **Workflow**: [View Run](${runUrl})
+            **Timestamp**: ${new Date().toISOString()}
+            
+            ### Details
+            
+            The automated training workflow has failed. Please review the workflow logs for details.
+            
+            ### Action Items
+            
+            - [ ] Review workflow logs
+            - [ ] Identify root cause
+            - [ ] Apply fix
+            - [ ] Re-run workflow if needed
+            
+            ### Workflow Information
+            
+            - **Branch**: ${context.ref}
+            - **Commit**: ${context.sha.substring(0, 7)}
+            - **Actor**: ${context.actor}
+            
+            ---
+            
+            *This issue was automatically created by the training workflow.*`;
+            
+            // Check if similar issue already exists
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'training-failure',
+              per_page: 10
+            });
+            
+            const recentIssue = issues.data.find(issue => 
+              issue.title.includes(`Training Run #${runNumber}`)
+            );
+            
+            if (!recentIssue) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: issueTitle,
+                body: issueBody,
+                labels: ['training-failure', 'automated']
+              });
+              console.log('Issue created for training failure');
+            } else {
+              console.log('Issue already exists for this run');
+            }

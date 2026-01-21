@@ -217,7 +217,7 @@ python train.py --config config/model_config.yaml --datasets config/datasets.yam
 - **Python versions**: 3.10, 3.11, 3.12
 
 <!-- DAILY_EVAL_START -->
-### 🤖 Daily Model Evolution
+### Daily Model Evolution
 
 Track how the model's responses evolve as it trains continuously!
 
