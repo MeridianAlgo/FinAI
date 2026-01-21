@@ -35,11 +35,16 @@ Repository = "https://github.com/MeridianAlgo/FinAI"
 Documentation = "https://github.com/MeridianAlgo/FinAI#readme"
 
 [project.optional-dependencies]
-dev = ["black", "ruff", "pre-commit", "pytest", "mypy"]
+dev = ["black", "ruff", "pre-commit", "pytest", "mypy", "isort"]
 
 [tool.black]
 line-length = 88
 target-version = ['py310']
+
+[tool.isort]
+profile = "black"
+line_length = 88
+known_first_party = ["fin_ai"]
 
 [tool.ruff]
 line-length = 88
@@ -52,6 +57,7 @@ ignore = [
     "E722",  # Do not use bare except
     "F403",  # Star imports
     "F841",  # Local variable assigned but never used
+    "I001",  # Let isort enforce import formatting
 ]
 
 [tool.setuptools.packages.find]
