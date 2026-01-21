@@ -1,4 +1,6 @@
 {
-  "current_dataset_idx": 14,
-  "dataset_offsets": {}
+  "current_dataset_idx": 1,
+  "dataset_offsets": {
+    "TinyStories": 10000
+  }
 }
