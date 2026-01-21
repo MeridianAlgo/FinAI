@@ -50,7 +50,7 @@ Fin.AI is an experimental GPT-style language model that trains **24/7** with a r
 - 24 diverse dataset categories (news, math, code, dialogue, science, instructions...)
 - Focus rotates every hour → targeted capability improvement
 - Models automatically pushed to Hugging Face after each run
-- Training metrics publicly visible on Weights & Biases
+- Training metrics publicly visible on Comet ML
 - CPU-optimized with gradient checkpointing for memory efficiency
 - Safe serialization using safetensors format
 
@@ -237,7 +237,7 @@ training:
   learning_rate: 5e-4
   max_steps: 800
   gradient_checkpointing: true  # Auto-enabled on CPU
-  use_wandb: true
+  use_comet: true
 ```
 
 ### Hardware Requirements
@@ -261,7 +261,7 @@ training:
 
 - **Latest checkpoint**: Available on this Hugging Face repository
 - **Training pipeline**: [GitHub Actions](https://github.com/MeridianAlgo/FinAI/actions)
-- **Live metrics & samples**: [Weights & Biases](https://wandb.ai/meridianalgo-meridianalgo/fin-ai)
+- **Live metrics & samples**: [Comet ML](https://www.comet.com/meridianalgo/fin-ai)
 - **Current model size**: Micro (~16M parameters)
 - **Training frequency**: Every hour
 - **Last training run**: See GitHub Actions for latest status
@@ -335,7 +335,7 @@ MIT License - See [LICENSE](https://github.com/MeridianAlgo/FinAI/blob/main/LICE
 ## Links
 
 - **GitHub**: [MeridianAlgo/FinAI](https://github.com/MeridianAlgo/FinAI)
-- **Training Metrics**: [Weights & Biases](https://wandb.ai/meridianalgo-meridianalgo/fin-ai)
+- **Training Metrics**: [Comet ML](https://www.comet.com/meridianalgo/fin-ai)
 - **Issues**: [GitHub Issues](https://github.com/MeridianAlgo/FinAI/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/MeridianAlgo/FinAI/discussions)
 

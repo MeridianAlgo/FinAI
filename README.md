@@ -15,6 +15,7 @@ A continuously learning transformer language model that trains automatically eve
 [![Model on Hugging Face](https://img.shields.io/badge/🤗_Model-Fin.AI-yellow)](https://huggingface.co/MeridianAlgo/Fin.AI)
 [![CI - Tests & Lint](https://github.com/MeridianAlgo/FinAI/actions/workflows/ci.yml/badge.svg)](https://github.com/MeridianAlgo/FinAI/actions/workflows/ci.yml)
 [![Training Workflow](https://github.com/MeridianAlgo/FinAI/actions/workflows/train.yml/badge.svg)](https://github.com/MeridianAlgo/FinAI/actions)
+[![Comet ML](https://img.shields.io/badge/Comet_ML-Experiments-blue?logo=comet)](https://www.comet.com/meridianalgo/fin-ai)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
@@ -32,7 +33,7 @@ Fin.AI is an experimental GPT-style language model that trains **24/7** with a r
 - 24 diverse dataset categories (news, math, code, dialogue, science, instructions...)
 - Focus rotates every hour → targeted capability improvement
 - Models automatically pushed to Hugging Face after each run
-- Training metrics publicly visible on Weights & Biases
+- Training metrics publicly visible on Comet ML
 - CPU-optimized with gradient checkpointing for memory efficiency
 - Safe serialization using safetensors format
 
@@ -68,7 +69,7 @@ Fin.AI V3 features a modern transformer architecture optimized for CPU/consumer 
 | Automated Continuous Training | Trains every hour – completely hands-free                                 |
 | Rotating Curriculum      | 24 dataset families covering very different capabilities                  |
 | Hugging Face Integration | Latest checkpoint pushed automatically after every training cycle        |
-| Real-time Monitoring     | Full metrics, loss curves and samples on Weights & Biases                 |
+| Real-time Monitoring     | Full metrics, loss curves and samples on Comet ML                         |
 | Flexible Scale           | Easily switch between ~16M and ~124M parameters                            |
 | CPU-friendly             | Optimized to train efficiently on standard GitHub Actions runners         |
 | Gradient Checkpointing   | Memory-efficient training on consumer hardware                            |
@@ -196,11 +197,12 @@ python train.py --config config/model_config.yaml --datasets config/datasets.yam
 
 ### Training Status
 
-[![Training Workflow](https://github.com/MeridianAlgo/FinAI/actions/workflows/train.yml/badge.svg)](https://github.com/MeridianAlgo/FinAI/actions)
+[![Training Workflow](https://github.com/MeridianAlgo/FinAI/actions/workflows/train.yml/badge.svg)](https://github.com/MeridianAlgo/FinAI/actions/workflows/train.yml)
+[![Comet ML](https://img.shields.io/badge/Comet_ML-Experiments-blue?logo=comet)](https://www.comet.com/meridianalgo/fin-ai)
 
 - **Latest checkpoint**: [huggingface.co/MeridianAlgo/Fin.AI](https://huggingface.co/MeridianAlgo/Fin.AI)
 - **Training pipeline**: [GitHub Actions](https://github.com/MeridianAlgo/FinAI/actions)
-- **Live metrics & samples**: [Weights & Biases](https://wandb.ai/meridianalgo-meridianalgo/fin-ai)
+- **Live metrics & samples**: [Comet ML](https://www.comet.com/meridianalgo/fin-ai)
 - **Current model size**: Micro (~16M parameters)
 - **Training frequency**: Every hour
 - **Last training run**: See GitHub Actions for latest status
@@ -243,7 +245,7 @@ training:
   learning_rate: 5e-4
   max_steps: 800
   gradient_checkpointing: true  # Auto-enabled on CPU
-  use_wandb: true
+  use_comet: true
 ```
 
 ### Hardware Requirements
@@ -272,7 +274,7 @@ MIT License - See [LICENSE](LICENSE)
 
 - **GitHub**: [MeridianAlgo/FinAI](https://github.com/MeridianAlgo/FinAI)
 - **Hugging Face**: [MeridianAlgo/Fin.AI](https://huggingface.co/MeridianAlgo/Fin.AI)
-- **Training Metrics**: [Weights & Biases](https://wandb.ai/meridianalgo-meridianalgo/fin-ai)
+- **Training Metrics**: [Comet ML](https://www.comet.com/meridianalgo/fin-ai)
 - **Issues**: [GitHub Issues](https://github.com/MeridianAlgo/FinAI/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/MeridianAlgo/FinAI/discussions)
 

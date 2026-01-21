@@ -36,8 +36,9 @@ class TrainingConfig:
     save_total_limit: int = 3
     resume_from_checkpoint: bool = True
     log_steps: int = 10
-    use_wandb: bool = True
-    wandb_project: str = "fin-ai"
+    use_comet: bool = True
+    comet_project: str = "fin-ai"
+    comet_workspace: str = "meridianalgo"
     fp16: bool = True
     plot_steps: int = 500
     gradient_checkpointing: bool = False
@@ -180,18 +181,18 @@ class FinAITrainer:
         self.global_step = 0
         self.epoch = 0
 
-        # Wandb
-        wandb_disabled = os.environ.get("WANDB_DISABLED", "false").lower() in {
+        # Comet ML
+        comet_disabled = os.environ.get("COMET_DISABLE", "false").lower() in {
             "1",
             "true",
             "yes",
         }
-        if self.config.use_wandb and not wandb_disabled:
+        if self.config.use_comet and not comet_disabled:
             try:
-                import wandb
+                from comet_ml import Experiment
 
-                # Enhanced Wandb config
-                wandb_config = {
+                # Enhanced Comet ML config
+                comet_config = {
                     **self.config.__dict__,
                     "model_parameters": self.model.config.num_parameters,
                     "model_layers": self.model.config.n_layers,
@@ -208,25 +209,28 @@ class FinAITrainer:
                     ),
                 }
 
-                run_name = f"train-{wandb_config['dataset']}-run{os.environ.get('GITHUB_RUN_NUMBER', 'local')}"
-                wandb.init(
-                    project=self.config.wandb_project,
-                    config=wandb_config,
-                    name=run_name,
-                    tags=[
-                        "continuous-training",
-                        wandb_config["dataset"],
-                        f"v{os.environ.get('GITHUB_RUN_NUMBER', '0')}",
-                    ],
+                run_name = f"train-{comet_config['dataset']}-run{os.environ.get('GITHUB_RUN_NUMBER', 'local')}"
+                
+                self.experiment = Experiment(
+                    api_key=os.environ.get("COMET_API_KEY"),
+                    project_name=self.config.comet_project,
+                    workspace=self.config.comet_workspace,
                 )
+                
+                self.experiment.set_name(run_name)
+                self.experiment.log_parameters(comet_config)
+                self.experiment.add_tags([
+                    "continuous-training",
+                    comet_config["dataset"],
+                    f"v{os.environ.get('GITHUB_RUN_NUMBER', '0')}",
+                ])
 
-                # Define custom charts
-                wandb.define_metric("train/step")
-                wandb.define_metric("train/*", step_metric="train/step")
-
-                print("Wandb initialized with enhanced logging")
+                print("Comet ML initialized with enhanced logging")
             except Exception as e:
-                logger.warning(f"Wandb not available: {e}")
+                logger.warning(f"Comet ML not available: {e}")
+                self.experiment = None
+        else:
+            self.experiment = None
 
     def _create_optimizer(self):
         decay_params = []
@@ -294,19 +298,17 @@ class FinAITrainer:
         avg_loss = total_loss / max(1, total_batches)
         perplexity = math.exp(min(avg_loss, 20))
 
-        try:
-            import wandb
-
-            wandb.log(
-                {
-                    "eval/step": self.global_step,
-                    "eval/loss": avg_loss,
-                    "eval/perplexity": perplexity,
-                },
-                step=self.global_step,
-            )
-        except Exception:
-            pass
+        if self.experiment:
+            try:
+                self.experiment.log_metrics(
+                    {
+                        "eval_loss": avg_loss,
+                        "eval_perplexity": perplexity,
+                    },
+                    step=self.global_step,
+                )
+            except Exception:
+                pass
 
         self.model.train()
 
@@ -434,56 +436,49 @@ class FinAITrainer:
                         f"Items processed: {self.global_step * self.config.batch_size} | Step {self.global_step}/{self.config.max_steps} | Loss: {(log_loss_sum / max(1, log_loss_count)):.4f} | LR: {current_lr:.2e} | Tokens/s: {tokens_per_sec:.0f}"
                     )
 
-                try:
-                    import wandb
+                if self.experiment:
+                    try:
+                        # Calculate additional metrics
+                        mean_loss = log_loss_sum / max(1, log_loss_count)
+                        last_logged_loss = mean_loss
+                        perplexity = math.exp(min(mean_loss, 20))
+                        progress = (self.global_step / self.config.max_steps) * 100
 
-                    # Calculate additional metrics
-                    mean_loss = log_loss_sum / max(1, log_loss_count)
-                    last_logged_loss = mean_loss
-                    perplexity = math.exp(min(mean_loss, 20))
-                    progress = (self.global_step / self.config.max_steps) * 100
-
-                    # Enhanced logging with descriptive names
-                    wandb.log(
-                        {
-                            # Core metrics
-                            "train/step": self.global_step,
-                            "train/loss": mean_loss,
-                            "train/perplexity": perplexity,
-                            "train/learning_rate": current_lr,
-                            # Performance metrics
-                            "performance/tokens_per_second": tokens_per_sec,
-                            "performance/steps_per_second": (
-                                self.config.log_steps / elapsed if elapsed > 0 else 0
-                            ),
-                            "performance/time_per_step": (
-                                elapsed / self.config.log_steps if elapsed > 0 else 0
-                            ),
-                            # Progress metrics
-                            "progress/percent_complete": progress,
-                            "progress/epoch": self.epoch,
-                            "progress/steps_remaining": self.config.max_steps
-                            - self.global_step,
-                            # Gradient metrics
-                            "gradients/global_norm": torch.nn.utils.clip_grad_norm_(
-                                self.model.parameters(), float("inf")
-                            ),
-                            # Dataset info
-                            "dataset/name": (
-                                self.dataset_cycler.current_dataset_name
-                                if self.dataset_cycler
-                                else "unknown"
-                            ),
-                            "dataset/offset": (
-                                self.dataset_cycler.get_current_offset()
-                                if self.dataset_cycler
-                                else 0
-                            ),
-                        },
-                        step=self.global_step,
-                    )
-                except Exception:
-                    pass
+                        # Enhanced logging with descriptive names
+                        self.experiment.log_metrics(
+                            {
+                                # Core metrics
+                                "train_loss": mean_loss,
+                                "train_perplexity": perplexity,
+                                "learning_rate": current_lr,
+                                # Performance metrics
+                                "tokens_per_second": tokens_per_sec,
+                                "steps_per_second": (
+                                    self.config.log_steps / elapsed if elapsed > 0 else 0
+                                ),
+                                "time_per_step": (
+                                    elapsed / self.config.log_steps if elapsed > 0 else 0
+                                ),
+                                # Progress metrics
+                                "percent_complete": progress,
+                                "epoch": self.epoch,
+                                "steps_remaining": self.config.max_steps
+                                - self.global_step,
+                                # Gradient metrics
+                                "gradient_global_norm": torch.nn.utils.clip_grad_norm_(
+                                    self.model.parameters(), float("inf")
+                                ),
+                                # Dataset info
+                                "dataset_offset": (
+                                    self.dataset_cycler.get_current_offset()
+                                    if self.dataset_cycler
+                                    else 0
+                                ),
+                            },
+                            step=self.global_step,
+                        )
+                    except Exception:
+                        pass
 
                 log_loss_sum = 0.0
                 log_loss_count = 0
@@ -498,20 +493,19 @@ class FinAITrainer:
         pbar.close()
         self._save_checkpoint()
 
-        # Log final summary to Wandb
-        try:
-            import wandb
-
-            wandb.log(
-                {
-                    "summary/final_step": self.global_step,
-                    "summary/total_epochs": self.epoch,
-                    "summary/final_loss": last_logged_loss,
-                }
-            )
-            wandb.finish()
-        except:
-            pass
+        # Log final summary to Comet ML
+        if self.experiment:
+            try:
+                self.experiment.log_metrics(
+                    {
+                        "final_step": self.global_step,
+                        "total_epochs": self.epoch,
+                        "final_loss": last_logged_loss,
+                    }
+                )
+                self.experiment.end()
+            except:
+                pass
 
         print(f"\nTraining complete! Final step: {self.global_step}")
 

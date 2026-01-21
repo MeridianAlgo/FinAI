@@ -170,25 +170,25 @@ jobs:
           print(tok.decode(out[0], skip_special_tokens=True))
           EOF
       
-      - name: Setup Wandb
+      - name: Setup Comet ML
         env:
-          WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
+          COMET_API_KEY: ${{ secrets.COMET_API_KEY }}
         run: |
-          if [ -z "$WANDB_API_KEY" ]; then
-            echo "WANDB_API_KEY not set; disabling wandb for this run"
-            echo "WANDB_DISABLED=true" >> $GITHUB_ENV
+          if [ -z "$COMET_API_KEY" ]; then
+            echo "COMET_API_KEY not set; disabling Comet ML for this run"
+            echo "COMET_DISABLE=true" >> $GITHUB_ENV
             exit 0
           fi
 
-          echo "Setting up Wandb..."
-          wandb login --relogin "$WANDB_API_KEY"
+          echo "Setting up Comet ML..."
+          echo "COMET_API_KEY=$COMET_API_KEY" >> $GITHUB_ENV
 
       - name: Train model
         id: train
         env:
-          WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
-          WANDB_PROJECT: "fin-ai"
-          WANDB_SILENT: "true"
+          COMET_API_KEY: ${{ secrets.COMET_API_KEY }}
+          COMET_PROJECT_NAME: "fin-ai"
+          COMET_WORKSPACE: "meridianalgo"
           TOKENIZERS_PARALLELISM: "false"
           HF_DATASETS_CACHE: "/tmp/hf_cache"
           HF_HOME: "/tmp/hf_home"
