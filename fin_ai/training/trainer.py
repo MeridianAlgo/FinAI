@@ -545,7 +545,7 @@ class FinAITrainer:
         if not os.path.exists(self.config.output_dir):
             return
 
-        # 1. Try to find the latest checkpoint-*.pt
+        # 1. Try to find the latest checkpoint-*.pt (FULL TRAINING STATE)
         checkpoints = [
             f
             for f in os.listdir(self.config.output_dir)
@@ -556,7 +556,7 @@ class FinAITrainer:
             checkpoints.sort(key=lambda x: int(x.split("-")[1].split(".")[0]))
             latest = checkpoints[-1]
             checkpoint_path = os.path.join(self.config.output_dir, latest)
-            print(f"📂 Resuming from checkpoint: {latest}")
+            print(f"📂 Resuming from full checkpoint: {latest}")
 
             try:
                 checkpoint = torch.load(
@@ -574,12 +574,13 @@ class FinAITrainer:
                 self.epoch = checkpoint["epoch"]
                 if self.scaler and "scaler_state_dict" in checkpoint:
                     self.scaler.load_state_dict(checkpoint["scaler_state_dict"])
-                print(f"Resumed from step {self.global_step}")
+                print(f"✅ Resumed from step {self.global_step} (continuous training)")
                 return
             except Exception as e:
-                print(f"Failed to load checkpoint: {e}")
+                print(f"Failed to load full checkpoint: {e}")
 
-        # 2. Fallback: Check for safetensors or classic format
+        # 2. Fallback: Check for safetensors or classic format (WEIGHTS ONLY)
+        # This is used when full checkpoint is not available (e.g., first run after HF download)
         model_paths = [
             os.path.join(self.config.output_dir, "model", "model.safetensors"),
             os.path.join(self.config.output_dir, "model", "model.pt"),
@@ -642,7 +643,11 @@ class FinAITrainer:
                         print(
                             f"   Note: {len(missing_keys)} keys not found in checkpoint (will be randomly initialized)"
                         )
-                    # Reset optimizer/scheduler since we are starting fresh/fine-tuning
+
+                    # IMPORTANT: When loading weights-only (no full checkpoint), we start fresh training
+                    # This happens on first run after downloading from HF
+                    print("   ⚠️  Weights-only load detected (no full checkpoint)")
+                    print("   Starting fresh training with these weights (step 0)")
                     self.global_step = 0
                     self.epoch = 0
                     return
