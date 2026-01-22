@@ -11,12 +11,7 @@ tags:
 - autoregressive
 - text-generation
 datasets:
-- wikitext
-- c4
-- squad
-- gsm8k
-- tinnystories
-- alpaca
+- HuggingFaceFW/fineweb-edu
 pipeline_tag: text-generation
 library_name: transformers
 inference:
@@ -30,7 +25,7 @@ inference:
 
 **WORK IN PROGRESS – EXPERIMENTAL RESEARCH PROJECT**
 
-A continuously learning transformer language model that trains automatically every hour on diverse datasets using GitHub Actions.
+A continuously learning transformer language model that trains automatically every hour on FineWeb-Edu using GitHub Actions.
 
 > **Important Notice**  
 > Fin.AI is an **experimental research prototype** and **work in progress**.  
@@ -42,15 +37,15 @@ A continuously learning transformer language model that trains automatically eve
 
 ## Model Overview
 
-Fin.AI is an experimental GPT-style language model that trains **24/7** with a rotating curriculum of diverse datasets. The model is designed for efficiency on CPU and consumer hardware, using modern transformer architecture with gradient checkpointing and safetensors for safe, fast model distribution.
+Fin.AI is an experimental GPT-style language model that trains **24/7** continuously on FineWeb-Edu, a high-quality educational web content dataset. The model is designed for efficiency on CPU and consumer hardware, using modern transformer architecture with gradient checkpointing and safetensors for safe, fast model distribution.
 
 **Core characteristics:**
 
 - Fully automated hourly training (GitHub Actions)
-- 24 diverse dataset categories (news, math, code, dialogue, science, instructions...)
-- Focus rotates every hour → targeted capability improvement
+- Continuous training on FineWeb-Edu (high-quality educational content)
+- 1000 training steps per hour → steady, consistent improvement
 - Models automatically pushed to Hugging Face after each run
-- Training metrics publicly visible on Comet ML
+- Training metrics and loss curves publicly visible on Comet ML
 - CPU-optimized with gradient checkpointing for memory efficiency
 - Safe serialization using safetensors format
 
@@ -204,20 +199,23 @@ print(config)
 
 ## Training
 
-### Training Curriculum (24-cycle daily rotation)
+### Training Dataset: FineWeb-Edu
 
-| Category              | Example Datasets                     | Cycle Hours       | Primary Focus                     |
-|-----------------------|--------------------------------------|-------------------|-----------------------------------|
-| Encyclopedia          | WikiText                             | 0, 6              | Broad world knowledge             |
-| Creative Writing      | TinyStories                          | 1, 18             | Storytelling & narrative          |
-| News                  | CNN, AG News, CC News                | 2,15,17,20        | Current events & factual style    |
-| Math & Reasoning      | GSM8K, CommonsenseQA                 | 3,9,19,23         | Problem solving & logic           |
-| Open Web Text         | OpenWebText, C4                      | 4,11              | Diverse internet language         |
-| Question Answering    | SQuAD                                | 5,22              | Reading comprehension             |
-| Instruction Following | Alpaca, Dolly                        | 7,14,21           | Following user instructions       |
-| Reviews & Sentiment   | IMDB, Amazon, Yelp                   | 8,10,16           | Opinion & sentiment analysis      |
-| Scientific / Medical  | PubMed                               | 12                | Scientific & medical literature   |
-| Conversations         | UltraChat                            | 13                | Natural dialogue                  |
+Fin.AI trains continuously on **FineWeb-Edu**, a high-quality educational web content dataset curated by Hugging Face. This dataset provides:
+
+- **High-quality content**: Filtered for educational value and quality
+- **Diverse topics**: Covers a wide range of educational subjects
+- **Consistent training**: Single dataset allows for steady, predictable improvement
+- **Large scale**: 10BT sample provides extensive training material
+- **Educational focus**: Content optimized for learning and knowledge acquisition
+
+**Training Schedule:**
+- **Frequency**: Every hour, automatically via GitHub Actions
+- **Steps per run**: 1000 training steps
+- **Checkpointing**: Model state saved every 500 steps
+- **Progress tracking**: All metrics and loss curves visible on [Comet ML](https://www.comet.com/meridianalgo/fin-ai)
+
+This continuous training approach allows you to watch the model improve in real-time as loss curves decrease and perplexity improves with each hourly training session.
 
 ### Training Configuration
 
@@ -232,10 +230,10 @@ model:
   rope_theta: 10000.0
 
 training:
-  batch_size: 4
-  gradient_accumulation_steps: 8
-  learning_rate: 5e-4
-  max_steps: 800
+  batch_size: 2
+  gradient_accumulation_steps: 16
+  learning_rate: 3e-4
+  max_steps: 1000  # 1000 steps per hourly run
   gradient_checkpointing: true  # Auto-enabled on CPU
   use_comet: true
 ```
@@ -249,9 +247,10 @@ training:
 
 ### Performance Characteristics
 
-- **Training speed**: ~100-200 steps/hour on GitHub Actions CPU runners (micro preset)
+- **Training speed**: 1000 steps/hour on GitHub Actions CPU runners (micro preset)
 - **Inference speed**: ~50-100 tokens/second on modern CPU
 - **Memory usage**: ~200MB RAM during inference (micro preset)
+- **Dataset**: FineWeb-Edu (streaming, continuous training)
 
 ---
 
@@ -261,9 +260,10 @@ training:
 
 - **Latest checkpoint**: Available on this Hugging Face repository
 - **Training pipeline**: [GitHub Actions](https://github.com/MeridianAlgo/FinAI/actions)
-- **Live metrics & samples**: [Comet ML](https://www.comet.com/meridianalgo/fin-ai)
+- **Live metrics & loss curves**: [Comet ML](https://www.comet.com/meridianalgo/fin-ai)
 - **Current model size**: Micro (~16M parameters)
-- **Training frequency**: Every hour
+- **Training frequency**: Every hour (1000 steps per run)
+- **Dataset**: FineWeb-Edu (continuous)
 - **Last training run**: See GitHub Actions for latest status
 
 ### CI Status
