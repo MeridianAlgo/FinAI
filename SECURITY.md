@@ -85,9 +85,12 @@ Send a detailed report to the repository maintainers via:
    - Check for known vulnerabilities
 
 3. **Secrets Management**
-   - Use GitHub Secrets for CI/CD
-   - Never hardcode credentials
-   - Use `.env` files (gitignored)
+   - Use GitHub Secrets for CI/CD (Settings → Secrets and variables → Actions)
+   - Never hardcode credentials in code
+   - Use `.env` files for local development (already in `.gitignore`)
+   - Use `.env.example` as a template (safe to commit)
+   - Never commit `.env` files to the repository
+   - Rotate tokens/keys if accidentally exposed
 
 4. **Input Validation**
    - Validate all external inputs

@@ -296,6 +296,8 @@ class FinAITrainer:
                         k, v = s.split("=", 1)
                         if k.strip() == "HF_TOKEN":
                             token = v.strip().strip('"').strip("'")
+                            # Set it in environment so it persists
+                            os.environ["HF_TOKEN"] = token
                             break
             except Exception:
                 pass
@@ -308,7 +310,9 @@ class FinAITrainer:
 
         token = self._get_hf_token()
         if not token:
-            logger.warning("HF_TOKEN not found, skipping checkpoint pull from HF")
+            print("⚠️  HF_TOKEN not found in environment or .env file")
+            print("   Skipping checkpoint pull from Hugging Face")
+            print("   Add HF_TOKEN to .env file to enable checkpoint sync")
             return False
 
         try:
@@ -331,7 +335,7 @@ class FinAITrainer:
                 ]
 
                 if not checkpoint_files:
-                    logger.info(f"No checkpoints found for {dataset_name} in {repo_id}")
+                    print(f"ℹ️  No checkpoints found for {dataset_name} in {repo_id}")
                     return False
 
                 # Sort by step number and get latest
@@ -345,8 +349,8 @@ class FinAITrainer:
                 latest_checkpoint = checkpoint_files[-1]
                 step_num = int(latest_checkpoint.split("-")[-1].split(".")[0])
 
-                logger.info(
-                    f"Found latest checkpoint: {latest_checkpoint} (step {step_num})"
+                print(
+                    f"📥 Found latest checkpoint: {latest_checkpoint} (step {step_num})"
                 )
 
                 # Download checkpoint
@@ -396,19 +400,19 @@ class FinAITrainer:
                                 token=token,
                                 repo_type="model",
                             )
-                            logger.info(f"Downloaded {model_file} from HF")
+                            print(f"📥 Downloaded {model_file} from HF")
                         except Exception as e:
                             logger.warning(f"Could not download {model_file}: {e}")
 
-                logger.info(f"Successfully pulled checkpoint from {repo_id}")
+                print(f"✅ Successfully pulled checkpoint from {repo_id}")
                 return True
 
             except Exception as e:
-                logger.warning(f"Failed to pull checkpoint from HF: {e}")
+                print(f"⚠️  Failed to pull checkpoint from HF: {e}")
                 return False
 
         except ImportError:
-            logger.warning("huggingface_hub not available, skipping HF checkpoint pull")
+            print("⚠️  huggingface_hub not available, skipping HF checkpoint pull")
             return False
 
     def _push_checkpoint_to_hf(self, checkpoint_path: str):
@@ -418,7 +422,9 @@ class FinAITrainer:
 
         token = self._get_hf_token()
         if not token:
-            logger.warning("HF_TOKEN not found, skipping checkpoint push to HF")
+            print("⚠️  HF_TOKEN not found in environment or .env file")
+            print("   Skipping checkpoint push to Hugging Face")
+            print("   Add HF_TOKEN to .env file to enable checkpoint sync")
             return
 
         try:
@@ -446,7 +452,7 @@ class FinAITrainer:
                     repo_type="model",
                     commit_message=f"Checkpoint at step {self.global_step} - {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}",
                 )
-                logger.info(f"✅ Pushed checkpoint {checkpoint_filename} to {repo_id}")
+                print(f"✅ Pushed checkpoint {checkpoint_filename} to {repo_id}")
             except Exception as e:
                 logger.warning(f"Failed to push checkpoint to HF: {e}")
 
@@ -464,7 +470,7 @@ class FinAITrainer:
                         commit_message=f"Model weights at step {self.global_step} - {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}",
                         ignore_patterns=["__pycache__", "*.pyc"],
                     )
-                    logger.info(f"✅ Pushed model weights to {repo_id}")
+                    print(f"✅ Pushed model weights to {repo_id}")
                 except Exception as e:
                     logger.warning(f"Failed to push model weights to HF: {e}")
 
@@ -522,7 +528,9 @@ class FinAITrainer:
 
         # Pull checkpoint from HF if enabled (before loading local checkpoints)
         if self.config.push_to_hub and self.config.hf_repo_id:
-            print("Attempting to pull latest checkpoint from Hugging Face...")
+            print(
+                f"🔄 Attempting to pull latest checkpoint from Hugging Face ({self.config.hf_repo_id})..."
+            )
             hf_pulled = self._pull_checkpoint_from_hf()
             if hf_pulled:
                 print("✅ Successfully pulled checkpoint from Hugging Face")
@@ -537,7 +545,9 @@ class FinAITrainer:
 
         # Create initial checkpoint at step 0 if it doesn't exist
         if self.global_step == 0:
-            print("Creating initial checkpoint at step 0...")
+            print(
+                f"💾 Creating initial checkpoint at step 0 for {self.dataset_cycler.current_dataset_name if self.dataset_cycler else 'unknown'}..."
+            )
             self._save_checkpoint()
             print("✅ Initial checkpoint created at step 0")
 
@@ -777,18 +787,20 @@ class FinAITrainer:
         # Push checkpoint to Hugging Face
         if self.config.push_to_hub and self.config.hf_repo_id:
             self._push_checkpoint_to_hf(checkpoint_path)
+        else:
+            # Only show this message occasionally to avoid spam
+            if self.global_step % (self.config.save_steps * 5) == 0:
+                print(
+                    f"💾 Checkpoint saved locally at step {self.global_step} for dataset {dataset_name}"
+                )
 
+        # Reduced logging frequency
         if (
             self.global_step % (self.config.save_steps * 5) == 0
         ):  # Only log every 5th save
-            print(
-                f"Checkpoint saved at step {self.global_step} for dataset {dataset_name}"
-            )
-        else:
-            # Always log when pushing to HF
-            if self.config.push_to_hub and self.config.hf_repo_id:
+            if not (self.config.push_to_hub and self.config.hf_repo_id):
                 print(
-                    f"Checkpoint saved and pushed to HF at step {self.global_step} for dataset {dataset_name}"
+                    f"Checkpoint saved at step {self.global_step} for dataset {dataset_name}"
                 )
 
     def _load_checkpoint(self):
@@ -910,6 +922,9 @@ class FinAITrainer:
                     )
                     print(
                         f"   Starting fresh training on {dataset_name} with these weights (step 0)"
+                    )
+                    print(
+                        "   A new checkpoint will be created and synced to HF at step 0"
                     )
                     self.global_step = 0
                     self.epoch = 0

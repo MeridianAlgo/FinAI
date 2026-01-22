@@ -186,6 +186,7 @@ jobs:
       - name: Train model
         id: train
         env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
           COMET_API_KEY: ${{ secrets.COMET_API_KEY }}
           COMET_PROJECT_NAME: "fin-ai"
           COMET_WORKSPACE: "meridianalgo"

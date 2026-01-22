@@ -192,12 +192,19 @@ cd FinAI
 # Install dependencies
 pip install -r requirements.txt
 
+# (Optional) Set up environment variables for HF sync
+# Create .env file (DO NOT COMMIT!)
+echo "HF_TOKEN=your_hf_token_here" > .env
+echo "COMET_API_KEY=your_comet_key_here" >> .env
+
 # Run training with default settings
 python train.py --config config/model_config.yaml --datasets config/datasets.yaml
 
 # Run training with specific size preset
 python train.py --config config/model_config.yaml --datasets config/datasets.yaml --size-preset micro --max-steps 1000
 ```
+
+**Note**: The `.env` file is gitignored and should never be committed. For CI/CD, use GitHub repository secrets instead.
 
 ## Current Project Status
 
