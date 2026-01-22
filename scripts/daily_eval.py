@@ -33,11 +33,11 @@ def evaluate_model(model_path: str, prompt: str, max_new_tokens: int = 100):
 
     model.eval()
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"DAILY EVALUATION - {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"Prompt: {prompt}")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
     inputs = tokenizer(prompt, return_tensors="pt")
 
@@ -54,7 +54,7 @@ def evaluate_model(model_path: str, prompt: str, max_new_tokens: int = 100):
     generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
 
     print(f"Generated Text:\n{generated_text}\n")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
     return generated_text
 

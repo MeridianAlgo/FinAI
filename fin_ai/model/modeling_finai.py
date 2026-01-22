@@ -297,9 +297,9 @@ class FinAIAttention(nn.Module):
                 )
 
         # Ensure all have the same number of heads
-        assert (
-            query_states.size(1) == key_states.size(1) == value_states.size(1)
-        ), f"Head mismatch: q={query_states.size(1)}, k={key_states.size(1)}, v={value_states.size(1)}"
+        assert query_states.size(1) == key_states.size(1) == value_states.size(1), (
+            f"Head mismatch: q={query_states.size(1)}, k={key_states.size(1)}, v={value_states.size(1)}"
+        )
 
         # Decide whether to use causal masking
         # In generation (q_len=1), is_causal should be False because we only have one query
@@ -462,7 +462,6 @@ class FinAIBlock(nn.Module):
         output_attentions: bool = False,
         use_cache: bool = False,
     ) -> Tuple[torch.Tensor, Optional[Tuple[torch.Tensor, torch.Tensor]]]:
-
         residual = hidden_states
         hidden_states = self.attention_norm(hidden_states)
 
@@ -708,7 +707,6 @@ class FinAIForCausalLM(FinAIPreTrainedModel, GenerationMixin):
         output_hidden_states: Optional[bool] = None,
         return_dict: Optional[bool] = None,
     ) -> Union[Tuple, CausalLMOutputWithPast]:
-
         return_dict = (
             return_dict if return_dict is not None else self.config.use_return_dict
         )

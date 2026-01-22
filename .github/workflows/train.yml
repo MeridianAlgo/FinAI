@@ -11,7 +11,7 @@ on:
       max_steps:
         description: 'Maximum training steps'
         required: false
-        default: '800'
+        default: '1000'
 
 env:
   PYTHON_VERSION: '3.10'
@@ -197,7 +197,7 @@ jobs:
           TMPDIR: "/tmp"
         run: |
           set -o pipefail
-          MAX_STEPS="${{ github.event.inputs.max_steps || '800' }}"
+          MAX_STEPS="${{ github.event.inputs.max_steps || '1000' }}"
           
           # Create temp cache directories
           mkdir -p /tmp/hf_cache
@@ -446,7 +446,7 @@ jobs:
           git add checkpoints/dataset_state.json || true
           
           if ! git diff --quiet --cached; then
-            git commit -m "Training run #$RUN_NUM - $(date +'%Y-%m-%d') [skip ci]"
+            git commit -m "Training run #$RUN_NUM - FineWeb-Edu - $(date +'%Y-%m-%d') [skip ci]"
             git push origin main
           fi
       
@@ -461,7 +461,7 @@ jobs:
             
             ## Release Information
             
-            This release represents a training milestone after 15 continuous hourly training runs.
+            This release represents a training milestone after 15 continuous hourly training runs on FineWeb-Edu.
             
             ### Model Availability
             
@@ -477,9 +477,11 @@ jobs:
             |--------|-------|
             | Release Version | ${{ steps.version.outputs.NEW_VERSION }} |
             | Total Training Runs | ${{ github.run_number }} |
+            | Steps Per Run | 1000 |
+            | Total Steps | ~${{ github.run_number }}000 |
             | Model Size | ~16M parameters (micro preset) |
             | Training Frequency | Hourly |
-            | Dataset Rotation | 24 diverse datasets |
+            | Dataset | FineWeb-Edu (continuous) |
             
             ### Model Architecture
             
@@ -543,7 +545,7 @@ jobs:
             
             ### Notes
             
-            This is an experimental research model under continuous development. The model trains hourly on diverse datasets and may produce inaccurate or biased outputs. Not recommended for production use.
+            This is an experimental research model under continuous development. The model trains hourly on FineWeb-Edu (high-quality educational content) and may produce inaccurate or biased outputs. Not recommended for production use.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
