@@ -1,5 +1,5 @@
 {
-  "current_dataset_idx": 23,
+  "current_dataset_idx": 0,
   "dataset_offsets": {
     "TinyStories": 10000,
     "gsm8k": 7473,
@@ -22,6 +22,7 @@
     "duorc": 10000,
     "amazon_polarity": 10000,
     "twitter-financial-news-sentiment": 9543,
-    "sciq": 11156
+    "sciq": 11156,
+    "fineweb-edu": 10000
   }
 }
