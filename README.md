@@ -226,8 +226,6 @@ python train.py --config config/model_config.yaml --datasets config/datasets.yam
 
 [![CI - Tests and Lint](https://github.com/MeridianAlgo/FinAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/MeridianAlgo/FinAI/actions/workflows/ci.yml)
 
-- **Tests**: Passing ✅
-- **Linting**: Passing ✅ (Black, Ruff, isort)
 - **Python versions**: 3.10, 3.11, 3.12
 
 <!-- DAILY_EVAL_START -->

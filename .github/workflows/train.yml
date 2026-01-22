@@ -75,7 +75,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-hf-
       
-      - name: Download model from Hugging Face
+      - name: Download model and checkpoint from Hugging Face
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
@@ -87,24 +87,35 @@ jobs:
           repo_id = "${{ env.HF_REPO_ID }}"
           
           if not token:
-              print("No HF_TOKEN found, starting fresh")
+              print("⚠️  No HF_TOKEN found, starting fresh")
               exit(0)
           
           api = HfApi(token=token)
           
           try:
               files = list_repo_files(repo_id, token=token)
-              print(f"Found files in {repo_id}: {files}")
+              print(f"📦 Found {len(files)} files in {repo_id}")
               
               os.makedirs("checkpoints/model", exist_ok=True)
+              os.makedirs("checkpoints", exist_ok=True)
               
-              # Download v3 model files (safetensors format)
+              # 1. Download model files
+              print("\n📥 Downloading model files...")
               required_files = ['config.json']
-              optional_files = ['model.safetensors', 'pytorch_model.bin', 'version.json', 'README.md', 'generation_config.json']
+              optional_files = [
+                  'model.safetensors', 
+                  'pytorch_model.bin', 
+                  'version.json', 
+                  'README.md', 
+                  'generation_config.json',
+                  'configuration_finai.py',
+                  'modeling_finai.py',
+                  '__init__.py'
+              ]
               
               for f in required_files:
                   if f in files:
-                      print(f"Downloading {f}...")
+                      print(f"  Downloading {f}...")
                       try:
                           hf_hub_download(
                               repo_id=repo_id,
@@ -112,18 +123,17 @@ jobs:
                               local_dir="checkpoints/model",
                               token=token
                           )
-                          print(f"✓ Downloaded {f}")
+                          print(f"  ✅ {f}")
                       except Exception as e:
-                          print(f"✗ Failed to download {f}: {e}")
+                          print(f"  ❌ Failed to download {f}: {e}")
                           print("Will start fresh training...")
                           exit(0)
                   else:
-                      print(f"⚠️  Required file {f} not found in repo")
+                      print(f"  ⚠️  Required file {f} not found in repo")
                       print("Will start fresh training...")
-                      # For v3 migration, missing config means fresh start
                       exit(0)
               
-              # Download optional files
+              # Download optional model files
               for f in optional_files:
                   if f in files:
                       try:
@@ -133,13 +143,45 @@ jobs:
                               local_dir="checkpoints/model",
                               token=token
                           )
-                          print(f"✓ Downloaded {f}")
+                          print(f"  ✅ {f}")
                       except Exception as e:
-                          print(f"Note: Could not download {f}: {e}")
+                          print(f"  ℹ️  Could not download {f}: {e}")
               
-              print("✅ Model download complete! Will continue training from checkpoint.")
+              # 2. Download checkpoint files
+              print("\n📥 Downloading checkpoint files...")
+              checkpoint_files = [f for f in files if f.startswith('checkpoint-') and f.endswith('.pt')]
+              
+              if checkpoint_files:
+                  # Sort by step number and get latest
+                  checkpoint_files.sort(
+                      key=lambda x: (
+                          int(x.split('-')[-1].split('.')[0])
+                          if x.split('-')[-1].split('.')[0].isdigit()
+                          else 0
+                      )
+                  )
+                  latest_checkpoint = checkpoint_files[-1]
+                  step_num = int(latest_checkpoint.split('-')[-1].split('.')[0])
+                  
+                  print(f"  Found latest checkpoint: {latest_checkpoint} (step {step_num})")
+                  
+                  try:
+                      hf_hub_download(
+                          repo_id=repo_id,
+                          filename=latest_checkpoint,
+                          local_dir="checkpoints",
+                          token=token
+                      )
+                      print(f"  ✅ Downloaded checkpoint: {latest_checkpoint}")
+                  except Exception as e:
+                      print(f"  ⚠️  Could not download checkpoint: {e}")
+                      print("  Will start from model weights only")
+              else:
+                  print("  ℹ️  No checkpoint files found, will start from model weights")
+              
+              print("\n✅ Download complete! Ready for training.")
           except Exception as e:
-              print(f"Could not download model: {e}")
+              print(f"❌ Error downloading from HF: {e}")
               print("Starting fresh training...")
           EOF
 
@@ -347,17 +389,40 @@ jobs:
           if not has_model:
               print("  ⚠️  No model weights found (model.safetensors or pytorch_model.bin)")
           
-          # Upload to HF
-          print(f"\n📤 Uploading to {repo_id}...")
+          # Upload model weights to HF
+          print(f"\n📤 Uploading model weights to {repo_id}...")
           
           api.upload_folder(
               folder_path="checkpoints/model",
               repo_id=repo_id,
               token=token,
-              commit_message=f"V3 Training - Run #${{ github.run_number }} - {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}",
-              ignore_patterns=["*.pt", "checkpoint-*.pt"]  # Don't upload training checkpoints
+              commit_message=f"Model weights - Run #${{ github.run_number }} - {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}",
           )
-          print(f"✅ Model uploaded to https://huggingface.co/{repo_id}")
+          print(f"✅ Model weights uploaded to https://huggingface.co/{repo_id}")
+          
+          # Upload checkpoint files
+          print(f"\n📤 Uploading checkpoint files to {repo_id}...")
+          import glob
+          checkpoint_files = glob.glob("checkpoints/checkpoint-*.pt")
+          
+          if checkpoint_files:
+              from huggingface_hub import upload_file
+              for checkpoint_path in checkpoint_files:
+                  checkpoint_filename = os.path.basename(checkpoint_path)
+                  try:
+                      upload_file(
+                          path_or_fileobj=checkpoint_path,
+                          path_in_repo=checkpoint_filename,
+                          repo_id=repo_id,
+                          token=token,
+                          repo_type="model",
+                          commit_message=f"Checkpoint - Run #${{ github.run_number }} - {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}",
+                      )
+                      print(f"  ✅ Uploaded: {checkpoint_filename}")
+                  except Exception as e:
+                      print(f"  ⚠️  Failed to upload {checkpoint_filename}: {e}")
+          else:
+              print("  ℹ️  No checkpoint files found to upload")
           
           # Clean up legacy V2 files if they exist
           print("\n🧹 Cleaning up legacy V2 files...")
