@@ -325,42 +325,22 @@ class FinAITrainer:
                 else "unknown"
             )
 
-            # List all checkpoint files
+            # Look for single checkpoint file for this dataset
             try:
                 files = list_repo_files(repo_id, token=token, repo_type="model")
-                checkpoint_files = [
-                    f
-                    for f in files
-                    if f.startswith(f"checkpoint-{dataset_name}-") and f.endswith(".pt")
-                ]
+                checkpoint_filename = f"checkpoint-{dataset_name}.pt"
 
-                if not checkpoint_files:
-                    print(f"ℹ️  No checkpoints found for {dataset_name} in {repo_id}")
+                if checkpoint_filename not in files:
+                    print(f"ℹ️  No checkpoint found for {dataset_name} in {repo_id}")
                     return False
 
-                # Sort by step number and get latest
-                checkpoint_files.sort(
-                    key=lambda x: (
-                        int(x.split("-")[-1].split(".")[0])
-                        if x.split("-")[-1].split(".")[0].isdigit()
-                        else 0
-                    )
-                )
-                latest_checkpoint = checkpoint_files[-1]
-                step_num = int(latest_checkpoint.split("-")[-1].split(".")[0])
-
-                print(
-                    f"📥 Found latest checkpoint: {latest_checkpoint} (step {step_num})"
-                )
+                print(f"📥 Found checkpoint: {checkpoint_filename}")
 
                 # Download checkpoint
                 os.makedirs(self.config.output_dir, exist_ok=True)
-                checkpoint_path = os.path.join(
-                    self.config.output_dir, latest_checkpoint
-                )
                 hf_hub_download(
                     repo_id=repo_id,
-                    filename=latest_checkpoint,
+                    filename=checkpoint_filename,
                     local_dir=self.config.output_dir,
                     token=token,
                     repo_type="model",
@@ -758,31 +738,15 @@ class FinAITrainer:
         if self.scaler:
             checkpoint["scaler_state_dict"] = self.scaler.state_dict()
 
-        # Save with dataset-specific name
+        # Use single checkpoint file per dataset (overwrites previous)
         checkpoint_path = os.path.join(
-            self.config.output_dir, f"checkpoint-{dataset_name}-{self.global_step}.pt"
+            self.config.output_dir, f"checkpoint-{dataset_name}.pt"
         )
         torch.save(checkpoint, checkpoint_path)
 
         # Save model in Hugging Face format to 'model' subdir
         model_save_path = os.path.join(self.config.output_dir, "model")
         self.model.save_pretrained(model_save_path, safe_serialization=True)
-
-        # Clean up old checkpoints for this dataset based on save_total_limit
-        if self.config.save_total_limit > 0:
-            checkpoints = [
-                f
-                for f in os.listdir(self.config.output_dir)
-                if f.startswith(f"checkpoint-{dataset_name}-") and f.endswith(".pt")
-            ]
-            if len(checkpoints) > self.config.save_total_limit:
-                checkpoints.sort(key=lambda x: int(x.split("-")[-1].split(".")[0]))
-                for old_checkpoint in checkpoints[: -self.config.save_total_limit]:
-                    old_path = os.path.join(self.config.output_dir, old_checkpoint)
-                    try:
-                        os.remove(old_path)
-                    except Exception:
-                        pass
 
         # Push checkpoint to Hugging Face
         if self.config.push_to_hub and self.config.hf_repo_id:
@@ -814,18 +778,15 @@ class FinAITrainer:
             else "unknown"
         )
 
-        # 1. Try to find the latest checkpoint for THIS dataset
-        checkpoints = [
-            f
-            for f in os.listdir(self.config.output_dir)
-            if f.startswith(f"checkpoint-{dataset_name}-") and f.endswith(".pt")
-        ]
+        # 1. Try to find the checkpoint for THIS dataset (single file)
+        checkpoint_path = os.path.join(
+            self.config.output_dir, f"checkpoint-{dataset_name}.pt"
+        )
 
-        if checkpoints:
-            checkpoints.sort(key=lambda x: int(x.split("-")[-1].split(".")[0]))
-            latest = checkpoints[-1]
-            checkpoint_path = os.path.join(self.config.output_dir, latest)
-            print(f"Resuming from dataset-specific checkpoint: {latest}")
+        if os.path.exists(checkpoint_path):
+            print(
+                f"Resuming from dataset-specific checkpoint: checkpoint-{dataset_name}.pt"
+            )
 
             try:
                 checkpoint = torch.load(

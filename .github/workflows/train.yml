@@ -147,37 +147,46 @@ jobs:
                       except Exception as e:
                           print(f"  ℹ️  Could not download {f}: {e}")
               
-              # 2. Download checkpoint files
-              print("\n📥 Downloading checkpoint files...")
-              checkpoint_files = [f for f in files if f.startswith('checkpoint-') and f.endswith('.pt')]
+              # 2. Download checkpoint file (single file per dataset)
+              print("\n📥 Downloading checkpoint file...")
               
-              if checkpoint_files:
-                  # Sort by step number and get latest
-                  checkpoint_files.sort(
-                      key=lambda x: (
-                          int(x.split('-')[-1].split('.')[0])
-                          if x.split('-')[-1].split('.')[0].isdigit()
-                          else 0
-                      )
-                  )
-                  latest_checkpoint = checkpoint_files[-1]
-                  step_num = int(latest_checkpoint.split('-')[-1].split('.')[0])
-                  
-                  print(f"  Found latest checkpoint: {latest_checkpoint} (step {step_num})")
+              # Determine current dataset (matches trainer logic)
+              from datetime import datetime
+              datasets_config_path = "config/datasets.yaml"
+              if os.path.exists(datasets_config_path):
+                  import yaml
+                  with open(datasets_config_path, 'r') as f:
+                      datasets_config = yaml.safe_load(f)
+                  datasets = datasets_config.get('datasets', [])
+                  if datasets:
+                      current_hour = datetime.now().hour
+                      current_dataset_idx = current_hour % len(datasets)
+                      dataset_name = datasets[current_dataset_idx].get('name', 'unknown')
+                      if '/' in dataset_name:
+                          dataset_name = dataset_name.split('/')[-1]
+                  else:
+                      dataset_name = 'unknown'
+              else:
+                  dataset_name = 'unknown'
+              
+              checkpoint_filename = f"checkpoint-{dataset_name}.pt"
+              
+              if checkpoint_filename in files:
+                  print(f"  Found checkpoint: {checkpoint_filename}")
                   
                   try:
                       hf_hub_download(
                           repo_id=repo_id,
-                          filename=latest_checkpoint,
+                          filename=checkpoint_filename,
                           local_dir="checkpoints",
                           token=token
                       )
-                      print(f"  ✅ Downloaded checkpoint: {latest_checkpoint}")
+                      print(f"  ✅ Downloaded checkpoint: {checkpoint_filename}")
                   except Exception as e:
                       print(f"  ⚠️  Could not download checkpoint: {e}")
                       print("  Will start from model weights only")
               else:
-                  print("  ℹ️  No checkpoint files found, will start from model weights")
+                  print(f"  ℹ️  No checkpoint file found ({checkpoint_filename}), will start from model weights")
               
               print("\n✅ Download complete! Ready for training.")
           except Exception as e:
@@ -400,8 +409,8 @@ jobs:
           )
           print(f"✅ Model weights uploaded to https://huggingface.co/{repo_id}")
           
-          # Upload checkpoint files
-          print(f"\n📤 Uploading checkpoint files to {repo_id}...")
+          # Upload checkpoint file (single file per dataset)
+          print(f"\n📤 Uploading checkpoint file to {repo_id}...")
           import glob
           checkpoint_files = glob.glob("checkpoints/checkpoint-*.pt")
           
@@ -422,7 +431,7 @@ jobs:
                   except Exception as e:
                       print(f"  ⚠️  Failed to upload {checkpoint_filename}: {e}")
           else:
-              print("  ℹ️  No checkpoint files found to upload")
+              print("  ℹ️  No checkpoint file found to upload")
           
           # Clean up legacy V2 files if they exist
           print("\n🧹 Cleaning up legacy V2 files...")
