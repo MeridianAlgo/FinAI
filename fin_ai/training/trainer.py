@@ -42,6 +42,8 @@ class TrainingConfig:
     fp16: bool = True
     plot_steps: int = 500
     gradient_checkpointing: bool = False
+    hf_repo_id: str = None
+    push_to_hub: bool = True
 
     @classmethod
     def from_yaml(cls, path: str):
@@ -50,10 +52,12 @@ class TrainingConfig:
         training_config = config.get("training", {})
         checkpointing = config.get("checkpointing", {})
         logging_config = config.get("logging", {})
+
+        # Merge all configs, with checkpointing taking precedence for overlapping keys
+        merged_config = {**training_config, **checkpointing, **logging_config}
+
         return cls(
-            **{k: v for k, v in training_config.items() if hasattr(cls, k)},
-            **{k: v for k, v in checkpointing.items() if hasattr(cls, k)},
-            **{k: v for k, v in logging_config.items() if hasattr(cls, k)},
+            **{k: v for k, v in merged_config.items() if hasattr(cls, k)},
         )
 
 
@@ -279,6 +283,196 @@ class FinAITrainer:
 
         return torch.optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda)
 
+    def _get_hf_token(self):
+        """Get Hugging Face token from environment or .env file."""
+        token = os.environ.get("HF_TOKEN")
+        if not token and os.path.exists(".env"):
+            try:
+                with open(".env", "r", encoding="utf-8") as f:
+                    for line in f:
+                        s = line.strip()
+                        if not s or s.startswith("#") or "=" not in s:
+                            continue
+                        k, v = s.split("=", 1)
+                        if k.strip() == "HF_TOKEN":
+                            token = v.strip().strip('"').strip("'")
+                            break
+            except Exception:
+                pass
+        return token
+
+    def _pull_checkpoint_from_hf(self):
+        """Pull latest checkpoint from Hugging Face Hub."""
+        if not self.config.hf_repo_id or not self.config.push_to_hub:
+            return False
+
+        token = self._get_hf_token()
+        if not token:
+            logger.warning("HF_TOKEN not found, skipping checkpoint pull from HF")
+            return False
+
+        try:
+            from huggingface_hub import hf_hub_download, list_repo_files
+
+            repo_id = self.config.hf_repo_id
+            dataset_name = (
+                self.dataset_cycler.current_dataset_name
+                if self.dataset_cycler
+                else "unknown"
+            )
+
+            # List all checkpoint files
+            try:
+                files = list_repo_files(repo_id, token=token, repo_type="model")
+                checkpoint_files = [
+                    f
+                    for f in files
+                    if f.startswith(f"checkpoint-{dataset_name}-") and f.endswith(".pt")
+                ]
+
+                if not checkpoint_files:
+                    logger.info(f"No checkpoints found for {dataset_name} in {repo_id}")
+                    return False
+
+                # Sort by step number and get latest
+                checkpoint_files.sort(
+                    key=lambda x: (
+                        int(x.split("-")[-1].split(".")[0])
+                        if x.split("-")[-1].split(".")[0].isdigit()
+                        else 0
+                    )
+                )
+                latest_checkpoint = checkpoint_files[-1]
+                step_num = int(latest_checkpoint.split("-")[-1].split(".")[0])
+
+                logger.info(
+                    f"Found latest checkpoint: {latest_checkpoint} (step {step_num})"
+                )
+
+                # Download checkpoint
+                os.makedirs(self.config.output_dir, exist_ok=True)
+                checkpoint_path = os.path.join(
+                    self.config.output_dir, latest_checkpoint
+                )
+                hf_hub_download(
+                    repo_id=repo_id,
+                    filename=latest_checkpoint,
+                    local_dir=self.config.output_dir,
+                    token=token,
+                    repo_type="model",
+                )
+
+                # Also try to download model weights if available
+                model_files = [
+                    "model.safetensors",
+                    "pytorch_model.bin",
+                    "model/model.safetensors",
+                    "model/pytorch_model.bin",
+                ]
+                model_dir = os.path.join(self.config.output_dir, "model")
+                os.makedirs(model_dir, exist_ok=True)
+
+                for model_file in model_files:
+                    # Check if file exists in repo (handle both root and model/ paths)
+                    file_in_repo = model_file in files or (
+                        model_file.startswith("model/") and model_file[6:] in files
+                    )
+                    if file_in_repo:
+                        try:
+                            # Download to model subdirectory
+                            if model_file.startswith("model/"):
+                                filename = model_file
+                                target_path = os.path.join(
+                                    self.config.output_dir, model_file
+                                )
+                            else:
+                                filename = model_file
+                                target_path = os.path.join(model_dir, model_file)
+
+                            hf_hub_download(
+                                repo_id=repo_id,
+                                filename=filename,
+                                local_dir=self.config.output_dir,
+                                token=token,
+                                repo_type="model",
+                            )
+                            logger.info(f"Downloaded {model_file} from HF")
+                        except Exception as e:
+                            logger.warning(f"Could not download {model_file}: {e}")
+
+                logger.info(f"Successfully pulled checkpoint from {repo_id}")
+                return True
+
+            except Exception as e:
+                logger.warning(f"Failed to pull checkpoint from HF: {e}")
+                return False
+
+        except ImportError:
+            logger.warning("huggingface_hub not available, skipping HF checkpoint pull")
+            return False
+
+    def _push_checkpoint_to_hf(self, checkpoint_path: str):
+        """Push checkpoint to Hugging Face Hub."""
+        if not self.config.hf_repo_id or not self.config.push_to_hub:
+            return
+
+        token = self._get_hf_token()
+        if not token:
+            logger.warning("HF_TOKEN not found, skipping checkpoint push to HF")
+            return
+
+        try:
+            from datetime import datetime
+
+            from huggingface_hub import HfApi, create_repo, upload_file
+
+            api = HfApi(token=token)
+            repo_id = self.config.hf_repo_id
+
+            # Create repo if it doesn't exist
+            try:
+                create_repo(repo_id, token=token, exist_ok=True, repo_type="model")
+            except Exception:
+                pass
+
+            # Upload checkpoint file
+            checkpoint_filename = os.path.basename(checkpoint_path)
+            try:
+                upload_file(
+                    path_or_fileobj=checkpoint_path,
+                    path_in_repo=checkpoint_filename,
+                    repo_id=repo_id,
+                    token=token,
+                    repo_type="model",
+                    commit_message=f"Checkpoint at step {self.global_step} - {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}",
+                )
+                logger.info(f"✅ Pushed checkpoint {checkpoint_filename} to {repo_id}")
+            except Exception as e:
+                logger.warning(f"Failed to push checkpoint to HF: {e}")
+
+            # Also push model weights
+            model_dir = os.path.join(self.config.output_dir, "model")
+            if os.path.exists(model_dir):
+                try:
+                    from huggingface_hub import upload_folder
+
+                    upload_folder(
+                        folder_path=model_dir,
+                        repo_id=repo_id,
+                        token=token,
+                        repo_type="model",
+                        commit_message=f"Model weights at step {self.global_step} - {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}",
+                        ignore_patterns=["__pycache__", "*.pyc"],
+                    )
+                    logger.info(f"✅ Pushed model weights to {repo_id}")
+                except Exception as e:
+                    logger.warning(f"Failed to push model weights to HF: {e}")
+
+        except ImportError:
+            logger.warning("huggingface_hub not available, skipping HF checkpoint push")
+        except Exception as e:
+            logger.warning(f"Error pushing checkpoint to HF: {e}")
+
     @torch.no_grad()
     def _evaluate(self):
         dataloader = self.eval_dataloader or self.train_dataloader
@@ -326,8 +520,26 @@ class FinAITrainer:
         print(f"Target steps: {self.config.max_steps:,}")
         print(f"Checkpoints: {self.config.output_dir}\n")
 
+        # Pull checkpoint from HF if enabled (before loading local checkpoints)
+        if self.config.push_to_hub and self.config.hf_repo_id:
+            print("Attempting to pull latest checkpoint from Hugging Face...")
+            hf_pulled = self._pull_checkpoint_from_hf()
+            if hf_pulled:
+                print("✅ Successfully pulled checkpoint from Hugging Face")
+            else:
+                print(
+                    "ℹ️  No checkpoint found on Hugging Face, will start fresh or use local"
+                )
+
+        # Load checkpoint (from HF or local)
         if self.config.resume_from_checkpoint:
             self._load_checkpoint()
+
+        # Create initial checkpoint at step 0 if it doesn't exist
+        if self.global_step == 0:
+            print("Creating initial checkpoint at step 0...")
+            self._save_checkpoint()
+            print("✅ Initial checkpoint created at step 0")
 
         self.model.train()
         train_iter = iter(self.train_dataloader)
@@ -562,12 +774,22 @@ class FinAITrainer:
                     except Exception:
                         pass
 
+        # Push checkpoint to Hugging Face
+        if self.config.push_to_hub and self.config.hf_repo_id:
+            self._push_checkpoint_to_hf(checkpoint_path)
+
         if (
             self.global_step % (self.config.save_steps * 5) == 0
         ):  # Only log every 5th save
             print(
                 f"Checkpoint saved at step {self.global_step} for dataset {dataset_name}"
             )
+        else:
+            # Always log when pushing to HF
+            if self.config.push_to_hub and self.config.hf_repo_id:
+                print(
+                    f"Checkpoint saved and pushed to HF at step {self.global_step} for dataset {dataset_name}"
+                )
 
     def _load_checkpoint(self):
         if not os.path.exists(self.config.output_dir):

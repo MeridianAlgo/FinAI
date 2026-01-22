@@ -21,7 +21,7 @@ training:
   warmup_steps: 100
   max_steps: 1000  # 1000 steps per training session
   eval_steps: 250
-  save_steps: 500
+  save_steps: 800  # Save checkpoint every 800 steps
   max_grad_norm: 1.0
   fp16: false  # Auto-detected in trainer, set false here for safety defaults
   optimizer: "adamw"
@@ -37,6 +37,8 @@ checkpointing:
   output_dir: "./checkpoints"
   save_total_limit: 2
   resume_from_checkpoint: true
+  hf_repo_id: "MeridianAlgo/Fin.AI"  # Hugging Face repository ID
+  push_to_hub: true  # Enable pushing checkpoints to Hugging Face
 
 logging:
   log_steps: 10
