@@ -28,6 +28,7 @@ jobs:
     timeout-minutes: 100
     permissions:
       contents: write
+      issues: write
     
     steps:
       - name: Free up disk space
@@ -362,6 +363,9 @@ jobs:
               with open(config_path, "r", encoding="utf-8") as f:
                   cfg = json.load(f)
 
+              # Ensure model_type is set
+              cfg["model_type"] = "finai"
+              
               cfg["auto_map"] = {
                   "AutoConfig": "configuration_finai.FinAIConfig",
                   "AutoModelForCausalLM": "modeling_finai.FinAIForCausalLM",
@@ -372,7 +376,7 @@ jobs:
 
               with open(config_path, "w", encoding="utf-8") as f:
                   json.dump(cfg, f, indent=2)
-              print("✅ Updated config.json with auto_map")
+              print("✅ Updated config.json with model_type and auto_map")
           
           # Verify V3 files exist
           model_dir = "checkpoints/model"

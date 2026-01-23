@@ -297,9 +297,9 @@ class FinAIAttention(nn.Module):
                 )
 
         # Ensure all have the same number of heads
-        assert (
-            query_states.size(1) == key_states.size(1) == value_states.size(1)
-        ), f"Head mismatch: q={query_states.size(1)}, k={key_states.size(1)}, v={value_states.size(1)}"
+        assert query_states.size(1) == key_states.size(1) == value_states.size(1), (
+            f"Head mismatch: q={query_states.size(1)}, k={key_states.size(1)}, v={value_states.size(1)}"
+        )
 
         # Decide whether to use causal masking
         # In generation (q_len=1), is_causal should be False because we only have one query
