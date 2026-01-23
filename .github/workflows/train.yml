@@ -88,20 +88,20 @@ jobs:
           repo_id = "${{ env.HF_REPO_ID }}"
           
           if not token:
-              print("⚠️  No HF_TOKEN found, starting fresh")
+              print("️  No HF_TOKEN found, starting fresh")
               exit(0)
           
           api = HfApi(token=token)
           
           try:
               files = list_repo_files(repo_id, token=token)
-              print(f"📦 Found {len(files)} files in {repo_id}")
+              print(f" Found {len(files)} files in {repo_id}")
               
               os.makedirs("checkpoints/model", exist_ok=True)
               os.makedirs("checkpoints", exist_ok=True)
               
               # 1. Download model files
-              print("\n📥 Downloading model files...")
+              print("\n Downloading model files...")
               required_files = ['config.json']
               optional_files = [
                   'model.safetensors', 
@@ -130,13 +130,13 @@ jobs:
                           target_path = os.path.join("checkpoints/model", f)
                           if downloaded_path != target_path:
                               shutil.move(downloaded_path, target_path)
-                          print(f"  ✅ {f}")
+                          print(f"   {f}")
                       except Exception as e:
-                          print(f"  ❌ Failed to download {f}: {e}")
+                          print(f"   Failed to download {f}: {e}")
                           print("Will start fresh training...")
                           exit(0)
                   else:
-                      print(f"  ⚠️  Required file {f} not found in repo")
+                      print(f"  ️  Required file {f} not found in repo")
                       print("Will start fresh training...")
                       exit(0)
               
@@ -154,12 +154,12 @@ jobs:
                           target_path = os.path.join("checkpoints/model", f)
                           if downloaded_path != target_path:
                               shutil.move(downloaded_path, target_path)
-                          print(f"  ✅ {f}")
+                          print(f"   {f}")
                       except Exception as e:
                           print(f"  ℹ️  Could not download {f}: {e}")
               
               # 2. Download checkpoint file (single file per dataset)
-              print("\n📥 Downloading checkpoint file...")
+              print("\n Downloading checkpoint file...")
               
               # Determine current dataset (matches trainer logic)
               from datetime import datetime
@@ -192,16 +192,16 @@ jobs:
                           local_dir="checkpoints",
                           token=token
                       )
-                      print(f"  ✅ Downloaded checkpoint: {checkpoint_filename}")
+                      print(f"   Downloaded checkpoint: {checkpoint_filename}")
                   except Exception as e:
-                      print(f"  ⚠️  Could not download checkpoint: {e}")
+                      print(f"  ️  Could not download checkpoint: {e}")
                       print("  Will start from model weights only")
               else:
                   print(f"  ℹ️  No checkpoint file found ({checkpoint_filename}), will start from model weights")
               
-              print("\n✅ Download complete! Ready for training.")
+              print("\n Download complete! Ready for training.")
           except Exception as e:
-              print(f"❌ Error downloading from HF: {e}")
+              print(f" Error downloading from HF: {e}")
               print("Starting fresh training...")
           EOF
 
@@ -283,12 +283,12 @@ jobs:
           set -e
 
           if [ $TRAIN_STATUS -eq 0 ]; then
-            echo "✅ Training completed successfully"
+            echo " Training completed successfully"
           elif [ $TRAIN_STATUS -eq 124 ]; then
-            echo "❌ Training timed out after 90 minutes"
+            echo " Training timed out after 90 minutes"
             exit 124
           else
-            echo "❌ Training failed with exit code $TRAIN_STATUS"
+            echo " Training failed with exit code $TRAIN_STATUS"
             exit $TRAIN_STATUS
           fi
           
@@ -348,24 +348,24 @@ jobs:
           if os.path.exists("MODEL_CARD.md"):
               import shutil
               shutil.copy("MODEL_CARD.md", "checkpoints/model/README.md")
-              print("✅ Copied MODEL_CARD.md to model directory as README.md")
+              print(" Copied MODEL_CARD.md to model directory as README.md")
           elif os.path.exists("README.md"):
               import shutil
               shutil.copy("README.md", "checkpoints/model/README.md")
-              print("✅ Copied README.md to model directory")
+              print(" Copied README.md to model directory")
           
           # Copy generation config if it exists
           if os.path.exists("fin_ai/model/generation_config.json"):
               import shutil
               shutil.copy("fin_ai/model/generation_config.json", "checkpoints/model/generation_config.json")
-              print("✅ Copied generation_config.json to model directory")
+              print(" Copied generation_config.json to model directory")
 
           # Copy remote-code modules required for AutoModel* loading
           import shutil
           shutil.copy("fin_ai/model/configuration_finai.py", "checkpoints/model/configuration_finai.py")
           shutil.copy("fin_ai/model/modeling_finai.py", "checkpoints/model/modeling_finai.py")
           shutil.copy("fin_ai/model/__init__.py", "checkpoints/model/__init__.py")
-          print("✅ Copied remote-code modules to model directory")
+          print(" Copied remote-code modules to model directory")
 
           # Ensure config.json contains auto_map for trust_remote_code
           config_path = os.path.join("checkpoints", "model", "config.json")
@@ -386,34 +386,34 @@ jobs:
 
               with open(config_path, "w", encoding="utf-8") as f:
                   json.dump(cfg, f, indent=2)
-              print("✅ Updated config.json with model_type and auto_map")
+              print(" Updated config.json with model_type and auto_map")
           
           # Verify V3 files exist
           model_dir = "checkpoints/model"
           required_files = ["config.json"]
           model_files = ["model.safetensors", "pytorch_model.bin"]
           
-          print("\n📦 Checking V3 model files...")
+          print("\n Checking V3 model files...")
           for f in required_files:
               path = os.path.join(model_dir, f)
               if os.path.exists(path):
-                  print(f"  ✅ {f}")
+                  print(f"   {f}")
               else:
-                  print(f"  ❌ Missing: {f}")
+                  print(f"   Missing: {f}")
           
           has_model = False
           for f in model_files:
               path = os.path.join(model_dir, f)
               if os.path.exists(path):
-                  print(f"  ✅ {f}")
+                  print(f"   {f}")
                   has_model = True
                   break
           
           if not has_model:
-              print("  ⚠️  No model weights found (model.safetensors or pytorch_model.bin)")
+              print("  ️  No model weights found (model.safetensors or pytorch_model.bin)")
           
           # Upload model weights to HF
-          print(f"\n📤 Uploading model weights to {repo_id}...")
+          print(f"\n Uploading model weights to {repo_id}...")
           
           api.upload_folder(
               folder_path="checkpoints/model",
@@ -421,10 +421,10 @@ jobs:
               token=token,
               commit_message=f"Model weights - Run #${{ github.run_number }} - {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}",
           )
-          print(f"✅ Model weights uploaded to https://huggingface.co/{repo_id}")
+          print(f" Model weights uploaded to https://huggingface.co/{repo_id}")
           
           # Upload checkpoint file (single file per dataset)
-          print(f"\n📤 Uploading checkpoint file to {repo_id}...")
+          print(f"\n Uploading checkpoint file to {repo_id}...")
           import glob
           checkpoint_files = glob.glob("checkpoints/checkpoint-*.pt")
           
@@ -441,14 +441,14 @@ jobs:
                           repo_type="model",
                           commit_message=f"Checkpoint - Run #${{ github.run_number }} - {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}",
                       )
-                      print(f"  ✅ Uploaded: {checkpoint_filename}")
+                      print(f"   Uploaded: {checkpoint_filename}")
                   except Exception as e:
-                      print(f"  ⚠️  Failed to upload {checkpoint_filename}: {e}")
+                      print(f"  ️  Failed to upload {checkpoint_filename}: {e}")
           else:
               print("  ℹ️  No checkpoint file found to upload")
           
           # Clean up legacy V2 files if they exist
-          print("\n🧹 Cleaning up legacy V2 files...")
+          print("\n Cleaning up legacy V2 files...")
           legacy_files = ["final_config.json", "model.pt"]
           for file_path in legacy_files:
               try:
@@ -458,13 +458,13 @@ jobs:
                       token=token,
                       commit_message=f"Remove legacy V2 file: {file_path}"
                   )
-                  print(f"  ✅ Deleted: {file_path}")
+                  print(f"   Deleted: {file_path}")
               except Exception as e:
                   # File might not exist, which is fine
                   if "404" not in str(e):
                       print(f"  ℹ️  {file_path}: {e}")
           
-          print("\n✨ Upload complete!")
+          print("\n Upload complete!")
           EOF
       
       - name: Update version and push
@@ -489,7 +489,7 @@ jobs:
           # If pop fails (e.g. merge conflict), we force it to keep local version
           # This avoids corrupted files with merge markers
           if ! git stash pop; then
-             echo "⚠️ Merge conflict during stash pop, favoring local changes"
+             echo "️ Merge conflict during stash pop, favoring local changes"
              git checkout --ours . || git checkout --theirs . || true
           fi
           
@@ -554,7 +554,7 @@ jobs:
             
             ### Model Availability
             
-            [![Model on Hugging Face](https://img.shields.io/badge/🤗_Model-Fin.AI-yellow)](https://huggingface.co/MeridianAlgo/Fin.AI)
+            [![Model on Hugging Face](https://img.shields.io/badge/_Model-Fin.AI-yellow)](https://huggingface.co/MeridianAlgo/Fin.AI)
             [![Training Workflow](https://github.com/MeridianAlgo/FinAI/actions/workflows/train.yml/badge.svg)](https://github.com/MeridianAlgo/FinAI/actions/workflows/train.yml)
             [![Comet ML](https://img.shields.io/badge/Comet_ML-Experiments-blue?logo=comet)](https://www.comet.com/meridianalgo/fin-ai)
             

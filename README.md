@@ -12,9 +12,10 @@ A continuously learning transformer language model that trains automatically eve
 
 <div align="center">
 
-[![Model on Hugging Face](https://img.shields.io/badge/🤗_Model-Fin.AI-yellow)](https://huggingface.co/MeridianAlgo/Fin.AI)
+[![Model on Hugging Face](https://img.shields.io/badge/Model-Fin.AI-yellow)](https://huggingface.co/MeridianAlgo/Fin.AI)
 [![CI - Tests and Lint](https://github.com/MeridianAlgo/FinAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/MeridianAlgo/FinAI/actions/workflows/ci.yml)
 [![Training Workflow](https://github.com/MeridianAlgo/FinAI/actions/workflows/train.yml/badge.svg)](https://github.com/MeridianAlgo/FinAI/actions)
+[![Last Commit](https://img.shields.io/github/last-commit/MeridianAlgo/FinAI/main)](https://github.com/MeridianAlgo/FinAI/commits/main)
 [![Comet ML](https://img.shields.io/badge/Comet_ML-Experiments-blue?logo=comet)](https://www.comet.com/meridianalgo/fin-ai)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
@@ -308,11 +309,21 @@ MIT License - See [LICENSE](LICENSE)
 - **Issues**: [GitHub Issues](https://github.com/MeridianAlgo/FinAI/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/MeridianAlgo/FinAI/discussions)
 
+## Recent Changes
+
+### Latest Commits
+
+- **Fix model file download paths from HF root level** - Handle model.safetensors at root level, properly move downloaded files to model/ subdirectory
+- **Fix training loop to actually train** - Changed training loop from absolute step target to additive (train X MORE steps per session), added model_type to config.json, added workflow permissions
+- **Training run #511** - FineWeb-Edu continuous training session
+
+For full commit history, see [GitHub Commits](https://github.com/MeridianAlgo/FinAI/commits/main)
+
 ---
 
 <div align="center">
 
-**Made with passion by the Fin.AI team**  
-[⭐ Star on GitHub](https://github.com/MeridianAlgo/FinAI)  [🤗 View & download on Hugging Face](https://huggingface.co/MeridianAlgo/Fin.AI)
+Made with passion by the Fin.AI team
+[Star on GitHub](https://github.com/MeridianAlgo/FinAI)  [View on Hugging Face](https://huggingface.co/MeridianAlgo/Fin.AI)
 
 </div>

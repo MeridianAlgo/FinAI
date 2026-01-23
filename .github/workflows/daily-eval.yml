@@ -56,9 +56,9 @@ jobs:
                   token=token,
                   local_dir="eval_model"
               )
-              print(f"✅ Model downloaded to {model_path}")
+              print(f" Model downloaded to {model_path}")
           except Exception as e:
-              print(f"❌ Failed to download model: {e}")
+              print(f" Failed to download model: {e}")
               exit(1)
           EOF
 
@@ -143,10 +143,10 @@ jobs:
                   short_response = generated_text[len(prompt):].strip()[:50]
                   f.write(f"response={short_response}...\n")
               
-              print("✅ Evaluation complete!")
+              print(" Evaluation complete!")
               
           except Exception as e:
-              print(f"❌ Evaluation failed: {e}")
+              print(f" Evaluation failed: {e}")
               with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
                   f.write(f"status=failed\n")
                   f.write(f"date={datetime.utcnow().strftime('%Y-%m-%d')}\n")
@@ -193,9 +193,9 @@ jobs:
               with open('README.md', 'w', encoding='utf-8') as f:
                   f.write(readme)
               
-              print("✅ README updated with latest evaluation")
+              print(" README updated with latest evaluation")
           else:
-              print("⚠️  Daily eval markers not found in README")
+              print("️  Daily eval markers not found in README")
           EOF
 
       - name: Commit and push changes
