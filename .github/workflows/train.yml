@@ -114,16 +114,22 @@ jobs:
                   '__init__.py'
               ]
               
+              import shutil
+              
               for f in required_files:
                   if f in files:
                       print(f"  Downloading {f}...")
                       try:
-                          hf_hub_download(
+                          downloaded_path = hf_hub_download(
                               repo_id=repo_id,
                               filename=f,
-                              local_dir="checkpoints/model",
+                              local_dir="checkpoints",
                               token=token
                           )
+                          # Move to model subdirectory if at root
+                          target_path = os.path.join("checkpoints/model", f)
+                          if downloaded_path != target_path:
+                              shutil.move(downloaded_path, target_path)
                           print(f"  ✅ {f}")
                       except Exception as e:
                           print(f"  ❌ Failed to download {f}: {e}")
@@ -138,12 +144,16 @@ jobs:
               for f in optional_files:
                   if f in files:
                       try:
-                          hf_hub_download(
+                          downloaded_path = hf_hub_download(
                               repo_id=repo_id,
                               filename=f,
-                              local_dir="checkpoints/model",
+                              local_dir="checkpoints",
                               token=token
                           )
+                          # Move to model subdirectory if at root
+                          target_path = os.path.join("checkpoints/model", f)
+                          if downloaded_path != target_path:
+                              shutil.move(downloaded_path, target_path)
                           print(f"  ✅ {f}")
                       except Exception as e:
                           print(f"  ℹ️  Could not download {f}: {e}")

@@ -351,42 +351,51 @@ class FinAITrainer:
                 )
 
                 # Also try to download model weights if available
-                model_files = [
-                    "model.safetensors",
-                    "pytorch_model.bin",
-                    "model/model.safetensors",
-                    "model/pytorch_model.bin",
+                # Check for files at root level first, then model/ subdirectory
+                model_files_to_check = [
+                    (
+                        "model.safetensors",
+                        "model.safetensors",
+                    ),  # (repo_path, local_path)
+                    ("pytorch_model.bin", "pytorch_model.bin"),
+                    ("model/model.safetensors", "model/model.safetensors"),
+                    ("model/pytorch_model.bin", "model/pytorch_model.bin"),
+                    ("config.json", "model/config.json"),
+                    ("generation_config.json", "model/generation_config.json"),
+                    ("configuration_finai.py", "model/configuration_finai.py"),
+                    ("modeling_finai.py", "model/modeling_finai.py"),
+                    ("__init__.py", "model/__init__.py"),
                 ]
                 model_dir = os.path.join(self.config.output_dir, "model")
                 os.makedirs(model_dir, exist_ok=True)
 
-                for model_file in model_files:
-                    # Check if file exists in repo (handle both root and model/ paths)
-                    file_in_repo = model_file in files or (
-                        model_file.startswith("model/") and model_file[6:] in files
-                    )
-                    if file_in_repo:
+                for repo_file, local_file in model_files_to_check:
+                    if repo_file in files:
                         try:
-                            # Download to model subdirectory
-                            if model_file.startswith("model/"):
-                                filename = model_file
-                                target_path = os.path.join(
-                                    self.config.output_dir, model_file
-                                )
-                            else:
-                                filename = model_file
-                                target_path = os.path.join(model_dir, model_file)
+                            # Ensure local directory exists
+                            local_path = os.path.join(
+                                self.config.output_dir, local_file
+                            )
+                            os.makedirs(os.path.dirname(local_path), exist_ok=True)
 
-                            hf_hub_download(
+                            # Download file
+                            downloaded_path = hf_hub_download(
                                 repo_id=repo_id,
-                                filename=filename,
+                                filename=repo_file,
                                 local_dir=self.config.output_dir,
                                 token=token,
                                 repo_type="model",
                             )
-                            print(f"📥 Downloaded {model_file} from HF")
+
+                            # Move to correct location if needed
+                            if downloaded_path != local_path:
+                                import shutil
+
+                                shutil.move(downloaded_path, local_path)
+
+                            print(f"📥 Downloaded {repo_file} from HF")
                         except Exception as e:
-                            logger.warning(f"Could not download {model_file}: {e}")
+                            logger.warning(f"Could not download {repo_file}: {e}")
 
                 print(f"✅ Successfully pulled checkpoint from {repo_id}")
                 return True
