@@ -309,21 +309,25 @@ MIT License - See [LICENSE](LICENSE)
 - **Issues**: [GitHub Issues](https://github.com/MeridianAlgo/FinAI/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/MeridianAlgo/FinAI/discussions)
 
-## Recent Changes
+## Recent Updates
 
-### Latest Commits
+### Commits
+For full commit history, see [GitHub Commits]([url](https://github.com/MeridianAlgo/FinAI/commits))
 
-- **Fix model file download paths from HF root level** - Handle model.safetensors at root level, properly move downloaded files to model/ subdirectory
-- **Fix training loop to actually train** - Changed training loop from absolute step target to additive (train X MORE steps per session), added model_type to config.json, added workflow permissions
-- **Training run #511** - FineWeb-Edu continuous training session
+![Latest Commit](https://img.shields.io/github/last-commit/MeridianAlgo/FinAI?label=Latest%20Commit&color=blue&logo=github)
 
-For full commit history, see [GitHub Commits](https://github.com/MeridianAlgo/FinAI/commits/main)
+### PR and Issues
+For full reporting view our [Pull Requests]([url](https://github.com/MeridianAlgo/FinAI/pulls)) or visit our [Issues]([url](https://github.com/MeridianAlgo/FinAI/issues))
 
+[![Pull Requests](https://img.shields.io/github/issues-pr/MeridianAlgo/FinAI?label=Pull%20Requests&color=purple&logo=github)](https://github.com/MeridianAlgo/FinAI/pulls)
+[![Issues](https://img.shields.io/github/issues/MeridianAlgo/FinAI?label=Issues&color=orange&logo=github)](https://github.com/MeridianAlgo/FinAI/issues)
 ---
 
 <div align="center">
 
 Made with passion by the Fin.AI team
-[Star on GitHub](https://github.com/MeridianAlgo/FinAI)  [View on Hugging Face](https://huggingface.co/MeridianAlgo/Fin.AI)
+
+[![GitHub Stars](https://img.shields.io/github/stars/MeridianAlgo/FinAI?label=Star%20on%20GitHub&color=yellow&logo=github&style=flat-square)](https://github.com/MeridianAlgo/FinAI)
+[![Model on Hugging Face](https://img.shields.io/badge/Model-Fin.AI-yellow)](https://huggingface.co/MeridianAlgo/Fin.AI)
 
 </div>
