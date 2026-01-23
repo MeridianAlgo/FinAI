@@ -259,6 +259,8 @@ class FinAITrainer:
         )
 
     def _create_scheduler(self):
+        # Note: This scheduler is created at initialization and uses max_steps as configured
+        # The actual training loop will train for max_steps BEYOND the checkpoint
         total_optimizer_steps = max(
             1,
             math.ceil(
@@ -274,6 +276,8 @@ class FinAITrainer:
         )
 
         def lr_lambda(step):
+            # step here is the optimizer step (after gradient accumulation)
+            # We want warmup relative to the START of this training session
             if step < warmup_optimizer_steps:
                 return float(step) / float(max(1, warmup_optimizer_steps))
             progress = float(step - warmup_optimizer_steps) / float(
@@ -503,7 +507,6 @@ class FinAITrainer:
 
         print(f"\nStarting Fin.AI training on {self.device}")
         print(f"Model: {self.model.config.num_parameters:,} parameters")
-        print(f"Target steps: {self.config.max_steps:,}")
         print(f"Checkpoints: {self.config.output_dir}\n")
 
         # Pull checkpoint from HF if enabled (before loading local checkpoints)
@@ -520,8 +523,16 @@ class FinAITrainer:
                 )
 
         # Load checkpoint (from HF or local)
+        starting_step = 0
         if self.config.resume_from_checkpoint:
             self._load_checkpoint()
+            starting_step = self.global_step
+
+        # Calculate target steps: start + configured steps to train
+        target_steps = starting_step + self.config.max_steps
+        print(
+            f"Training from step {starting_step} to {target_steps} ({self.config.max_steps:,} steps)\n"
+        )
 
         # Create initial checkpoint at step 0 if it doesn't exist
         if self.global_step == 0:
@@ -545,7 +556,7 @@ class FinAITrainer:
         )
 
         pbar = tqdm(
-            total=self.config.max_steps,
+            total=target_steps,
             initial=self.global_step,
             desc="Training",
             disable=is_ci,
@@ -554,7 +565,7 @@ class FinAITrainer:
         # Keep track of local progress to update dataset offset later
         steps_processed = 0
 
-        while self.global_step < self.config.max_steps:
+        while self.global_step < target_steps:
             try:
                 batch = next(train_iter)
             except StopIteration:
@@ -637,7 +648,7 @@ class FinAITrainer:
                     )
                 else:
                     print(
-                        f"Items processed: {self.global_step * self.config.batch_size} | Step {self.global_step}/{self.config.max_steps} | Loss: {(log_loss_sum / max(1, log_loss_count)):.4f} | LR: {current_lr:.2e} | Tokens/s: {tokens_per_sec:.0f}"
+                        f"Items processed: {self.global_step * self.config.batch_size} | Step {self.global_step}/{target_steps} | Loss: {(log_loss_sum / max(1, log_loss_count)):.4f} | LR: {current_lr:.2e} | Tokens/s: {tokens_per_sec:.0f}"
                     )
 
                 if self.experiment:
@@ -668,10 +679,10 @@ class FinAITrainer:
                                     else 0
                                 ),
                                 # Progress metrics
-                                "percent_complete": progress,
+                                "percent_complete": (self.global_step / target_steps)
+                                * 100,
                                 "epoch": self.epoch,
-                                "steps_remaining": self.config.max_steps
-                                - self.global_step,
+                                "steps_remaining": target_steps - self.global_step,
                                 # Gradient metrics
                                 "gradient_global_norm": torch.nn.utils.clip_grad_norm_(
                                     self.model.parameters(), float("inf")
