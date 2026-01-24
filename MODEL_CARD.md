@@ -21,7 +21,7 @@ inference:
     top_p: 0.95
 ---
 
-# Fin.AI V3
+# Fin.AI V4
 
 **WORK IN PROGRESS – EXPERIMENTAL RESEARCH PROJECT**
 
@@ -32,6 +32,17 @@ A continuously learning transformer language model that trains automatically eve
 > The model is under continuous training and may produce inaccurate, inappropriate, biased, or nonsensical outputs.  
 > **Do NOT use for production applications, critical systems, or high-stakes decisions.**  
 > Use at your own risk.
+
+<div align="center">
+
+[![Model on Hugging Face](https://img.shields.io/badge/Model-Fin.AI-yellow)](https://huggingface.co/MeridianAlgo/Fin.AI)
+[![CI - Tests and Lint](https://github.com/MeridianAlgo/FinAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/MeridianAlgo/FinAI/actions/workflows/ci.yml)
+[![Training Workflow](https://github.com/MeridianAlgo/FinAI/actions/workflows/train.yml/badge.svg)](https://github.com/MeridianAlgo/FinAI/actions)
+[![Comet ML](https://img.shields.io/badge/Comet_ML-Experiments-blue?logo=comet)](https://www.comet.com/meridianalgo/fin-ai)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+
+</div>
 
 ---
 
@@ -53,9 +64,9 @@ Fin.AI is an experimental GPT-style language model that trains **24/7** continuo
 
 ---
 
-## Model Architecture (V3)
+## Model Architecture (V4)
 
-Fin.AI V3 features a modern transformer architecture optimized for CPU/consumer hardware:
+Fin.AI V4 features a modern transformer architecture optimized for CPU/consumer hardware:
 
 - **Architecture**: GPT-style decoder-only transformer
 - **Attention**: Grouped Query Attention (GQA) with Flash Attention support
