@@ -184,4 +184,4 @@ By contributing, you agree that your contributions will be licensed under the MI
 
 ---
 
-Thank you for contributing to Fin.AI! 🚀
+Thank you for contributing to Fin.AI!

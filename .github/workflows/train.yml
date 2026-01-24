@@ -156,7 +156,7 @@ jobs:
                               shutil.move(downloaded_path, target_path)
                           print(f"   {f}")
                       except Exception as e:
-                          print(f"  ℹ️  Could not download {f}: {e}")
+                          print(f"  INFO: Could not download {f}: {e}")
               
               # 2. Download checkpoint file (single file per dataset)
               print("\n Downloading checkpoint file...")
@@ -197,7 +197,7 @@ jobs:
                       print(f"  ️  Could not download checkpoint: {e}")
                       print("  Will start from model weights only")
               else:
-                  print(f"  ℹ️  No checkpoint file found ({checkpoint_filename}), will start from model weights")
+                  print(f"  INFO: No checkpoint file found ({checkpoint_filename}), will start from model weights")
               
               print("\n Download complete! Ready for training.")
           except Exception as e:
@@ -270,25 +270,27 @@ jobs:
           echo "Disk space before training:"
           df -h
           
-          # Set timeout for training (90 minutes max)
+          # Set timeout for training (85 minutes max to allow cleanup time)
           # We use pipefail to catch errors in train.py even when piped to tee
           set +e
-          timeout 90m python train.py \
+          timeout 85m python train.py \
             --config config/model_config.yaml \
             --datasets config/datasets.yaml \
-            --size-preset micro \
+            --size-preset base \
             --max-steps $MAX_STEPS \
             --output-dir checkpoints 2>&1 | tee training_output.txt
           TRAIN_STATUS=$?
           set -e
 
           if [ $TRAIN_STATUS -eq 0 ]; then
-            echo " Training completed successfully"
+            echo "Training completed successfully"
           elif [ $TRAIN_STATUS -eq 124 ]; then
-            echo " Training timed out after 90 minutes"
-            exit 124
+            echo "WARNING: Training timed out after 85 minutes"
+            echo "Checkpoint should be saved. Continuing to upload..."
+            # Don't exit with error - allow upload to proceed
+            TRAIN_STATUS=0
           else
-            echo " Training failed with exit code $TRAIN_STATUS"
+            echo "Training failed with exit code $TRAIN_STATUS"
             exit $TRAIN_STATUS
           fi
           
@@ -443,9 +445,9 @@ jobs:
                       )
                       print(f"   Uploaded: {checkpoint_filename}")
                   except Exception as e:
-                      print(f"  ️  Failed to upload {checkpoint_filename}: {e}")
+                      print(f"  WARNING: Failed to upload {checkpoint_filename}: {e}")
           else:
-              print("  ℹ️  No checkpoint file found to upload")
+              print("  INFO: No checkpoint file found to upload")
           
           # Clean up legacy V2 files if they exist
           print("\n Cleaning up legacy V2 files...")
@@ -462,7 +464,7 @@ jobs:
               except Exception as e:
                   # File might not exist, which is fine
                   if "404" not in str(e):
-                      print(f"  ℹ️  {file_path}: {e}")
+                      print(f"  INFO: {file_path}: {e}")
           
           print("\n Upload complete!")
           EOF
@@ -528,57 +530,166 @@ jobs:
           script: |
             const runNumber = context.runNumber;
             const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const jobUrl = `${runUrl}#step:${context.job}`;
             
-            const issueTitle = `Training Run #${runNumber} Failed`;
+            // Fetch workflow run details to get failure context
+            const run = await github.rest.actions.getWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: context.runId
+            });
+            
+            // Fetch jobs to identify which step failed
+            const jobs = await github.rest.actions.listJobsForWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: context.runId
+            });
+            
+            const failedJob = jobs.data.jobs.find(job => job.conclusion === 'failure');
+            const failedStep = failedJob?.steps.find(step => step.conclusion === 'failure');
+            
+            // Determine failure type and create appropriate issue
+            let failureType = 'Unknown';
+            let failureDetails = 'The training workflow failed. Please review the logs for details.';
+            let suggestedActions = [
+              'Review workflow logs',
+              'Identify root cause',
+              'Apply fix',
+              'Re-run workflow if needed'
+            ];
+            
+            if (failedStep) {
+              const stepName = failedStep.name;
+              
+              if (stepName.includes('Train model')) {
+                failureType = 'Training Failure';
+                failureDetails = 'The training step failed. This could be due to:\n- Out of memory\n- Data loading issues\n- Model architecture problems\n- Timeout (exceeded 85 minutes)';
+                suggestedActions = [
+                  'Check memory usage in logs',
+                  'Verify dataset configuration',
+                  'Review model architecture settings',
+                  'Consider reducing batch size or model size',
+                  'Check if timeout occurred (85 min limit)'
+                ];
+              } else if (stepName.includes('Upload')) {
+                failureType = 'Upload Failure';
+                failureDetails = 'Failed to upload model to Hugging Face. This could be due to:\n- Invalid HF_TOKEN\n- Network issues\n- Repository permissions\n- File size limits';
+                suggestedActions = [
+                  'Verify HF_TOKEN is valid and has write permissions',
+                  'Check network connectivity',
+                  'Verify repository exists and is accessible',
+                  'Check file sizes are within limits'
+                ];
+              } else if (stepName.includes('dependencies')) {
+                failureType = 'Dependency Installation Failure';
+                failureDetails = 'Failed to install dependencies. This could be due to:\n- Package version conflicts\n- Network issues\n- Missing system dependencies';
+                suggestedActions = [
+                  'Review requirements.txt for conflicts',
+                  'Check PyPI availability',
+                  'Verify system dependencies are available'
+                ];
+              } else if (stepName.includes('disk space')) {
+                failureType = 'Disk Space Failure';
+                failureDetails = 'Insufficient disk space. This could be due to:\n- Large model checkpoints\n- Dataset cache buildup\n- Insufficient cleanup';
+                suggestedActions = [
+                  'Review disk space cleanup steps',
+                  'Consider reducing checkpoint frequency',
+                  'Verify cache cleanup is working'
+                ];
+              }
+            }
+            
+            const issueTitle = `[${failureType}] Training Run #${runNumber} Failed`;
             const issueBody = `## Training Failure Report
             
             **Run Number**: #${runNumber}
+            **Failure Type**: ${failureType}
             **Workflow**: [View Run](${runUrl})
+            **Failed Step**: ${failedStep?.name || 'Unknown'}
             **Timestamp**: ${new Date().toISOString()}
+            **Duration**: ${failedJob?.completed_at ? Math.round((new Date(failedJob.completed_at) - new Date(failedJob.started_at)) / 1000 / 60) : 'N/A'} minutes
             
-            ### Details
+            ### Failure Analysis
             
-            The automated training workflow has failed. Please review the workflow logs for details.
+            ${failureDetails}
             
-            ### Action Items
+            ### Suggested Actions
             
-            - [ ] Review workflow logs
-            - [ ] Identify root cause
-            - [ ] Apply fix
-            - [ ] Re-run workflow if needed
+            ${suggestedActions.map(action => `- [ ] ${action}`).join('\n')}
             
-            ### Workflow Information
+            ### Workflow Context
             
             - **Branch**: ${context.ref}
             - **Commit**: ${context.sha.substring(0, 7)}
             - **Actor**: ${context.actor}
+            - **Event**: ${context.eventName}
+            - **Conclusion**: ${run.data.conclusion}
+            
+            ### Quick Links
+            
+            - [View Full Logs](${runUrl})
+            - [View Failed Job](${jobUrl})
+            - [Repository](https://github.com/${context.repo.owner}/${context.repo.repo})
+            - [Recent Runs](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/workflows/train.yml)
             
             ---
             
-            *This issue was automatically created by the training workflow.*`;
+            *This issue was automatically created by the training workflow. Close this issue once the problem is resolved.*`;
             
-            // Check if similar issue already exists
+            // Check if similar issue already exists (within last 5 runs)
             const issues = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
               state: 'open',
               labels: 'training-failure',
-              per_page: 10
+              per_page: 20,
+              sort: 'created',
+              direction: 'desc'
             });
             
-            const recentIssue = issues.data.find(issue => 
+            // Check for duplicate issue for this specific run
+            const duplicateIssue = issues.data.find(issue => 
               issue.title.includes(`Training Run #${runNumber}`)
             );
             
-            if (!recentIssue) {
-              await github.rest.issues.create({
+            if (duplicateIssue) {
+              console.log(`Issue already exists for run #${runNumber}: ${duplicateIssue.html_url}`);
+              return;
+            }
+            
+            // Check for recent similar failures (same failure type in last 3 runs)
+            const recentSimilarIssues = issues.data.filter(issue => 
+              issue.title.includes(`[${failureType}]`) &&
+              issue.created_at > new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString() // Last 3 hours
+            );
+            
+            if (recentSimilarIssues.length > 0) {
+              // Add comment to existing issue instead of creating new one
+              const existingIssue = recentSimilarIssues[0];
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingIssue.number,
+                body: `## Additional Failure: Run #${runNumber}
+            
+            Another ${failureType.toLowerCase()} occurred.
+            
+            - **Run**: [#${runNumber}](${runUrl})
+            - **Timestamp**: ${new Date().toISOString()}
+            - **Duration**: ${failedJob?.completed_at ? Math.round((new Date(failedJob.completed_at) - new Date(failedJob.started_at)) / 1000 / 60) : 'N/A'} minutes
+            
+            This appears to be a recurring issue. Please prioritize investigation.`
+              });
+              console.log(`Added comment to existing issue #${existingIssue.number}`);
+            } else {
+              // Create new issue
+              const newIssue = await github.rest.issues.create({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 title: issueTitle,
                 body: issueBody,
-                labels: ['training-failure', 'automated']
+                labels: ['training-failure', 'automated', failureType.toLowerCase().replace(/ /g, '-')]
               });
-              console.log('Issue created for training failure');
-            } else {
-              console.log('Issue already exists for this run');
+              console.log(`Created new issue: ${newIssue.data.html_url}`);
             }

@@ -88,7 +88,7 @@ def save_result(
     with open(history_file, "w") as f:
         json.dump(history, f, indent=2)
 
-    print(f"✅ Result saved to {history_file}")
+    print(f"Result saved to {history_file}")
     return result
 
 
@@ -152,10 +152,10 @@ def main():
         # Save result
         save_result(args.prompt, response, model_params, args.history_file)
 
-        print("✅ Evaluation complete!")
+        print("Evaluation complete!")
 
     except Exception as e:
-        print(f"❌ Evaluation failed: {e}")
+        print(f"ERROR: Evaluation failed: {e}")
         raise
 
 

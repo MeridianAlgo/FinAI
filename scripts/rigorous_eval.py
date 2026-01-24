@@ -138,7 +138,7 @@ def test_perplexity_on_fineweb(model, tokenizer):
                 loss = outputs.loss
                 total_loss += loss.item()
 
-            print(f"Sample {i+1} Loss: {loss.item():.4f}")
+            print(f"Sample {i + 1} Loss: {loss.item():.4f}")
 
         avg_loss = total_loss / num_samples
         perplexity = torch.exp(torch.tensor(avg_loss))
