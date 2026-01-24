@@ -491,7 +491,7 @@ jobs:
           # If pop fails (e.g. merge conflict), we force it to keep local version
           # This avoids corrupted files with merge markers
           if ! git stash pop; then
-             echo "️ Merge conflict during stash pop, favoring local changes"
+             echo "Merge conflict during stash pop, favoring local changes"
              git checkout --ours . || git checkout --theirs . || true
           fi
           
@@ -520,6 +520,58 @@ jobs:
             git commit -m "Training run #$RUN_NUM - FineWeb-Edu - $(date +'%Y-%m-%d') [skip ci]"
             git push origin main
           fi
+      
+      - name: Create training version tag
+        if: success()
+        run: |
+          git config user.name "GitHub Action"
+          git config user.email "action@github.com"
+          
+          # Fetch all tags
+          git fetch --tags
+          
+          # Get the latest tag matching v*.*.* pattern
+          LATEST_TAG=$(git tag -l "v*.*.*" | sort -V | tail -n 1)
+          
+          if [ -z "$LATEST_TAG" ]; then
+            # No tags exist, start with v4.1.0
+            NEW_TAG="v4.1.0"
+          else
+            # Parse the tag (e.g., v4.1.0 -> 4 1 0)
+            VERSION=${LATEST_TAG#v}
+            MAJOR=$(echo $VERSION | cut -d. -f1)
+            MINOR=$(echo $VERSION | cut -d. -f2)
+            PATCH=$(echo $VERSION | cut -d. -f3)
+            
+            # Increment patch version for training runs
+            PATCH=$((PATCH + 1))
+            
+            NEW_TAG="v${MAJOR}.${MINOR}.${PATCH}"
+          fi
+          
+          echo "Creating new training tag: $NEW_TAG"
+          
+          # Update version.json with tag info
+          cat > checkpoints/version.json << EOF
+          {
+            "version": "$NEW_TAG",
+            "run_number": ${{ github.run_number }},
+            "trained_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "hf_repo": "${{ env.HF_REPO_ID }}"
+          }
+          EOF
+          
+          # Commit version.json update
+          git add checkpoints/version.json
+          git commit -m "Update version to $NEW_TAG [skip ci]" || echo "No changes to commit"
+          
+          # Create and push tag
+          git tag -a "$NEW_TAG" -m "Training run #${{ github.run_number }} - $NEW_TAG"
+          git push origin main
+          git push origin "$NEW_TAG"
+          
+          echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
+          echo "Created tag: $NEW_TAG"
       
 
       
