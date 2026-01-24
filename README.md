@@ -293,7 +293,26 @@ python train.py --config config/model_config.yaml --datasets config/datasets.yam
 *Updated: 2026-01-24 06:34 UTC*
 <!-- DAILY_EVAL_END -->
 
-## Performance Metrics
+## Configuration
+
+```yaml
+model:
+  size_preset: base  # now using 124M param Base model (GPT-2 Small equivalent)
+  vocab_size: 50257
+  max_seq_len: 1024
+  dropout: 0.1
+  activation: swiglu
+  use_flash_attention: true  # Auto-disabled on CPU
+  rope_theta: 10000.0
+
+training:
+  batch_size: 2
+  gradient_accumulation_steps: 16
+  learning_rate: 3e-4
+  max_steps: 500  # 500 steps per run (every 2 hours)
+  gradient_checkpointing: true  # Auto-enabled on CPU
+  use_comet: true
+```
 
 ### Hardware Requirements
 

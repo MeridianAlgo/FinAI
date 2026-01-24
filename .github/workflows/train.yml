@@ -2,13 +2,13 @@ name: Train Fin.AI
 
 on:
   schedule:
-    - cron: '0 * * * *'
+    - cron: '0 */2 * * *'  # Run every 2 hours
   workflow_dispatch:
     inputs:
       max_steps:
         description: 'Maximum training steps'
         required: false
-        default: '1000'
+        default: '500'
 
 env:
   PYTHON_VERSION: '3.10'
@@ -21,7 +21,7 @@ concurrency:
 jobs:
   train:
     runs-on: ubuntu-latest
-    timeout-minutes: 100
+    timeout-minutes: 125  # Allow up to 2h 5m
     permissions:
       contents: write
       issues: write
@@ -249,7 +249,7 @@ jobs:
           TMPDIR: "/tmp"
         run: |
           set -o pipefail
-          MAX_STEPS="${{ github.event.inputs.max_steps || '1000' }}"
+          MAX_STEPS="${{ github.event.inputs.max_steps || '500' }}"
           
           mkdir -p /tmp/hf_cache
           mkdir -p /tmp/hf_home
@@ -258,7 +258,7 @@ jobs:
           df -h
           
           set +e
-          timeout 85m python train.py \
+          timeout 115m python train.py \
             --config config/model_config.yaml \
             --datasets config/datasets.yaml \
             --size-preset base \
@@ -270,7 +270,7 @@ jobs:
           if [ $TRAIN_STATUS -eq 0 ]; then
             echo "Training completed successfully"
           elif [ $TRAIN_STATUS -eq 124 ]; then
-            echo "WARNING: Training timed out after 85 minutes"
+            echo "WARNING: Training timed out after 115 minutes"
             echo "Checkpoint should be saved. Continuing to upload..."
             TRAIN_STATUS=0
           else

@@ -19,7 +19,7 @@ training:
   learning_rate: 3.0e-4
   weight_decay: 0.1
   warmup_steps: 50
-  max_steps: 200  # Reduced for Base model (slower on CPU)
+  max_steps: 500  # 500 steps per training session
   eval_steps: 250
   save_steps: 800  # Save checkpoint every 800 steps
   max_grad_norm: 1.0
