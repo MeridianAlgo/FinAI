@@ -85,7 +85,7 @@ Fin.AI V4 features a modern transformer architecture optimized for CPU/consumer 
 | small  | ~48M       | 8      | 8     | 4        | 512        | 1792   | Default – good CPU performance |
 | base   | ~124M      | 12     | 12    | 6        | 768        | 3072   | Higher quality (GPU recommended) |
 
-**Current deployment**: Micro (16M parameters) - optimized for GitHub Actions CPU runners
+**Current deployment**: Base (~124M parameters) - GPT-2 Small equivalent
 
 ---
 
