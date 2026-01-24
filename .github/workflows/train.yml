@@ -498,28 +498,8 @@ jobs:
           
           # Output for other steps
           echo "RUN_NUM=$RUN_NUM" >> $GITHUB_OUTPUT
-          DAY_OF_WEEK=$(date +%u)
-          echo "DAY_OF_WEEK=$DAY_OF_WEEK" >> $GITHUB_OUTPUT
-          WEEK_NUM=$(date +%V)
-          echo "WEEK_NUM=$WEEK_NUM" >> $GITHUB_OUTPUT
-          
-          # Check if this is a release run (every 15 runs)
-          if [ $((RUN_NUM % 15)) -eq 0 ]; then
-            echo "SHOULD_RELEASE=true" >> $GITHUB_OUTPUT
-            # Calculate version for releases only
-            LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v1.0.0")
-            VERSION=${LATEST_TAG#v}
-            MAJOR=$(echo $VERSION | cut -d. -f1)
-            MINOR=$(echo $VERSION | cut -d. -f2)
-            PATCH=$(echo $VERSION | cut -d. -f3)
-            PATCH=$((PATCH + 1))
-            NEW_VERSION="v${MAJOR}.${MINOR}.${PATCH}"
-            echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_OUTPUT
-          else
-            echo "SHOULD_RELEASE=false" >> $GITHUB_OUTPUT
-          fi
-          
-          # Save version info (no version tag, just run number)
+
+          # Save version info
           mkdir -p checkpoints
           cat > checkpoints/version.json << EOF
           {
@@ -539,104 +519,7 @@ jobs:
             git push origin main
           fi
       
-      - name: Create release every 15 runs
-        if: steps.version.outputs.SHOULD_RELEASE == 'true'
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ steps.version.outputs.NEW_VERSION }}
-          name: "Fin.AI Release ${{ steps.version.outputs.NEW_VERSION }}"
-          body: |
-            # Fin.AI Release ${{ steps.version.outputs.NEW_VERSION }}
-            
-            ## Release Information
-            
-            This release represents a training milestone after 15 continuous hourly training runs on FineWeb-Edu.
-            
-            ### Model Availability
-            
-            [![Model on Hugging Face](https://img.shields.io/badge/_Model-Fin.AI-yellow)](https://huggingface.co/MeridianAlgo/Fin.AI)
-            [![Training Workflow](https://github.com/MeridianAlgo/FinAI/actions/workflows/train.yml/badge.svg)](https://github.com/MeridianAlgo/FinAI/actions/workflows/train.yml)
-            [![Comet ML](https://img.shields.io/badge/Comet_ML-Experiments-blue?logo=comet)](https://www.comet.com/meridianalgo/fin-ai)
-            
-            **Hugging Face Repository**: [MeridianAlgo/Fin.AI](https://huggingface.co/MeridianAlgo/Fin.AI)
-            
-            ### Training Statistics
-            
-            | Metric | Value |
-            |--------|-------|
-            | Release Version | ${{ steps.version.outputs.NEW_VERSION }} |
-            | Total Training Runs | ${{ github.run_number }} |
-            | Steps Per Run | 1000 |
-            | Total Steps | ~${{ github.run_number }}000 |
-            | Model Size | ~16M parameters (micro preset) |
-            | Training Frequency | Hourly |
-            | Dataset | FineWeb-Edu (continuous) |
-            
-            ### Model Architecture
-            
-            - **Type**: GPT-style decoder-only transformer
-            - **Attention**: Grouped Query Attention (GQA)
-            - **Position Encoding**: Rotary Position Embeddings (RoPE)
-            - **Activation**: SwiGLU
-            - **Normalization**: RMSNorm
-            - **Format**: SafeTensors
-            
-            ### Installation and Usage
-            
-            ```bash
-            pip install transformers torch huggingface_hub
-            ```
-            
-            ```python
-            from transformers import AutoModelForCausalLM, AutoTokenizer
-            import torch
-            
-            # Load model from Hugging Face
-            model = AutoModelForCausalLM.from_pretrained(
-                "MeridianAlgo/Fin.AI",
-                trust_remote_code=True,
-                torch_dtype=torch.float32
-            )
-            tokenizer = AutoTokenizer.from_pretrained("gpt2")
-            
-            if tokenizer.pad_token is None:
-                tokenizer.pad_token = tokenizer.eos_token
-            
-            # Generate text
-            prompt = "The future of artificial intelligence is"
-            inputs = tokenizer(prompt, return_tensors="pt")
-            
-            with torch.no_grad():
-                outputs = model.generate(
-                    **inputs,
-                    max_length=100,
-                    temperature=0.8,
-                    top_p=0.95,
-                    do_sample=True,
-                    pad_token_id=tokenizer.pad_token_id
-                )
-            
-            print(tokenizer.decode(outputs[0], skip_special_tokens=True))
-            ```
-            
-            ### Latest Training Output
-            
-            ```
-            ${{ steps.train.outputs.TRAINING_OUTPUT }}
-            ```
-            
-            ### Resources
-            
-            - **Documentation**: [GitHub Repository](https://github.com/MeridianAlgo/FinAI)
-            - **Training Metrics**: [Comet ML Dashboard](https://www.comet.com/meridianalgo/fin-ai)
-            - **Model Card**: [Hugging Face Model Card](https://huggingface.co/MeridianAlgo/Fin.AI)
-            - **Issues**: [Report Issues](https://github.com/MeridianAlgo/FinAI/issues)
-            
-            ### Notes
-            
-            This is an experimental research model under continuous development. The model trains hourly on FineWeb-Edu (high-quality educational content) and may produce inaccurate or biased outputs. Not recommended for production use.
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       
       - name: Create issue on training failure
         if: failure()
