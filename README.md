@@ -15,7 +15,6 @@ A continuously learning transformer language model that trains automatically eve
 [![Model on Hugging Face](https://img.shields.io/badge/Model-Fin.AI-yellow)](https://huggingface.co/MeridianAlgo/Fin.AI)
 [![CI - Tests and Lint](https://github.com/MeridianAlgo/FinAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/MeridianAlgo/FinAI/actions/workflows/ci.yml)
 [![Training Workflow](https://github.com/MeridianAlgo/FinAI/actions/workflows/train.yml/badge.svg)](https://github.com/MeridianAlgo/FinAI/actions)
-[![Last Commit](https://img.shields.io/github/last-commit/MeridianAlgo/FinAI/main)](https://github.com/MeridianAlgo/FinAI/commits/main)
 [![Comet ML](https://img.shields.io/badge/Comet_ML-Experiments-blue?logo=comet)](https://www.comet.com/meridianalgo/fin-ai)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)

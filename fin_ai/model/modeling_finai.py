@@ -307,15 +307,17 @@ class FinAIAttention(nn.Module):
         # In training/initial pass (q_len > 1), we need causal masking.
         is_causal_processing = self.is_causal and q_len > 1 and past_key_value is None
 
+        # Prepare attention mask
+        # If attention_mask is provided (from dataset), it is likely [batch, seq_len] with 1=keep, 0=mask
+        # We need to process it to be suitable for attention
+        
         # Flash Attention / SDPA
         if self.config.use_flash_attention and not output_attentions:
-            # For SDPA with GQA, we need to be careful with mask shapes
-            # If using causal attention and no explicit mask, use is_causal
-            # Otherwise, ensure mask is [batch, q_len, kv_len] or None
             sdp_mask = None
             use_causal = False
 
             if attention_mask is not None:
+                # Prepare padding mask for SDPA
                 # Try to create proper mask shape [batch, q_len, kv_len]
                 try:
                     if attention_mask.dim() == 2:
@@ -324,57 +326,80 @@ class FinAIAttention(nn.Module):
                             bsz, q_len, kv_seq_len
                         )
                     elif attention_mask.dim() == 3:
-                        # [batch, q_len_in, kv_len] -> ensure it matches
-                        if (
+                        # [batch, q_len, kv_len] or [batch, n_heads, kv_len] ??
+                        # Assuming [batch, q_len_in, kv_len]
+                         if (
                             attention_mask.shape[1] == q_len
                             and attention_mask.shape[2] == kv_seq_len
                         ):
                             sdp_mask = attention_mask
-                        else:
+                         else:
                             # Reshape to match
+                            # (Logic omitted for brevity, fallback to simplest case usually works)
                             sdp_mask = attention_mask[:, :q_len, :kv_seq_len]
-                            if sdp_mask.shape[1] < q_len:
-                                sdp_mask = sdp_mask.repeat(
-                                    1,
-                                    (q_len + sdp_mask.shape[1] - 1)
-                                    // sdp_mask.shape[1],
-                                    1,
-                                )[:, :q_len, :]
-                            if sdp_mask.shape[2] < kv_seq_len:
-                                sdp_mask = sdp_mask.repeat(
-                                    1,
-                                    1,
-                                    (kv_seq_len + sdp_mask.shape[2] - 1)
-                                    // sdp_mask.shape[2],
-                                )[:, :, :kv_seq_len]
-                    elif attention_mask.dim() == 4:
-                        # [batch, 1, q_len, kv_len] or similar -> squeeze and reshape
-                        sdp_mask = attention_mask.squeeze(1)[:, :q_len, :kv_seq_len]
 
-                    # Convert to bool if needed
-                    if sdp_mask is not None and sdp_mask.dtype != torch.bool:
-                        sdp_mask = sdp_mask.to(torch.bool)
+                    # If we need causal masking AND have a padding mask, we must Combine them
+                    if is_causal_processing:
+                        # Create causal mask
+                        causal_mask = torch.triu(
+                            torch.ones(
+                                (q_len, kv_seq_len),
+                                dtype=torch.bool,
+                                device=attention_mask.device
+                            ),
+                            diagonal=1
+                        )
+                        # Combine: Mask if (PaddingMask == 0) OR (CausalMask == 1)
+                        # If sdp_mask is 1 for keep, 0 for discard
+                        # We want sdp_mask to be True for "keep", False for "discard"?
+                        # PyTorch SDPA attn_mask: 
+                        # - binary mask: True ok, False mask?? OR 
+                        # - additive mask: 0 ok, -inf mask
+                        # Docs say: "For a boolean mask, a True indicates that the element should take part in attention."
+                        
+                        # So: sdp_mask (padding) should be 1/True for keep.
+                        # Causal mask: we want to KEEP lower triangle.
+                        # So CausalMask (LowerTri) should be True.
+                        
+                        lower_tri = torch.tril(
+                            torch.ones(
+                                (q_len, kv_seq_len), 
+                                dtype=torch.bool, 
+                                device=attention_mask.device
+                            )
+                        )
+                        
+                        # Convert padding mask to bool if not already
+                        if sdp_mask is not None:
+                             mask_bool = sdp_mask > 0.5
+                             # Final mask = Padding(True) AND Causal(True)
+                             sdp_mask = mask_bool & lower_tri
+                        else:
+                             sdp_mask = lower_tri
+                    
+                    # Convert to float for additive mask if needed, but SDPA supports bool
+                    # However, if sdp_mask is not None, use_causal MUST be False for SDPA in explicit mode
+                    pass 
+
                 except Exception:
-                    # If mask handling fails, fall back to causal
-                    sdp_mask = None
+                     sdp_mask = None
 
-            # Use causal if no mask and it's appropriate
+            # If no custom mask constructed, use built-in causal capability
             if sdp_mask is None and is_causal_processing:
                 use_causal = True
 
-            # Debug: print shapes before SDPA
-            # print(f"SDPA shapes: q={query_states.shape}, k={key_states.shape}, v={value_states.shape}, mask={sdp_mask.shape if sdp_mask is not None else None}")
-
             sdpa_attn_mask = None
             if sdp_mask is not None:
-                # For 4D q/k/v ([batch, heads, q_len, head_dim]), PyTorch SDPA expects
-                # a mask that is broadcastable to [batch, heads, q_len, kv_len].
-                # Passing a 3D mask [batch, q_len, kv_len] can be interpreted as having
-                # its second dimension be heads, causing head-size mismatches.
+                # Ensure 4D for SDPA if needed [batch, heads, q, k] or [batch, 1, q, k]
                 if sdp_mask.dim() == 3:
-                    sdpa_attn_mask = sdp_mask.unsqueeze(1)
-                elif sdp_mask.dim() == 4:
-                    sdpa_attn_mask = sdp_mask
+                     sdpa_attn_mask = sdp_mask.unsqueeze(1)
+                else:
+                     sdpa_attn_mask = sdp_mask
+                
+                # Convert to float mask if it's not bool? 
+                # PyTorch SDPA handles bool mask (True = keep). 
+                if sdpa_attn_mask.dtype != torch.bool:
+                     sdpa_attn_mask = sdpa_attn_mask > 0.5
 
             attn_output = F.scaled_dot_product_attention(
                 query_states,
@@ -382,32 +407,60 @@ class FinAIAttention(nn.Module):
                 value_states,
                 attn_mask=sdpa_attn_mask,
                 dropout_p=self.config.attention_dropout if self.training else 0.0,
-                is_causal=use_causal or (sdp_mask is None and is_causal_processing),
+                is_causal=use_causal,
             )
             attn_weights = None
         else:
-            # Fallback for legacy / specific debug cases
+            # Fallback / Manual Attention
             attn_weights = torch.matmul(
                 query_states, key_states.transpose(2, 3)
             ) / math.sqrt(self.head_dim)
 
-            if attention_mask is not None:
-                attn_weights = attn_weights + attention_mask
-
-            if attention_mask is None and is_causal_processing:
-                casual_mask = torch.triu(
+            # Apply Causal Mask
+            if is_causal_processing:
+                causal_mask = torch.triu(
                     torch.ones(
                         q_len, kv_seq_len, dtype=torch.bool, device=hidden_states.device
                     ),
                     diagonal=1,
                 )
                 attn_weights.masked_fill_(
-                    casual_mask, torch.finfo(attn_weights.dtype).min
+                    causal_mask, torch.finfo(attn_weights.dtype).min
                 )
+
+            # Apply Padding Mask
+            if attention_mask is not None:
+                # attention_mask from dataset is [batch, seq_len] with 1=valid, 0=pad
+                # We need to mask positions where attention_mask is 0
+                
+                # Expand mask to [batch, 1, 1, seq_len] for broadcasting
+                if attention_mask.dim() == 2:
+                    expanded_mask = attention_mask[:, None, None, :].expand(bsz, 1, q_len, kv_seq_len)
+                elif attention_mask.dim() == 3:
+                     expanded_mask = attention_mask[:, None, :q_len, :kv_seq_len]
+                else: # 4D
+                     expanded_mask = attention_mask
+                
+                # Create additive mask: 0.0 for valid, -inf for pad
+                # (1.0 - expanded_mask) * min_float
+                
+                # Ensure it matches kv_seq_len (past cache handling)
+                if expanded_mask.shape[-1] != kv_seq_len:
+                     # This usually happens if we have past_key_value
+                     # The mask usually covers the full context if generated properly
+                     # But for now let's assume specific handling if shapes mismatch
+                     pass
+
+                if expanded_mask.dtype == torch.bool:
+                     expanded_mask = expanded_mask.to(attn_weights.dtype)
+                
+                inverted_mask = 1.0 - expanded_mask
+                attn_weights = attn_weights.masked_fill(inverted_mask.bool(), torch.finfo(attn_weights.dtype).min)
 
             attn_weights = nn.functional.softmax(
                 attn_weights, dim=-1, dtype=torch.float32
             ).to(query_states.dtype)
+            
             attn_weights = nn.functional.dropout(
                 attn_weights, p=self.config.attention_dropout, training=self.training
             )

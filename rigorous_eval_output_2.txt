@@ -1,0 +1,70 @@
+`torch_dtype` is deprecated! Use `dtype` instead!
+C:\Users\Ishaan\AppData\Local\Programs\Python\Python312\Lib\site-packages\huggingface_hub\file_download.py:143: UserWarning: `huggingface_hub` cache-system uses symlinks by default to efficiently store duplicated files but your machine does not support them in C:\Users\Ishaan\.cache\huggingface\hub\models--MeridianAlgo--Fin.AI. Caching files will still work but in a degraded version that might require more space on your disk. This warning can be disabled by setting the `HF_HUB_DISABLE_SYMLINKS_WARNING` environment variable. For more details, see https://huggingface.co/docs/huggingface_hub/how-to-cache#limitations.
+To support symlinks on Windows, you either need to activate Developer Mode or to run Python as an administrator. In order to activate developer mode, see this article: https://docs.microsoft.com/en-us/windows/apps/get-started/enable-your-device-for-development
+  warnings.warn(message)
+A new version of the following files was downloaded from https://huggingface.co/MeridianAlgo/Fin.AI:
+- modeling_finai.py
+. Make sure to double-check they do not contain any added malicious code. To avoid downloading new versions of the code file, you can pin a revision.
+2026-01-24 10:26:15.180638: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+2026-01-24 10:26:19.800702: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+C:\Users\Ishaan\AppData\Local\Programs\Python\Python312\Lib\site-packages\keras\src\export\tf2onnx_lib.py:8: FutureWarning: In the future `np.object` will be defined as the corresponding NumPy scalar.
+  if not hasattr(np, "object"):
+Xet Storage is enabled for this repo, but the 'hf_xet' package is not installed. Falling back to regular HTTP download. For better performance, install the package with: `pip install huggingface_hub[hf_xet]` or `pip install hf_xet`
+Fetching Comet ML metadata...
+Latest Experiment ID: 5a2381175b9a465280c7faf8f8e93ed0
+Latest Experiment Name: train-gsm8k-run467
+Latest Train Loss: 9.626304149627686
+Loading model from Hugging Face: MeridianAlgo/Fin.AI...
+Loading tokenizer (gpt2)...
+Loading model (MeridianAlgo/Fin.AI)...
+
+--- Rigorous Generation Tests ---
+
+Prompt: Explain the concept of quantum entanglement to a 5-year-old.
+Response:
+................................................................................
+......................................................................
+--------------------------------------------------
+Prompt: Write a python function to calculate the fibonacci sequence using dynamic programming.
+Response:
+................................................................................
+......................................................................
+--------------------------------------------------
+Prompt: What are the main causes of the French Revolution?
+Response:
+????????????????????????????????????????????????????????????????????????????????
+??????????????????????????????????????????????????????????????????????
+--------------------------------------------------
+Prompt: Translate 'Hello, how are you?' into French, Spanish, and German.
+Response:
+................................................................................
+......................................................................
+--------------------------------------------------
+Prompt: Analyze the sentiment of this text: 'The market crashed today, causing widespread panic and loss of wealth.'
+Response:
+.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'
+.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'
+.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'
+.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'.'
+--------------------------------------------------
+Prompt: Who is the president of the United States in 2024?
+Response:
+????????????????????????????????????????????????????????????????????????????????
+??????????????????????????????????????????????????????????????????????
+--------------------------------------------------
+Prompt: Define the term 'machine learning' and give three examples of its application.
+Response:
+................................................................................
+......................................................................
+--------------------------------------------------
+
+--- Testing Perplexity on FineWeb-Edu (Streamed) ---
+
+Sample 1 Loss: 0.0002
+Sample 2 Loss: 0.0564
+Sample 3 Loss: 0.0025
+Sample 4 Loss: 0.0186
+Sample 5 Loss: 0.0066
+
+Average Loss: 0.0168
+Perplexity: 1.0170

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fin_ai"
-version = "0.1.0"
+version = "4.0.0"
 description = "Fin.AI language model training package"
 authors = [{name = "Ishaan", email = "ishaan@example.com"}]
 readme = "README.md"
