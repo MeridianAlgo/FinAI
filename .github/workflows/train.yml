@@ -1,11 +1,8 @@
 name: Train Fin.AI
 
 on:
-  # Hourly training
   schedule:
     - cron: '0 * * * *'
-  
-  # Manual trigger
   workflow_dispatch:
     inputs:
       max_steps:
@@ -17,7 +14,6 @@ env:
   PYTHON_VERSION: '3.10'
   HF_REPO_ID: 'MeridianAlgo/Fin.AI'
 
-# Ensure only one training run at a time
 concurrency:
   group: fin-ai-training
   cancel-in-progress: false
@@ -36,7 +32,6 @@ jobs:
           echo "Disk space before cleanup:"
           df -h
           
-          # Remove unnecessary packages and free up space
           sudo rm -rf /usr/share/dotnet
           sudo rm -rf /usr/local/lib/android
           sudo rm -rf /opt/ghc
@@ -88,20 +83,19 @@ jobs:
           repo_id = "${{ env.HF_REPO_ID }}"
           
           if not token:
-              print("️  No HF_TOKEN found, starting fresh")
+              print("No HF_TOKEN found, starting fresh")
               exit(0)
           
           api = HfApi(token=token)
           
           try:
               files = list_repo_files(repo_id, token=token)
-              print(f" Found {len(files)} files in {repo_id}")
+              print(f"Found {len(files)} files in {repo_id}")
               
               os.makedirs("checkpoints/model", exist_ok=True)
               os.makedirs("checkpoints", exist_ok=True)
               
-              # 1. Download model files
-              print("\n Downloading model files...")
+              print("\nDownloading model files...")
               required_files = ['config.json']
               optional_files = [
                   'model.safetensors', 
@@ -126,7 +120,6 @@ jobs:
                               local_dir="checkpoints",
                               token=token
                           )
-                          # Move to model subdirectory if at root
                           target_path = os.path.join("checkpoints/model", f)
                           if downloaded_path != target_path:
                               shutil.move(downloaded_path, target_path)
@@ -136,11 +129,10 @@ jobs:
                           print("Will start fresh training...")
                           exit(0)
                   else:
-                      print(f"  ️  Required file {f} not found in repo")
+                      print(f"  Required file {f} not found in repo")
                       print("Will start fresh training...")
                       exit(0)
               
-              # Download optional model files
               for f in optional_files:
                   if f in files:
                       try:
@@ -150,7 +142,6 @@ jobs:
                               local_dir="checkpoints",
                               token=token
                           )
-                          # Move to model subdirectory if at root
                           target_path = os.path.join("checkpoints/model", f)
                           if downloaded_path != target_path:
                               shutil.move(downloaded_path, target_path)
@@ -158,10 +149,8 @@ jobs:
                       except Exception as e:
                           print(f"  INFO: Could not download {f}: {e}")
               
-              # 2. Download checkpoint file (single file per dataset)
-              print("\n Downloading checkpoint file...")
+              print("\nDownloading checkpoint file...")
               
-              # Determine current dataset (matches trainer logic)
               from datetime import datetime
               datasets_config_path = "config/datasets.yaml"
               if os.path.exists(datasets_config_path):
@@ -194,14 +183,14 @@ jobs:
                       )
                       print(f"   Downloaded checkpoint: {checkpoint_filename}")
                   except Exception as e:
-                      print(f"  ️  Could not download checkpoint: {e}")
+                      print(f"  Could not download checkpoint: {e}")
                       print("  Will start from model weights only")
               else:
                   print(f"  INFO: No checkpoint file found ({checkpoint_filename}), will start from model weights")
               
-              print("\n Download complete! Ready for training.")
+              print("\nDownload complete! Ready for training.")
           except Exception as e:
-              print(f" Error downloading from HF: {e}")
+              print(f"Error downloading from HF: {e}")
               print("Starting fresh training...")
           EOF
 
@@ -262,16 +251,12 @@ jobs:
           set -o pipefail
           MAX_STEPS="${{ github.event.inputs.max_steps || '1000' }}"
           
-          # Create temp cache directories
           mkdir -p /tmp/hf_cache
           mkdir -p /tmp/hf_home
           
-          # Monitor disk space during training
           echo "Disk space before training:"
           df -h
           
-          # Set timeout for training (85 minutes max to allow cleanup time)
-          # We use pipefail to catch errors in train.py even when piped to tee
           set +e
           timeout 85m python train.py \
             --config config/model_config.yaml \
@@ -287,19 +272,16 @@ jobs:
           elif [ $TRAIN_STATUS -eq 124 ]; then
             echo "WARNING: Training timed out after 85 minutes"
             echo "Checkpoint should be saved. Continuing to upload..."
-            # Don't exit with error - allow upload to proceed
             TRAIN_STATUS=0
           else
             echo "Training failed with exit code $TRAIN_STATUS"
             exit $TRAIN_STATUS
           fi
           
-          # Extract training info
           echo "TRAINING_OUTPUT<<EOF" >> $GITHUB_OUTPUT
           tail -30 training_output.txt >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-          # Show disk usage after training
           echo "Disk space after training:"
           df -h
       
@@ -309,10 +291,7 @@ jobs:
           echo "Aggressive cache cleanup to free disk space..."
           echo "Preserving Hugging Face caches for actions/cache"
           
-          # Clean pip cache
           pip cache purge || true
-          
-          # Clean only our temp files, not system directories
           find /tmp -maxdepth 1 -type f -user runner -delete 2>/dev/null || true
           find /tmp -maxdepth 1 -type d -user runner -name "tmp*" -exec rm -rf {} + 2>/dev/null || true
           
@@ -339,45 +318,38 @@ jobs:
           
           api = HfApi(token=token)
           
-          # Create repo if it doesn't exist
           try:
               create_repo(repo_id, token=token, exist_ok=True, repo_type="model")
               print(f"Repository {repo_id} ready")
           except Exception as e:
               print(f"Repo creation note: {e}")
           
-          # Copy model card to model directory as README
           if os.path.exists("MODEL_CARD.md"):
               import shutil
               shutil.copy("MODEL_CARD.md", "checkpoints/model/README.md")
-              print(" Copied MODEL_CARD.md to model directory as README.md")
+              print("Copied MODEL_CARD.md to model directory as README.md")
           elif os.path.exists("README.md"):
               import shutil
               shutil.copy("README.md", "checkpoints/model/README.md")
-              print(" Copied README.md to model directory")
+              print("Copied README.md to model directory")
           
-          # Copy generation config if it exists
           if os.path.exists("fin_ai/model/generation_config.json"):
               import shutil
               shutil.copy("fin_ai/model/generation_config.json", "checkpoints/model/generation_config.json")
-              print(" Copied generation_config.json to model directory")
+              print("Copied generation_config.json to model directory")
 
-          # Copy remote-code modules required for AutoModel* loading
           import shutil
           shutil.copy("fin_ai/model/configuration_finai.py", "checkpoints/model/configuration_finai.py")
           shutil.copy("fin_ai/model/modeling_finai.py", "checkpoints/model/modeling_finai.py")
           shutil.copy("fin_ai/model/__init__.py", "checkpoints/model/__init__.py")
-          print(" Copied remote-code modules to model directory")
+          print("Copied remote-code modules to model directory")
 
-          # Ensure config.json contains auto_map for trust_remote_code
           config_path = os.path.join("checkpoints", "model", "config.json")
           if os.path.exists(config_path):
               with open(config_path, "r", encoding="utf-8") as f:
                   cfg = json.load(f)
 
-              # Ensure model_type is set
               cfg["model_type"] = "finai"
-              
               cfg["auto_map"] = {
                   "AutoConfig": "configuration_finai.FinAIConfig",
                   "AutoModelForCausalLM": "modeling_finai.FinAIForCausalLM",
@@ -388,14 +360,13 @@ jobs:
 
               with open(config_path, "w", encoding="utf-8") as f:
                   json.dump(cfg, f, indent=2)
-              print(" Updated config.json with model_type and auto_map")
+              print("Updated config.json with model_type and auto_map")
           
-          # Verify V3 files exist
           model_dir = "checkpoints/model"
           required_files = ["config.json"]
           model_files = ["model.safetensors", "pytorch_model.bin"]
           
-          print("\n Checking V3 model files...")
+          print("\nChecking model files...")
           for f in required_files:
               path = os.path.join(model_dir, f)
               if os.path.exists(path):
@@ -412,10 +383,9 @@ jobs:
                   break
           
           if not has_model:
-              print("  ️  No model weights found (model.safetensors or pytorch_model.bin)")
+              print("  No model weights found (model.safetensors or pytorch_model.bin)")
           
-          # Upload model weights to HF
-          print(f"\n Uploading model weights to {repo_id}...")
+          print(f"\nUploading model weights to {repo_id}...")
           
           api.upload_folder(
               folder_path="checkpoints/model",
@@ -423,10 +393,9 @@ jobs:
               token=token,
               commit_message=f"Model weights - Run #${{ github.run_number }} - {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}",
           )
-          print(f" Model weights uploaded to https://huggingface.co/{repo_id}")
+          print(f"Model weights uploaded to https://huggingface.co/{repo_id}")
           
-          # Upload checkpoint file (single file per dataset)
-          print(f"\n Uploading checkpoint file to {repo_id}...")
+          print(f"\nUploading checkpoint file to {repo_id}...")
           import glob
           checkpoint_files = glob.glob("checkpoints/checkpoint-*.pt")
           
@@ -449,8 +418,7 @@ jobs:
           else:
               print("  INFO: No checkpoint file found to upload")
           
-          # Clean up legacy V2 files if they exist
-          print("\n Cleaning up legacy V2 files...")
+          print("\nCleaning up legacy files...")
           legacy_files = ["final_config.json", "model.pt"]
           for file_path in legacy_files:
               try:
@@ -462,11 +430,10 @@ jobs:
                   )
                   print(f"   Deleted: {file_path}")
               except Exception as e:
-                  # File might not exist, which is fine
                   if "404" not in str(e):
                       print(f"  INFO: {file_path}: {e}")
           
-          print("\n Upload complete!")
+          print("\nUpload complete!")
           EOF
       
       - name: Update version and push
@@ -478,30 +445,20 @@ jobs:
           git config user.email "action@github.com"
           git config user.name "GitHub Action"
           
-          # Stash local changes (like dataset_state.json) before pulling
-          # If stash fails, it just means no changes to stash
           git add .
           git stash || echo "Nothing to stash"
           
-          # Pull latest changes to avoid conflicts
           git fetch origin main
           git pull --rebase origin main
           
-          # Restore local changes
-          # If pop fails (e.g. merge conflict), we force it to keep local version
-          # This avoids corrupted files with merge markers
           if ! git stash pop; then
              echo "Merge conflict during stash pop, favoring local changes"
              git checkout --ours . || git checkout --theirs . || true
           fi
           
-          # Get run number for versioning
           RUN_NUM=${{ github.run_number }}
-          
-          # Output for other steps
           echo "RUN_NUM=$RUN_NUM" >> $GITHUB_OUTPUT
 
-          # Save version info
           mkdir -p checkpoints
           cat > checkpoints/version.json << EOF
           {
@@ -511,7 +468,6 @@ jobs:
           }
           EOF
           
-          # Add checkpoint files for continuous training
           git add checkpoints/checkpoint-*.pt 2>/dev/null || true
           git add checkpoints/version.json
           git add checkpoints/dataset_state.json || true
@@ -527,31 +483,24 @@ jobs:
           git config user.name "GitHub Action"
           git config user.email "action@github.com"
           
-          # Fetch all tags
           git fetch --tags
           
-          # Get the latest tag matching v*.*.* pattern
           LATEST_TAG=$(git tag -l "v*.*.*" | sort -V | tail -n 1)
           
           if [ -z "$LATEST_TAG" ]; then
-            # No tags exist, start with v4.1.0
             NEW_TAG="v4.1.0"
           else
-            # Parse the tag (e.g., v4.1.0 -> 4 1 0)
             VERSION=${LATEST_TAG#v}
             MAJOR=$(echo $VERSION | cut -d. -f1)
             MINOR=$(echo $VERSION | cut -d. -f2)
             PATCH=$(echo $VERSION | cut -d. -f3)
             
-            # Increment patch version for training runs
             PATCH=$((PATCH + 1))
-            
             NEW_TAG="v${MAJOR}.${MINOR}.${PATCH}"
           fi
           
           echo "Creating new training tag: $NEW_TAG"
           
-          # Update version.json with tag info
           cat > checkpoints/version.json << EOF
           {
             "version": "$NEW_TAG",
@@ -561,19 +510,15 @@ jobs:
           }
           EOF
           
-          # Commit version.json update
           git add checkpoints/version.json
           git commit -m "Update version to $NEW_TAG [skip ci]" || echo "No changes to commit"
           
-          # Create and push tag
           git tag -a "$NEW_TAG" -m "Training run #${{ github.run_number }} - $NEW_TAG"
           git push origin main
           git push origin "$NEW_TAG"
           
           echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
           echo "Created tag: $NEW_TAG"
-      
-
       
       - name: Create issue on training failure
         if: failure()
@@ -584,14 +529,12 @@ jobs:
             const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             const jobUrl = `${runUrl}#step:${context.job}`;
             
-            // Fetch workflow run details to get failure context
             const run = await github.rest.actions.getWorkflowRun({
               owner: context.repo.owner,
               repo: context.repo.repo,
               run_id: context.runId
             });
             
-            // Fetch jobs to identify which step failed
             const jobs = await github.rest.actions.listJobsForWorkflowRun({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -601,7 +544,6 @@ jobs:
             const failedJob = jobs.data.jobs.find(job => job.conclusion === 'failure');
             const failedStep = failedJob?.steps.find(step => step.conclusion === 'failure');
             
-            // Determine failure type and create appropriate issue
             let failureType = 'Unknown';
             let failureDetails = 'The training workflow failed. Please review the logs for details.';
             let suggestedActions = [
@@ -689,7 +631,6 @@ jobs:
             
             *This issue was automatically created by the training workflow. Close this issue once the problem is resolved.*`;
             
-            // Check if similar issue already exists (within last 5 runs)
             const issues = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -700,7 +641,6 @@ jobs:
               direction: 'desc'
             });
             
-            // Check for duplicate issue for this specific run
             const duplicateIssue = issues.data.find(issue => 
               issue.title.includes(`Training Run #${runNumber}`)
             );
@@ -710,14 +650,12 @@ jobs:
               return;
             }
             
-            // Check for recent similar failures (same failure type in last 3 runs)
             const recentSimilarIssues = issues.data.filter(issue => 
               issue.title.includes(`[${failureType}]`) &&
-              issue.created_at > new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString() // Last 3 hours
+              issue.created_at > new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString()
             );
             
             if (recentSimilarIssues.length > 0) {
-              // Add comment to existing issue instead of creating new one
               const existingIssue = recentSimilarIssues[0];
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
@@ -735,7 +673,6 @@ jobs:
               });
               console.log(`Added comment to existing issue #${existingIssue.number}`);
             } else {
-              // Create new issue
               const newIssue = await github.rest.issues.create({
                 owner: context.repo.owner,
                 repo: context.repo.repo,

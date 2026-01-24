@@ -1,11 +1,11 @@
-# Fin.AI
+# FinAI
 
 **WORK IN PROGRESS – EXPERIMENTAL RESEARCH PROJECT**
 
 A continuously learning transformer language model that trains automatically every hour on FineWeb-Edu using GitHub Actions.
 
 > **Important Notice**  
-> Fin.AI is an **experimental research prototype** and **work in progress**.  
+> FinAI is an **experimental research prototype** and **work in progress**.  
 > The model is under continuous training and may produce inaccurate, inappropriate, biased, or nonsensical outputs.  
 > **Do NOT use for production applications, critical systems, or high-stakes decisions.**  
 > Use at your own risk.
@@ -25,7 +25,7 @@ A continuously learning transformer language model that trains automatically eve
 
 ## Overview
 
-Fin.AI is an experimental GPT-style language model that trains continuously on FineWeb-Edu, a high-quality educational web content dataset. The model is designed for efficiency on CPU and consumer hardware, using modern transformer architecture with gradient checkpointing and safetensors for safe, fast model distribution.
+FinAI is an experimental GPT-style language model that trains continuously on FineWeb-Edu, a high-quality educational web content dataset. The model is designed for efficiency on CPU and consumer hardware, using modern transformer architecture with gradient checkpointing and safetensors for safe, fast model distribution.
 
 **Core characteristics:**
 
@@ -41,7 +41,7 @@ Fin.AI is an experimental GPT-style language model that trains continuously on F
 
 ## Model Architecture
 
-Fin.AI features a modern transformer architecture optimized for CPU/consumer hardware:
+FinAI features a modern transformer architecture optimized for CPU/consumer hardware:
 
 - **Architecture**: GPT-style decoder-only transformer
 - **Attention**: Grouped Query Attention (GQA) with Flash Attention support
@@ -122,12 +122,12 @@ Fin.AI features a modern transformer architecture optimized for CPU/consumer har
 
 ### FineWeb-Edu
 
-Fin.AI trains continuously on **FineWeb-Edu**, a high-quality educational web content dataset curated by Hugging Face. This dataset provides:
+FinAI trains continuously on **FineWeb-Edu**, a high-quality educational web content dataset curated by Hugging Face. This dataset provides:
 
 - **High-quality content**: Filtered for educational value and quality
 - **Diverse topics**: Covers a wide range of educational subjects
 - **Consistent training**: Single dataset allows for steady, predictable improvement
-- **Large scale**: 10BT sample provides extensive training material
+- **Large scale**: 10 TB sample provides large and extensive training material
 - **Educational focus**: Content optimized for learning and knowledge acquisition
 
 This continuous training approach allows you to watch the model improve in real-time as loss curves decrease and perplexity improves with each hourly training session.
@@ -264,6 +264,18 @@ python train.py --config config/model_config.yaml --datasets config/datasets.yam
 
 - **Python versions**: 3.10, 3.11, 3.12
 
+### Code Coverage
+
+[![Codecov](https://codecov.io/gh/MeridianAlgo/FinAI/branch/main/graph/badge.svg)](https://codecov.io/gh/MeridianAlgo/FinAI)
+
+- **Coverage Target**: 100% of fin_ai module
+- **View Coverage**: [Codecov Dashboard](https://codecov.io/gh/MeridianAlgo/FinAI)
+
+### Repository Status
+
+[![Pull Requests](https://img.shields.io/github/issues-pr/MeridianAlgo/FinAI?label=Pull%20Requests&color=purple&logo=github)](https://github.com/MeridianAlgo/FinAI/pulls)
+[![Issues](https://img.shields.io/github/issues/MeridianAlgo/FinAI?label=Issues&color=orange&logo=github)](https://github.com/MeridianAlgo/FinAI/issues)
+
 <!-- DAILY_EVAL_START -->
 ### Daily Model Evolution
 
@@ -328,17 +340,11 @@ For full commit history, see [GitHub Commits](https://github.com/MeridianAlgo/Fi
 
 ![Latest Commit](https://img.shields.io/github/last-commit/MeridianAlgo/FinAI?label=Latest%20Commit&color=blue&logo=github)
 
-### PR and Issues
-For full reporting view our [Pull Requests](https://github.com/MeridianAlgo/FinAI/pulls) or visit our [Issues](https://github.com/MeridianAlgo/FinAI/issues)
-
-[![Pull Requests](https://img.shields.io/github/issues-pr/MeridianAlgo/FinAI?label=Pull%20Requests&color=purple&logo=github)](https://github.com/MeridianAlgo/FinAI/pulls)
-[![Issues](https://img.shields.io/github/issues/MeridianAlgo/FinAI?label=Issues&color=orange&logo=github)](https://github.com/MeridianAlgo/FinAI/issues)
-
 ---
 
 <div align="center">
 
-Made with passion by the Fin.AI team
+Made with passion by the FinAI team
 
 [![GitHub Stars](https://img.shields.io/github/stars/MeridianAlgo/FinAI?label=Star%20on%20GitHub&color=yellow&logo=github&style=flat-square)](https://github.com/MeridianAlgo/FinAI)
 [![Model on Hugging Face](https://img.shields.io/badge/Model-Fin.AI-yellow)](https://huggingface.co/MeridianAlgo/Fin.AI)

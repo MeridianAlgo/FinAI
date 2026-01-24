@@ -39,16 +39,17 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          pytest tests/ -v --cov=fin_ai --cov-report=xml --cov-report=html --cov-report=term-missing
+          pytest tests/ -v --cov=fin_ai --cov-report=xml --cov-report=html --cov-report=term-missing --cov-report=json
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          file: ./coverage.xml
+          files: ./coverage.xml
           flags: unittests
           name: codecov-umbrella
           fail_ci_if_error: false
+          verbose: true
 
   lint:
     runs-on: ubuntu-latest
@@ -79,13 +80,13 @@ jobs:
           pip install -r requirements.txt
           pip install black ruff isort
 
-      - name: Run Black (check)
+      - name: Run Black
         run: black --check .
 
-      - name: Run Ruff (lint)
+      - name: Run Ruff
         run: ruff check .
 
-      - name: Run isort (check)
+      - name: Run isort
         run: isort --check-only .
       
       - name: Create version tag on main branch
@@ -94,23 +95,18 @@ jobs:
           git config user.name "GitHub Action"
           git config user.email "action@github.com"
           
-          # Fetch all tags
           git fetch --tags
           
-          # Get the latest tag matching v*.*.* pattern
           LATEST_TAG=$(git tag -l "v*.*.*" | sort -V | tail -n 1)
           
           if [ -z "$LATEST_TAG" ]; then
-            # No tags exist, start with v4.1.0
             NEW_TAG="v4.1.0"
           else
-            # Parse the tag (e.g., v4.1.0 -> 4 1 0)
             VERSION=${LATEST_TAG#v}
             MAJOR=$(echo $VERSION | cut -d. -f1)
             MINOR=$(echo $VERSION | cut -d. -f2)
             PATCH=$(echo $VERSION | cut -d. -f3)
             
-            # Increment minor version for main branch pushes
             MINOR=$((MINOR + 1))
             PATCH=0
             
@@ -156,7 +152,7 @@ jobs:
           git config --local user.name "GitHub Action"
           git add .
           if ! git diff --quiet --cached; then
-            git commit -m "🤖 Auto-fix formatting and linting [skip ci]"
+            git commit -m "Auto-fix formatting and linting [skip ci]"
             git push
           else
             echo "No changes to commit"
