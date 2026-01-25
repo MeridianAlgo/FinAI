@@ -8,7 +8,7 @@ on:
       max_steps:
         description: 'Maximum training steps'
         required: false
-        default: '500'
+        default: '250'
 
 env:
   PYTHON_VERSION: '3.10'
@@ -249,7 +249,7 @@ jobs:
           TMPDIR: "/tmp"
         run: |
           set -o pipefail
-          MAX_STEPS="${{ github.event.inputs.max_steps || '500' }}"
+          MAX_STEPS="${{ github.event.inputs.max_steps || '250' }}"
           
           mkdir -p /tmp/hf_cache
           mkdir -p /tmp/hf_home

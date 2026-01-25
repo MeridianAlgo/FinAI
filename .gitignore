@@ -77,7 +77,6 @@ datasets/
 
 # Training outputs
 training_output.txt
-daily_eval_history.json
 
 # Local smoke-test outputs
 checkpoints_smoketest*/
