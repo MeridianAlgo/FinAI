@@ -97,7 +97,7 @@ class FinAIConfig(PretrainedConfig):
         self.hidden_size = embed_dim
         self.num_attention_heads = n_heads
 
-        super().__init__(**kwargs)
+        super().__init__(tie_word_embeddings=tie_word_embeddings, **kwargs)
 
     @property
     def num_parameters(self):

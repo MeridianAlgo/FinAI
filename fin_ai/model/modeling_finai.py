@@ -731,29 +731,13 @@ class FinAIModel(FinAIPreTrainedModel, GenerationMixin):
 
 
 class FinAIForCausalLM(FinAIPreTrainedModel, GenerationMixin):
-    _tied_weights_keys = ["lm_head.weight"]
-    
     def __init__(self, config: FinAIConfig):
         super().__init__(config)
         self.model = FinAIModel(config)
         self.lm_head = nn.Linear(config.embed_dim, config.vocab_size, bias=False)
-        
-        # Tie weights if configured
-        if config.tie_word_embeddings:
-            self.lm_head.weight = self.model.embed_tokens.weight
-        
-        self.post_init()
-    
-    def get_output_embeddings(self):
-        return self.lm_head
 
-    def set_output_embeddings(self, new_embeddings):
-        self.lm_head = new_embeddings
-    
-    def tie_weights(self):
-        """Tie the weights between the input embeddings and the output embeddings."""
-        if self.config.tie_word_embeddings:
-            self._tie_or_clone_weights(self.lm_head, self.model.embed_tokens)
+        # Important: Don't manually tie weights here, let post_init handle it
+        self.post_init()
 
     def get_input_embeddings(self):
         return self.model.embed_tokens
@@ -766,7 +750,7 @@ class FinAIForCausalLM(FinAIPreTrainedModel, GenerationMixin):
 
     def set_output_embeddings(self, new_embeddings):
         self.lm_head = new_embeddings
-    
+
     def tie_weights(self):
         """Tie the weights between the input embeddings and the output embeddings."""
         if self.config.tie_word_embeddings:
