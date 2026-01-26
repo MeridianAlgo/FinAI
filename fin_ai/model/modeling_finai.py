@@ -731,6 +731,9 @@ class FinAIModel(FinAIPreTrainedModel, GenerationMixin):
 
 
 class FinAIForCausalLM(FinAIPreTrainedModel, GenerationMixin):
+    # Define tied weights keys - transformers will expand this to include input embeddings
+    _tied_weights_keys = ["lm_head.weight"]
+
     def __init__(self, config: FinAIConfig):
         super().__init__(config)
         self.model = FinAIModel(config)
@@ -738,18 +741,26 @@ class FinAIForCausalLM(FinAIPreTrainedModel, GenerationMixin):
         self.post_init()
 
     def get_expanded_tied_weights_keys(self, all_submodels=False):
-        """Override to handle tied weights correctly and avoid AttributeError"""
-        # Return empty set since we handle weight tying manually
-        return set()
+        """Override to handle tied weights correctly for save_pretrained"""
+        if not self.config.tie_word_embeddings:
+            return set()
+        # Return the tied weight keys when embeddings are tied
+        # lm_head.weight is tied to model.embed_tokens.weight
+        return {"lm_head.weight", "model.embed_tokens.weight"}
 
     def post_init(self):
         """Override post_init to handle weight tying correctly"""
-        # Manually initialize what transformers' post_init does, but skip tied weights processing
+        # Don't call parent post_init to avoid AttributeError with tied weights processing
+        # Manually initialize what transformers' post_init does
         # Initialize generation_config
         if getattr(self, "generation_config", None) is None:
             self.generation_config = GenerationConfig.from_model_config(self.config)
-        # Set all_tied_weights_keys to empty set to avoid errors
-        self.all_tied_weights_keys = set()
+        # Set all_tied_weights_keys based on tie_word_embeddings
+        # This is needed for save_pretrained to work correctly
+        if self.config.tie_word_embeddings:
+            self.all_tied_weights_keys = {"lm_head.weight", "model.embed_tokens.weight"}
+        else:
+            self.all_tied_weights_keys = set()
         # Handle weight tying manually if config requires it
         if self.config.tie_word_embeddings:
             self.lm_head.weight = self.model.embed_tokens.weight
