@@ -83,13 +83,13 @@ jobs:
           pip install black ruff isort
 
       - name: Run Black
-        run: black --check .
+        run: black --check . || exit 1
 
       - name: Run Ruff
-        run: ruff check .
+        run: ruff check . || exit 1
 
       - name: Run isort
-        run: isort --check-only .
+        run: isort --check-only . || exit 1
       
       - name: Create version tag on main branch
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'

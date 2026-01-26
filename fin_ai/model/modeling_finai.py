@@ -731,22 +731,25 @@ class FinAIModel(FinAIPreTrainedModel, GenerationMixin):
 
 
 class FinAIForCausalLM(FinAIPreTrainedModel, GenerationMixin):
-    # Set to empty list to prevent transformers from processing tied weights incorrectly
-    _tied_weights_keys = []
-
     def __init__(self, config: FinAIConfig):
         super().__init__(config)
         self.model = FinAIModel(config)
         self.lm_head = nn.Linear(config.embed_dim, config.vocab_size, bias=False)
         self.post_init()
 
+    def get_expanded_tied_weights_keys(self, all_submodels=False):
+        """Override to handle tied weights correctly and avoid AttributeError"""
+        # Return empty set since we handle weight tying manually
+        return set()
+
     def post_init(self):
         """Override post_init to handle weight tying correctly"""
-        # Call parent post_init
-        super().post_init()
-        # Initialize generation_config if needed
+        # Manually initialize what transformers' post_init does, but skip tied weights processing
+        # Initialize generation_config
         if getattr(self, "generation_config", None) is None:
             self.generation_config = GenerationConfig.from_model_config(self.config)
+        # Set all_tied_weights_keys to empty set to avoid errors
+        self.all_tied_weights_keys = set()
         # Handle weight tying manually if config requires it
         if self.config.tie_word_embeddings:
             self.lm_head.weight = self.model.embed_tokens.weight
