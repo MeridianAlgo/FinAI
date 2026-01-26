@@ -338,6 +338,13 @@ jobs:
           echo "Cache cleaned!"
           df -h
       
+      - name: Run tests before upload
+        id: tests
+        run: |
+          echo "Running full test suite before upload/tag/release..."
+          python -m pytest tests/ -v --tb=short
+          echo "All tests passed!"
+      
       - name: Upload model to Hugging Face
         if: success()
         env:
