@@ -731,6 +731,8 @@ class FinAIModel(FinAIPreTrainedModel, GenerationMixin):
 
 
 class FinAIForCausalLM(FinAIPreTrainedModel, GenerationMixin):
+    _tied_weights_keys = ["lm_head.weight"]
+
     def __init__(self, config: FinAIConfig):
         super().__init__(config)
         self.model = FinAIModel(config)
