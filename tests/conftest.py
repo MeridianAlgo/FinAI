@@ -18,15 +18,17 @@ def sample_config():
     from fin_ai.model import FinAIConfig
 
     return FinAIConfig(
-        vocab_size=1000,  # Small vocab for testing
-        n_layers=2,
-        n_heads=4,
-        n_kv_heads=2,
-        embed_dim=128,
-        ff_dim=512,
-        max_seq_len=128,
-        dropout=0.1,
-        tie_word_embeddings=False,  # Disable for easier testing with safetensors
+        vocab_size=1000,
+        hidden_size=128,
+        num_hidden_layers=2,
+        num_attention_heads=4,
+        num_key_value_heads=2,
+        intermediate_size=256,
+        max_position_embeddings=128,
+        use_moe=True,
+        num_experts=4,
+        num_experts_per_tok=2,
+        tie_word_embeddings=False,
     )
 
 

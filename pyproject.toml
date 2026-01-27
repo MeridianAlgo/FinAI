@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fin_ai"
-version = "4.0.0"
-description = "Fin.AI language model training package"
+version = "2.2.0"
+description = "FinAI-Core v2.2 Ultra-Lite language model"
 authors = [{name = "Ishaan", email = "ishaan@example.com"}]
 readme = "README.md"
 license = {text = "MIT"}

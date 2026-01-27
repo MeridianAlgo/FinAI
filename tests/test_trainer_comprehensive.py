@@ -266,7 +266,7 @@ class TestFinAITrainerInitialization:
         assert trainer.device.type == "cpu"
 
     def test_trainer_optimizer_creation(self, sample_model):
-        """Test trainer creates optimizer correctly"""
+        """Test optimizer is created correctly"""
         from torch.utils.data import DataLoader, TensorDataset
 
         batch_size = 2
@@ -280,21 +280,16 @@ class TestFinAITrainerInitialization:
         )
         dataloader = DataLoader(dataset, batch_size=2)
 
-        config = TrainingConfig(
-            max_steps=10,
-            batch_size=2,
-            learning_rate=1e-4,
-            weight_decay=0.01,
-        )
-
         trainer = FinAITrainer(
             model=sample_model,
             train_dataloader=dataloader,
-            config=config,
+            config=TrainingConfig(max_steps=10),
         )
 
         assert trainer.optimizer is not None
-        assert isinstance(trainer.optimizer, torch.optim.AdamW)
+        # Support both standard AdamW and bitsandbytes 8-bit AdamW
+        opt_name = type(trainer.optimizer).__name__
+        assert "AdamW" in opt_name
 
     def test_trainer_scheduler_creation(self, sample_model):
         """Test trainer creates learning rate scheduler"""

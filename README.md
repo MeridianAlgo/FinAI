@@ -7,7 +7,7 @@ A continuously learning transformer language model that trains automatically eve
 > **Important Notice**  
 > FinAI is an **experimental research prototype** and **work in progress**.  
 > The model is under continuous training and may produce inaccurate, inappropriate, biased, or nonsensical outputs.  
-> **Do NOT use for production applications, critical systems, or high-stakes decisions.**  
+> **Do NOT use for production applications, critical systems, or high-stakes decisions. Like Stated this is a prototype of a Model**  
 > Use at your own risk.
 
 <div align="center">
@@ -29,7 +29,7 @@ FinAI is an experimental GPT-style language model that trains continuously on Fi
 
 **Core characteristics:**
 
-- Fully automated hourly training (GitHub Actions)
+- Fully automated hourly training (GitHub Actions, and Push-Pull configuration via HuggingFace)
 - Continuous training on FineWeb-Edu (high-quality educational content)
 - 1000 training steps per hour for steady, consistent improvement
 - Models automatically pushed to Hugging Face after each run

@@ -16,7 +16,7 @@ class TestFinAIModel:
         """Test model can be initialized"""
         model = FinAIModel(sample_config)
         assert model is not None
-        assert len(model.layers) == sample_config.n_layers
+        assert len(model.layers) == sample_config.num_hidden_layers
 
     def test_model_forward(self, sample_model, device):
         """Test forward pass"""
@@ -25,13 +25,13 @@ class TestFinAIModel:
         input_ids = torch.randint(0, 1000, (batch_size, seq_len), device=device)
 
         with torch.no_grad():
-            outputs = sample_model.model(input_ids=input_ids)
+            output = sample_model.model(input_ids=input_ids)
 
-        assert outputs.last_hidden_state is not None
-        assert outputs.last_hidden_state.shape == (
+        assert output is not None
+        assert output.shape == (
             batch_size,
             seq_len,
-            sample_model.config.embed_dim,
+            sample_model.config.hidden_size,
         )
 
     def test_model_embeddings(self, sample_model):
@@ -85,42 +85,58 @@ class TestFinAIForCausalLM:
 
         assert loaded_model is not None
         assert loaded_model.config.vocab_size == sample_model.config.vocab_size
-        assert loaded_model.config.n_layers == sample_model.config.n_layers
+        assert loaded_model.config.num_hidden_layers == sample_model.config.num_hidden_layers
 
 
 @pytest.mark.unit
 class TestModelComponents:
     """Test individual model components"""
 
-    def test_attention_layer(self, sample_config, device):
-        """Test attention mechanism"""
-        from fin_ai.model.modeling_finai import FinAIAttention
+    def test_mla_attention(self, sample_config, device):
+        """Test MLA attention mechanism"""
+        from fin_ai.model.modeling_finai import MLAAttention
 
-        attention = FinAIAttention(sample_config).to(device)
+        attention = MLAAttention(sample_config).to(device)
         batch_size = 2
         seq_len = 16
         hidden_states = torch.randn(
-            batch_size, seq_len, sample_config.embed_dim, device=device
+            batch_size, seq_len, sample_config.hidden_size, device=device
         )
 
         with torch.no_grad():
-            output, _, _ = attention(hidden_states)
+            output = attention(hidden_states)
 
         assert output.shape == hidden_states.shape
 
-    def test_mlp_layer(self, sample_config, device):
-        """Test MLP/feedforward layer"""
-        from fin_ai.model.modeling_finai import FinAIMLP
+    def test_mamba_block(self, sample_config, device):
+        """Test Mamba block"""
+        from fin_ai.model.modeling_finai import Mamba2Block
 
-        mlp = FinAIMLP(sample_config).to(device)
+        mamba = Mamba2Block(sample_config).to(device)
         batch_size = 2
         seq_len = 16
         hidden_states = torch.randn(
-            batch_size, seq_len, sample_config.embed_dim, device=device
+            batch_size, seq_len, sample_config.hidden_size, device=device
         )
 
         with torch.no_grad():
-            output = mlp(hidden_states)
+            output = mamba(hidden_states)
+
+        assert output.shape == hidden_states.shape
+
+    def test_moe_layer(self, sample_config, device):
+        """Test MoE layer"""
+        from fin_ai.model.modeling_finai import DeepSeekMoE
+
+        moe = DeepSeekMoE(sample_config).to(device)
+        batch_size = 2
+        seq_len = 16
+        hidden_states = torch.randn(
+            batch_size, seq_len, sample_config.hidden_size, device=device
+        )
+
+        with torch.no_grad():
+            output = moe(hidden_states)
 
         assert output.shape == hidden_states.shape
 
@@ -128,31 +144,14 @@ class TestModelComponents:
         """Test RMSNorm layer"""
         from fin_ai.model.modeling_finai import FinAIRMSNorm
 
-        norm = FinAIRMSNorm(sample_config.embed_dim).to(device)
+        norm = FinAIRMSNorm(sample_config.hidden_size).to(device)
         batch_size = 2
         seq_len = 16
         hidden_states = torch.randn(
-            batch_size, seq_len, sample_config.embed_dim, device=device
+            batch_size, seq_len, sample_config.hidden_size, device=device
         )
 
         with torch.no_grad():
             output = norm(hidden_states)
 
         assert output.shape == hidden_states.shape
-
-    def test_rotary_embeddings(self, sample_config, device):
-        """Test rotary position embeddings"""
-        from fin_ai.model.modeling_finai import FinAIRotaryEmbedding
-
-        rope = FinAIRotaryEmbedding(
-            dim=sample_config.embed_dim // sample_config.n_heads,
-            max_position_embeddings=sample_config.max_seq_len,
-        ).to(device)
-
-        seq_len = 16
-        hidden_states = torch.randn(2, seq_len, sample_config.embed_dim, device=device)
-
-        cos, sin = rope(hidden_states, seq_len=seq_len)
-
-        assert cos.shape[0] == seq_len
-        assert sin.shape[0] == seq_len
