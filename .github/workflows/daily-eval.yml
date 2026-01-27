@@ -10,7 +10,7 @@ on:
 
 env:
   PYTHON_VERSION: '3.10'
-  HF_REPO_ID: 'MeridianAlgo/Fin.AI'
+  HF_REPO_ID: 'MeridianAlgo/FinAI-Lite'
   TEST_PROMPT: 'The future of artificial intelligence is'
 
 jobs:

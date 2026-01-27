@@ -13,8 +13,9 @@ Usage:
 
 import argparse
 import os
-import torch
 import sys
+
+import torch
 from transformers import AutoTokenizer
 
 
@@ -25,9 +26,9 @@ def check_checkpoint_health(checkpoint_path: str):
         print(f"❌ Error: Checkpoint not found at {checkpoint_path}")
         return False
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print(f"CHECKPOINT HEALTH CHECK: {os.path.basename(checkpoint_path)}")
-    print("="*70 + "\n")
+    print("=" * 70 + "\n")
 
     try:
         # Load checkpoint
@@ -93,8 +94,12 @@ def check_checkpoint_health(checkpoint_path: str):
             print("  ✓ No Inf values found")
 
         if very_large_params:
-            print(f"\n⚠️  Found very large values in {len(very_large_params)} parameter(s):")
-            for name, max_val in sorted(very_large_params, key=lambda x: x[1], reverse=True)[:5]:
+            print(
+                f"\n⚠️  Found very large values in {len(very_large_params)} parameter(s):"
+            )
+            for name, max_val in sorted(
+                very_large_params, key=lambda x: x[1], reverse=True
+            )[:5]:
                 print(f"     - {name}: max={max_val:.2f}")
             if len(very_large_params) > 5:
                 print(f"     ... and {len(very_large_params) - 5} more")
@@ -116,7 +121,9 @@ def check_checkpoint_health(checkpoint_path: str):
             # Load checkpoint weights
             model_state_dict = checkpoint.get("model_state_dict", checkpoint)
             # Remove causal_mask if present
-            model_state_dict = {k: v for k, v in model_state_dict.items() if "causal_mask" not in k}
+            model_state_dict = {
+                k: v for k, v in model_state_dict.items() if "causal_mask" not in k
+            }
             model.load_state_dict(model_state_dict, strict=False)
             model.eval()
 
@@ -137,7 +144,9 @@ def check_checkpoint_health(checkpoint_path: str):
                         print("  ❌ Model produces Inf loss")
                         is_healthy = False
                     else:
-                        print(f"  ✓ Model inference successful (loss: {loss.item():.4f})")
+                        print(
+                            f"  ✓ Model inference successful (loss: {loss.item():.4f})"
+                        )
                         is_healthy = True
 
                     if torch.isnan(logits).any():
@@ -159,9 +168,11 @@ def check_checkpoint_health(checkpoint_path: str):
                         **inputs,
                         max_new_tokens=10,
                         do_sample=False,
-                        pad_token_id=tokenizer.eos_token_id
+                        pad_token_id=tokenizer.eos_token_id,
                     )
-                    generated_text = tokenizer.decode(gen_output[0], skip_special_tokens=True)
+                    generated_text = tokenizer.decode(
+                        gen_output[0], skip_special_tokens=True
+                    )
                     print(f"  ✓ Generation test: '{generated_text}'")
 
                 except Exception as e:
@@ -169,16 +180,18 @@ def check_checkpoint_health(checkpoint_path: str):
                     is_healthy = False
 
         # Final verdict
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         if is_healthy:
             print("✅ CHECKPOINT IS HEALTHY")
-            print("="*70)
+            print("=" * 70)
             print("\nThis checkpoint can be used for training.")
         else:
             print("❌ CHECKPOINT HAS DIVERGED")
-            print("="*70)
+            print("=" * 70)
             print("\nRecommendation: Reset this checkpoint using:")
-            print(f"  python scripts/reset_diverged_model.py --checkpoint {checkpoint_path} --backup")
+            print(
+                f"  python scripts/reset_diverged_model.py --checkpoint {checkpoint_path} --backup"
+            )
         print("")
 
         return is_healthy
@@ -186,6 +199,7 @@ def check_checkpoint_health(checkpoint_path: str):
     except Exception as e:
         print(f"\n❌ Error checking checkpoint: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -196,7 +210,7 @@ def main():
         "--checkpoint",
         type=str,
         default="checkpoints/checkpoint-fineweb-edu.pt",
-        help="Path to checkpoint file"
+        help="Path to checkpoint file",
     )
 
     args = parser.parse_args()

@@ -46,7 +46,7 @@ The model is trained continuously via GitHub Actions.
 ```python
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-model = AutoModelForCausalLM.from_pretrained("MeridianAlgo/FinAI-Core-v2.2-UltraLite", trust_remote_code=True)
+model = AutoModelForCausalLM.from_pretrained("MeridianAlgo/FinAI-Lite", trust_remote_code=True)
 tokenizer = AutoTokenizer.from_pretrained("gpt2")
 ```
 

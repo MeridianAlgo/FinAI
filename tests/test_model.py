@@ -85,7 +85,10 @@ class TestFinAIForCausalLM:
 
         assert loaded_model is not None
         assert loaded_model.config.vocab_size == sample_model.config.vocab_size
-        assert loaded_model.config.num_hidden_layers == sample_model.config.num_hidden_layers
+        assert (
+            loaded_model.config.num_hidden_layers
+            == sample_model.config.num_hidden_layers
+        )
 
 
 @pytest.mark.unit

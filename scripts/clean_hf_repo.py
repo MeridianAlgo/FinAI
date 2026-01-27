@@ -4,7 +4,7 @@ from huggingface_hub import HfApi, list_repo_files
 
 
 def clean_hf_repo():
-    repo_id = "MeridianAlgo/Fin.AI"
+    repo_id = "MeridianAlgo/FinAI-Lite"
     token = os.environ.get("HF_TOKEN")
 
     if not token:

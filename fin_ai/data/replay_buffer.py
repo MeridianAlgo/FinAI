@@ -1,8 +1,9 @@
 """Replay Buffer for Continual Learning"""
 
-import random
 import json
+import random
 from collections import deque
+
 
 class ReplayBuffer:
     def __init__(self, max_tokens=20_000_000):

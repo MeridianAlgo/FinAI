@@ -10,7 +10,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig
 # Note: In a real script we might use python-dotenv, but here we assume env vars presence
 # or we can read the .env manually if needed, but the user environment should have it.
 
-MODEL_ID = "MeridianAlgo/Fin.AI"
+MODEL_ID = "MeridianAlgo/FinAI-Lite"
 COMET_WORKSPACE = "meridianalgo"
 COMET_PROJECT = "fin-ai"
 

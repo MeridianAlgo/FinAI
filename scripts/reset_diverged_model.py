@@ -11,7 +11,9 @@ Usage:
 
 import argparse
 import os
+
 import torch
+
 from fin_ai.model import FinAIForCausalLM
 
 
@@ -44,7 +46,9 @@ def reset_checkpoint(checkpoint_path: str, output_path: str = None):
             model = FinAIForCausalLM.from_pretrained(model_dir)
             config = model.config
         else:
-            print("Error: Could not find model config. Please ensure checkpoints/model exists.")
+            print(
+                "Error: Could not find model config. Please ensure checkpoints/model exists."
+            )
             return False
 
         # Create fresh model with same config
@@ -85,19 +89,20 @@ def reset_checkpoint(checkpoint_path: str, output_path: str = None):
         fresh_model.save_pretrained(model_save_path, safe_serialization=True)
         fresh_model.config.tie_word_embeddings = original_tie
 
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("✓ Successfully reset checkpoint!")
-        print("="*60)
+        print("=" * 60)
         print(f"\nCheckpoint: {output_path}")
         print(f"Model: {model_save_path}")
         print("\nThe model now has fresh weights and training will start from step 0.")
-        print("="*60 + "\n")
+        print("=" * 60 + "\n")
 
         return True
 
     except Exception as e:
         print(f"Error resetting checkpoint: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -108,18 +113,18 @@ def main():
         "--checkpoint",
         type=str,
         default="checkpoints/checkpoint-fineweb-edu.pt",
-        help="Path to checkpoint file to reset"
+        help="Path to checkpoint file to reset",
     )
     parser.add_argument(
         "--output",
         type=str,
         default=None,
-        help="Output path (default: overwrite input)"
+        help="Output path (default: overwrite input)",
     )
     parser.add_argument(
         "--backup",
         action="store_true",
-        help="Create a backup of the original checkpoint"
+        help="Create a backup of the original checkpoint",
     )
 
     args = parser.parse_args()
@@ -127,6 +132,7 @@ def main():
     # Create backup if requested
     if args.backup:
         import shutil
+
         backup_path = args.checkpoint + ".backup"
         print(f"Creating backup at {backup_path}...")
         shutil.copy2(args.checkpoint, backup_path)

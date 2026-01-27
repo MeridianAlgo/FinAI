@@ -30,4 +30,4 @@ training:
   log_steps: 5
   output_dir: "./checkpoints"
   push_to_hub: true
-  hf_repo_id: "MeridianAlgo/FinAI-Core-v2.2-UltraLite"
+  hf_repo_id: "MeridianAlgo/FinAI-Lite"

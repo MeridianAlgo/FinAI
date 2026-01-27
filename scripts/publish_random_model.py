@@ -1,9 +1,12 @@
 import os
-from transformers import AutoTokenizer
-from fin_ai.model.modeling_finai import FinAIForCausalLM
-from fin_ai.model.configuration_finai import FinAIConfig
-from huggingface_hub import create_repo, upload_folder
+
 import yaml
+from huggingface_hub import create_repo, upload_folder
+from transformers import AutoTokenizer
+
+from fin_ai.model.configuration_finai import FinAIConfig
+from fin_ai.model.modeling_finai import FinAIForCausalLM
+
 
 def get_hf_token():
     token = os.environ.get("HF_TOKEN")
@@ -21,6 +24,7 @@ def get_hf_token():
             pass
     return token
 
+
 def main():
     token = get_hf_token()
     if not token:
@@ -32,7 +36,9 @@ def main():
         full_config = yaml.safe_load(f)
 
     config_dict = full_config.get("model", {})
-    repo_id = full_config.get("training", {}).get("hf_repo_id", "MeridianAlgo/FinAI-Core-v2.2-UltraLite")
+    repo_id = full_config.get("training", {}).get(
+        "hf_repo_id", "MeridianAlgo/FinAI-Lite"
+    )
 
     # Initialize Tokenizer
     print("Initializing tokenizer...")
@@ -45,7 +51,9 @@ def main():
     config.vocab_size = len(tokenizer)
 
     # Initialize Model with random weights
-    print(f"Initializing model with random weights (~{config.hidden_size} hidden size)...")
+    print(
+        f"Initializing model with random weights (~{config.hidden_size} hidden size)..."
+    )
     model = FinAIForCausalLM(config)
     print(f"Model parameters: {model.num_parameters():,}")
 
@@ -64,11 +72,12 @@ def main():
             folder_path=model_path,
             repo_id=repo_id,
             token=token,
-            commit_message="Initial random weights with novel architecture (Mamba-2, MLA, MoE, MTP)"
+            commit_message="Initial random weights with novel architecture (Mamba-2, MLA, MoE, MTP)",
         )
         print("Successfully pushed to Hugging Face!")
     except Exception as e:
         print(f"Error pushing to Hugging Face: {e}")
+
 
 if __name__ == "__main__":
     main()

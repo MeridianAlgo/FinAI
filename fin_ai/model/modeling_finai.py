@@ -4,13 +4,16 @@ Hybrid Mamba-2 SSM + Transformer with MoE, MLA, MTP and Delta-RoPE
 """
 
 import math
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from transformers import PreTrainedModel
-from transformers.modeling_outputs import CausalLMOutputWithPast
 from transformers.generation.utils import GenerationMixin
+from transformers.modeling_outputs import CausalLMOutputWithPast
+
 from .configuration_finai import FinAIConfig
+
 
 class FinAIRMSNorm(nn.Module):
     def __init__(self, dim: int, eps: float = 1e-6):
@@ -23,8 +26,10 @@ class FinAIRMSNorm(nn.Module):
         x = x * torch.rsqrt(variance + self.eps)
         return self.weight * x
 
+
 class DeltaRoPE(nn.Module):
     """Gated MLP that learns delta updates to rotary frequencies"""
+
     def __init__(self, config: FinAIConfig):
         super().__init__()
         self.dim = config.hidden_size // config.num_attention_heads
@@ -32,17 +37,20 @@ class DeltaRoPE(nn.Module):
         self.mlp = nn.Sequential(
             nn.Linear(config.hidden_size, self.dim // 4),
             nn.SiLU(),
-            nn.Linear(self.dim // 4, self.dim)
+            nn.Linear(self.dim // 4, self.dim),
         )
 
     def forward(self, hidden_states, inv_freq):
         # hidden_states: [bs, seq, dim]
         # inv_freq: [head_dim // 2]
-        gate = torch.sigmoid(self.gate(hidden_states.mean(dim=1, keepdim=True))) # [bs, 1, 1]
-        delta = self.mlp(hidden_states.mean(dim=1, keepdim=True)) # [bs, 1, head_dim]
+        gate = torch.sigmoid(
+            self.gate(hidden_states.mean(dim=1, keepdim=True))
+        )  # [bs, 1, 1]
+        delta = self.mlp(hidden_states.mean(dim=1, keepdim=True))  # [bs, 1, head_dim]
         # Only affect the frequencies (real/imag parts)
-        delta_freq = delta[..., :inv_freq.shape[0]]
+        delta_freq = delta[..., : inv_freq.shape[0]]
         return inv_freq + gate * delta_freq
+
 
 class FinAIRotaryEmbedding(nn.Module):
     def __init__(self, dim, max_position_embeddings=8192, base=10000):
@@ -50,7 +58,9 @@ class FinAIRotaryEmbedding(nn.Module):
         self.dim = dim
         self.max_position_embeddings = max_position_embeddings
         self.base = base
-        inv_freq = 1.0 / (self.base ** (torch.arange(0, self.dim, 2).float() / self.dim))
+        inv_freq = 1.0 / (
+            self.base ** (torch.arange(0, self.dim, 2).float() / self.dim)
+        )
         self.register_buffer("inv_freq", inv_freq, persistent=False)
 
     def forward(self, x, seq_len, delta_inv_freq=None):
@@ -64,22 +74,24 @@ class FinAIRotaryEmbedding(nn.Module):
             freqs = torch.outer(t, freqs_base)
 
         emb = torch.cat((freqs, freqs), dim=-1)
-        if emb.dim() == 2: # [seq, head_dim]
+        if emb.dim() == 2:  # [seq, head_dim]
             return emb.cos(), emb.sin()
-        else: # [bs, 1, seq, head_dim]
+        else:  # [bs, 1, seq, head_dim]
             return emb.cos(), emb.sin()
+
 
 def rotate_half(x):
     x1 = x[..., : x.shape[-1] // 2]
     x2 = x[..., x.shape[-1] // 2 :]
     return torch.cat((-x2, x1), dim=-1)
 
+
 def apply_rotary_pos_emb(q, k, cos, sin, position_ids):
     # Adjust shapes for broadcasting
-    if cos.dim() == 2: # [seq, dim]
-        cos = cos[position_ids].unsqueeze(1) # [bs, 1, seq, dim]
+    if cos.dim() == 2:  # [seq, dim]
+        cos = cos[position_ids].unsqueeze(1)  # [bs, 1, seq, dim]
         sin = sin[position_ids].unsqueeze(1)
-    else: # [bs, 1, seq, dim]
+    else:  # [bs, 1, seq, dim]
         cos = cos.transpose(1, 2)
         sin = sin.transpose(1, 2)
 
@@ -87,8 +99,10 @@ def apply_rotary_pos_emb(q, k, cos, sin, position_ids):
     k_embed = (k * cos) + (rotate_half(k) * sin)
     return q_embed, k_embed
 
+
 class Mamba2Block(nn.Module):
     """Simplified Mamba-2 SSM block with Sparse Recurrent Skipping"""
+
     def __init__(self, config: FinAIConfig):
         super().__init__()
         self.config = config
@@ -119,7 +133,7 @@ class Mamba2Block(nn.Module):
         batch, seqlen, dim = x.shape
 
         # Token-wise skipping heuristic
-        importance = torch.sigmoid(self.skip_heuristic(x)) # [bs, seq, 1]
+        importance = torch.sigmoid(self.skip_heuristic(x))  # [bs, seq, 1]
         mask = (importance > self.skip_threshold).float()
 
         xz = self.in_proj(x)
@@ -139,8 +153,10 @@ class Mamba2Block(nn.Module):
         y = x_inner * torch.tanh(dt) * mask
         return self.out_proj(y * F.silu(z))
 
+
 class MLAAttention(nn.Module):
     """Multi-head Latent Attention with Delta-RoPE"""
+
     def __init__(self, config: FinAIConfig):
         super().__init__()
         self.hidden_size = config.hidden_size
@@ -149,12 +165,18 @@ class MLAAttention(nn.Module):
         self.head_dim = self.hidden_size // self.num_heads
 
         self.q_latent_proj = nn.Linear(self.hidden_size, self.latent_rank, bias=False)
-        self.q_heads_proj = nn.Linear(self.latent_rank, self.num_heads * self.head_dim, bias=False)
+        self.q_heads_proj = nn.Linear(
+            self.latent_rank, self.num_heads * self.head_dim, bias=False
+        )
 
         self.kv_latent_proj = nn.Linear(self.hidden_size, self.latent_rank, bias=False)
-        self.kv_heads_proj = nn.Linear(self.latent_rank, self.num_heads * self.head_dim * 2, bias=False)
+        self.kv_heads_proj = nn.Linear(
+            self.latent_rank, self.num_heads * self.head_dim * 2, bias=False
+        )
 
-        self.o_proj = nn.Linear(self.num_heads * self.head_dim, self.hidden_size, bias=False)
+        self.o_proj = nn.Linear(
+            self.num_heads * self.head_dim, self.hidden_size, bias=False
+        )
         self.rotary_emb = FinAIRotaryEmbedding(self.head_dim)
         self.delta_rope = DeltaRoPE(config)
 
@@ -162,10 +184,18 @@ class MLAAttention(nn.Module):
         bsz, q_len, _ = hidden_states.size()
 
         q_latent = self.q_latent_proj(hidden_states)
-        q = self.q_heads_proj(q_latent).view(bsz, q_len, self.num_heads, self.head_dim).transpose(1, 2)
+        q = (
+            self.q_heads_proj(q_latent)
+            .view(bsz, q_len, self.num_heads, self.head_dim)
+            .transpose(1, 2)
+        )
 
         kv_latent = self.kv_latent_proj(hidden_states)
-        kv = self.kv_heads_proj(kv_latent).view(bsz, q_len, self.num_heads, self.head_dim * 2).transpose(1, 2)
+        kv = (
+            self.kv_heads_proj(kv_latent)
+            .view(bsz, q_len, self.num_heads, self.head_dim * 2)
+            .transpose(1, 2)
+        )
         k, v = kv.chunk(2, dim=-1)
 
         if position_ids is None:
@@ -189,6 +219,7 @@ class MLAAttention(nn.Module):
 
         return self.o_proj(attn_output)
 
+
 class DeepSeekMoE(nn.Module):
     def __init__(self, config: FinAIConfig):
         super().__init__()
@@ -198,13 +229,16 @@ class DeepSeekMoE(nn.Module):
         self.intermediate_size = config.moe_intermediate_size
 
         self.gate = nn.Linear(self.hidden_size, self.num_experts, bias=False)
-        self.experts = nn.ModuleList([
-            nn.Sequential(
-                nn.Linear(self.hidden_size, self.intermediate_size, bias=False),
-                nn.SiLU(),
-                nn.Linear(self.intermediate_size, self.hidden_size, bias=False)
-            ) for _ in range(self.num_experts)
-        ])
+        self.experts = nn.ModuleList(
+            [
+                nn.Sequential(
+                    nn.Linear(self.hidden_size, self.intermediate_size, bias=False),
+                    nn.SiLU(),
+                    nn.Linear(self.intermediate_size, self.hidden_size, bias=False),
+                )
+                for _ in range(self.num_experts)
+            ]
+        )
 
     def forward(self, x):
         bsz, seq_len, h = x.shape
@@ -219,11 +253,12 @@ class DeepSeekMoE(nn.Module):
             mask = (top_indices == i).any(dim=-1)
             if mask.any():
                 expert_out = expert(x_flat[mask])
-                matches = (top_indices[mask] == i)
+                matches = top_indices[mask] == i
                 weight = top_weights[mask][matches].unsqueeze(-1)
                 out[mask] += expert_out * weight
 
         return out.view(bsz, seq_len, h)
+
 
 class FinAIBlock(nn.Module):
     def __init__(self, config: FinAIConfig, layer_idx: int):
@@ -246,7 +281,7 @@ class FinAIBlock(nn.Module):
             self.mlp = nn.Sequential(
                 nn.Linear(config.hidden_size, config.intermediate_size, bias=False),
                 nn.SiLU(),
-                nn.Linear(config.intermediate_size, config.hidden_size, bias=False)
+                nn.Linear(config.intermediate_size, config.hidden_size, bias=False),
             )
 
     def forward(self, x, attention_mask=None, position_ids=None):
@@ -267,6 +302,7 @@ class FinAIBlock(nn.Module):
         x = residual + x
         return x
 
+
 class FinAIPreTrainedModel(PreTrainedModel):
     config_class = FinAIConfig
     base_model_prefix = "model"
@@ -284,12 +320,15 @@ class FinAIPreTrainedModel(PreTrainedModel):
             if module.padding_idx is not None:
                 module.weight.data[module.padding_idx].zero_()
 
+
 class FinAIModel(nn.Module):
     def __init__(self, config: FinAIConfig):
         super().__init__()
         self.config = config
         self.embed_tokens = nn.Embedding(config.vocab_size, config.hidden_size)
-        self.layers = nn.ModuleList([FinAIBlock(config, i) for i in range(config.num_hidden_layers)])
+        self.layers = nn.ModuleList(
+            [FinAIBlock(config, i) for i in range(config.num_hidden_layers)]
+        )
         self.norm = FinAIRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
 
     def forward(self, input_ids, attention_mask=None, position_ids=None):
@@ -299,6 +338,7 @@ class FinAIModel(nn.Module):
         x = self.norm(x)
         return x
 
+
 class FinAIForCausalLM(FinAIPreTrainedModel, GenerationMixin):
     def __init__(self, config: FinAIConfig):
         super().__init__(config)
@@ -306,10 +346,12 @@ class FinAIForCausalLM(FinAIPreTrainedModel, GenerationMixin):
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
         # MTP Auxiliary Heads (Predict next 3 tokens)
-        self.mtp_heads = nn.ModuleList([
-            nn.Linear(config.hidden_size, config.vocab_size, bias=False)
-            for _ in range(config.num_mtp_heads - 1)
-        ])
+        self.mtp_heads = nn.ModuleList(
+            [
+                nn.Linear(config.hidden_size, config.vocab_size, bias=False)
+                for _ in range(config.num_mtp_heads - 1)
+            ]
+        )
 
         self.post_init()
 
@@ -319,7 +361,9 @@ class FinAIForCausalLM(FinAIPreTrainedModel, GenerationMixin):
     def set_input_embeddings(self, value):
         self.model.embed_tokens = value
 
-    def forward(self, input_ids, labels=None, attention_mask=None, position_ids=None, **kwargs):
+    def forward(
+        self, input_ids, labels=None, attention_mask=None, position_ids=None, **kwargs
+    ):
         hidden_states = self.model(input_ids, attention_mask, position_ids)
         logits = self.lm_head(hidden_states)
 
@@ -328,19 +372,26 @@ class FinAIForCausalLM(FinAIPreTrainedModel, GenerationMixin):
             # Main next-token loss
             shift_logits = logits[..., :-1, :].contiguous()
             shift_labels = labels[..., 1:].contiguous()
-            loss = F.cross_entropy(shift_logits.view(-1, self.config.vocab_size), shift_labels.view(-1))
+            loss = F.cross_entropy(
+                shift_logits.view(-1, self.config.vocab_size), shift_labels.view(-1)
+            )
 
             # MTP losses (Auxiliary next-k-token prediction)
             if self.config.num_mtp_heads > 1:
                 # mtp_weight=0.5 split among auxiliary heads
-                mtp_weight_per_head = self.config.mtp_weight / (self.config.num_mtp_heads - 1)
+                mtp_weight_per_head = self.config.mtp_weight / (
+                    self.config.num_mtp_heads - 1
+                )
                 for i, head in enumerate(self.mtp_heads):
                     # head 0 predicts t+2, head 1 predicts t+3, head 2 predicts t+4
                     offset = i + 2
                     if labels.shape[1] > offset:
                         mtp_logits = head(hidden_states[..., :-offset, :]).contiguous()
                         mtp_labels = labels[..., offset:].contiguous()
-                        mtp_loss = F.cross_entropy(mtp_logits.view(-1, self.config.vocab_size), mtp_labels.view(-1))
+                        mtp_loss = F.cross_entropy(
+                            mtp_logits.view(-1, self.config.vocab_size),
+                            mtp_labels.view(-1),
+                        )
                         loss = loss + mtp_weight_per_head * mtp_loss
 
         return CausalLMOutputWithPast(loss=loss, logits=logits)

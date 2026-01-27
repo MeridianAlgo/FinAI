@@ -4,15 +4,18 @@ Test script for the full FinAI-Core v2.2 pipeline:
 Ingestion -> Dataset Loading -> Training -> Generation
 """
 
-import os
-import torch
 import json
+import os
+
+import torch
 from transformers import AutoTokenizer
-from fin_ai.model.modeling_finai import FinAIForCausalLM
-from fin_ai.model.configuration_finai import FinAIConfig
-from fin_ai.training.trainer import FinAITrainer, TrainingConfig, DatasetCycler
-from fin_ai.data.dataset import FinAIDataset, tokenize_and_chunk
+
 from fin_ai.data.dataloader import create_dataloader
+from fin_ai.data.dataset import FinAIDataset, tokenize_and_chunk
+from fin_ai.model.configuration_finai import FinAIConfig
+from fin_ai.model.modeling_finai import FinAIForCausalLM
+from fin_ai.training.trainer import DatasetCycler, FinAITrainer, TrainingConfig
+
 
 def test_pipeline():
     print("--- 1. Testing Ingestion ---")
@@ -37,7 +40,7 @@ def test_pipeline():
         num_key_value_heads=2,
         intermediate_size=512,
         use_moe=True,
-        num_experts=4
+        num_experts=4,
     )
     config.vocab_size = len(tokenizer)
 
@@ -54,21 +57,25 @@ def test_pipeline():
         gradient_accumulation_steps=1,
         log_steps=1,
         save_steps=2,
-        output_dir="./checkpoints/test_run"
+        output_dir="./checkpoints/test_run",
     )
 
     # Mock datasets.yaml for DatasetCycler if needed, or pass None
     os.makedirs("config", exist_ok=True)
     with open("config/datasets_test.yaml", "w") as f:
-        f.write("datasets:\n  - name: pipeline_test\n    path: data/pipeline_test.jsonl")
+        f.write(
+            "datasets:\n  - name: pipeline_test\n    path: data/pipeline_test.jsonl"
+        )
 
-    cycler = DatasetCycler("config/datasets_test.yaml", "checkpoints/test_run/state.json")
+    cycler = DatasetCycler(
+        "config/datasets_test.yaml", "checkpoints/test_run/state.json"
+    )
 
     trainer = FinAITrainer(
         model=model,
         train_dataloader=dataloader,
         config=train_config,
-        dataset_cycler=cycler
+        dataset_cycler=cycler,
     )
 
     trainer.train()
@@ -84,7 +91,7 @@ def test_pipeline():
             max_new_tokens=10,
             do_sample=True,
             temperature=0.7,
-            pad_token_id=tokenizer.eos_token_id
+            pad_token_id=tokenizer.eos_token_id,
         )
 
     gen_text = tokenizer.decode(output[0], skip_special_tokens=True)
@@ -92,6 +99,7 @@ def test_pipeline():
     print(f"Generated: {gen_text}")
 
     print("\n--- Pipeline Test Complete ---")
+
 
 if __name__ == "__main__":
     test_pipeline()

@@ -139,13 +139,11 @@ class FinAITrainer:
 
             # bitsandbytes 8-bit optimizers require CUDA
             use_8bit = "8bit" in self.config.optimizer and torch.cuda.is_available()
-            optim_cls = (
-                bnb.optim.AdamW8bit
-                if use_8bit
-                else torch.optim.AdamW
-            )
+            optim_cls = bnb.optim.AdamW8bit if use_8bit else torch.optim.AdamW
             if "8bit" in self.config.optimizer and not torch.cuda.is_available():
-                logger.warning("bitsandbytes 8-bit optimizer requested but CUDA not available. Falling back to torch.optim.AdamW.")
+                logger.warning(
+                    "bitsandbytes 8-bit optimizer requested but CUDA not available. Falling back to torch.optim.AdamW."
+                )
         except ImportError:
             logger.warning("bitsandbytes not found, falling back to standard AdamW")
             optim_cls = torch.optim.AdamW

@@ -12,7 +12,7 @@ A continuously learning hybrid Mamba-2 + Transformer model that trains automatic
 
 <div align="center">
 
-[![Model on Hugging Face](https://img.shields.io/badge/Model-Fin.AI-yellow)](https://huggingface.co/MeridianAlgo/FinAI-Core-v2.2-UltraLite)
+[![Model on Hugging Face](https://img.shields.io/badge/Model-FinAI--Lite-yellow)](https://huggingface.co/MeridianAlgo/FinAI-Lite)
 [![CI - Tests and Lint](https://github.com/MeridianAlgo/FinAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/MeridianAlgo/FinAI/actions/workflows/ci.yml)
 [![Training Workflow](https://github.com/MeridianAlgo/FinAI/actions/workflows/train.yml/badge.svg)](https://github.com/MeridianAlgo/FinAI/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -79,7 +79,7 @@ import torch
 
 # Load from Hugging Face
 model = AutoModelForCausalLM.from_pretrained(
-    "MeridianAlgo/FinAI-Core-v2.2-UltraLite",
+    "MeridianAlgo/FinAI-Lite",
     trust_remote_code=True
 )
 tokenizer = AutoTokenizer.from_pretrained("gpt2")
