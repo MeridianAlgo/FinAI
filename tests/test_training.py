@@ -59,27 +59,19 @@ class TestTrainingConfig:
 class TestModelConfig:
     """Test FinAIConfig class"""
 
-    def test_model_config_from_yaml(self, tmp_path):
-        """Test loading model config from YAML file"""
-        config_path = tmp_path / "model_config.yaml"
+    def test_model_config_from_dict(self, tmp_path):
+        """Test loading model config from dict"""
         config_data = {
-            "model": {
-                "n_layers": 12,
-                "embed_dim": 768,
-                "n_heads": 12,
-                "dropout": 0.2,
-            }
+            "num_hidden_layers": 12,
+            "hidden_size": 768,
+            "num_attention_heads": 12,
         }
 
-        with open(config_path, "w") as f:
-            yaml.dump(config_data, f)
+        config = FinAIConfig(**config_data)
 
-        config = FinAIConfig.from_yaml(str(config_path))
-
-        assert config.n_layers == 12
-        assert config.embed_dim == 768
-        assert config.n_heads == 12
-        assert config.dropout == 0.2
+        assert config.num_hidden_layers == 12
+        assert config.hidden_size == 768
+        assert config.num_attention_heads == 12
 
 
 @pytest.mark.unit

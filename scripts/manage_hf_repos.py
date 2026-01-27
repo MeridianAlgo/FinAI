@@ -149,9 +149,7 @@ def main():
             list_all_repos()
 
         elif choice == "2":
-            repo_id = input(
-                "Enter repo ID (e.g., MeridianAlgo/FinAI-Lite): "
-            ).strip()
+            repo_id = input("Enter repo ID (e.g., MeridianAlgo/FinAI-Lite): ").strip()
             list_repo_contents(repo_id)
 
         elif choice == "3":

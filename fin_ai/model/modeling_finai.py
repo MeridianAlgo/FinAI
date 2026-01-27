@@ -48,8 +48,12 @@ class DeltaRoPE(nn.Module):
         )  # [bs, 1, 1]
         delta = self.mlp(hidden_states.mean(dim=1, keepdim=True))  # [bs, 1, head_dim]
         # Only affect the frequencies (real/imag parts)
-        delta_freq = delta[..., : inv_freq.shape[0]]
-        return inv_freq + gate * delta_freq
+        delta_freq = delta[..., : inv_freq.shape[0]]  # [bs, 1, head_dim // 2]
+        # Squeeze to match inv_freq shape for broadcasting
+        delta_freq = delta_freq.squeeze(1)  # [bs, head_dim // 2]
+        return (
+            inv_freq.unsqueeze(0) + gate.squeeze(-1) * delta_freq
+        )  # [bs, head_dim // 2]
 
 
 class FinAIRotaryEmbedding(nn.Module):
@@ -68,15 +72,17 @@ class FinAIRotaryEmbedding(nn.Module):
 
         freqs_base = self.inv_freq
         if delta_inv_freq is not None:
-            # delta_inv_freq: [bs, 1, head_dim // 2]
-            freqs = torch.einsum("i, bnj -> bnij", t, delta_inv_freq)
+            # delta_inv_freq: [bs, head_dim // 2]
+            # t: [seq_len]
+            # We need to compute freqs for each batch: [bs, seq_len, head_dim // 2]
+            freqs = torch.einsum("s,bd->bsd", t, delta_inv_freq)
         else:
             freqs = torch.outer(t, freqs_base)
 
         emb = torch.cat((freqs, freqs), dim=-1)
         if emb.dim() == 2:  # [seq, head_dim]
             return emb.cos(), emb.sin()
-        else:  # [bs, 1, seq, head_dim]
+        else:  # [bs, seq, head_dim]
             return emb.cos(), emb.sin()
 
 
@@ -87,13 +93,17 @@ def rotate_half(x):
 
 
 def apply_rotary_pos_emb(q, k, cos, sin, position_ids):
-    # Adjust shapes for broadcasting
-    if cos.dim() == 2:  # [seq, dim]
-        cos = cos[position_ids].unsqueeze(1)  # [bs, 1, seq, dim]
+    # q, k: [bs, num_heads, seq, head_dim]
+    # cos, sin: either [seq, head_dim] or [bs, seq, head_dim]
+
+    if cos.dim() == 2:  # [seq, head_dim]
+        # Standard case: same RoPE for all batches
+        cos = cos[position_ids].unsqueeze(1)  # [bs, 1, seq, head_dim]
         sin = sin[position_ids].unsqueeze(1)
-    else:  # [bs, 1, seq, dim]
-        cos = cos.transpose(1, 2)
-        sin = sin.transpose(1, 2)
+    elif cos.dim() == 3:  # [bs, seq, head_dim]
+        # Delta-RoPE case: different RoPE per batch
+        cos = cos.unsqueeze(1)  # [bs, 1, seq, head_dim]
+        sin = sin.unsqueeze(1)
 
     q_embed = (q * cos) + (rotate_half(q) * sin)
     k_embed = (k * cos) + (rotate_half(k) * sin)
