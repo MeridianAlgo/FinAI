@@ -363,6 +363,9 @@ class TestTrainerUtilities:
         """Test getting HF token from .env file"""
         from torch.utils.data import DataLoader, TensorDataset
 
+        # Ensure HF_TOKEN is not in env so we test the file reading
+        monkeypatch.delenv("HF_TOKEN", raising=False)
+
         # Create .env file
         env_file = tmp_path / ".env"
         env_file.write_text("HF_TOKEN=token_from_env_file\n")
