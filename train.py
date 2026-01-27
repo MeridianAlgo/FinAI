@@ -39,7 +39,7 @@ def main():
         print(f"Loading existing model from {model_path}")
         model = FinAIForCausalLM.from_pretrained(model_path)
     else:
-        # Try to download from Hugging Face
+        # Try to download from Hugging Face with timeout
         hf_token = os.environ.get("HF_TOKEN")
         repo_id = train_config.hf_repo_id
         if hf_token and repo_id:
@@ -47,7 +47,13 @@ def main():
                 print(f"Attempting to download model from HF: {repo_id}")
                 from huggingface_hub import snapshot_download
 
-                snapshot_download(repo_id=repo_id, local_dir=model_path, token=hf_token)
+                # Use max_workers for faster parallel download
+                snapshot_download(
+                    repo_id=repo_id,
+                    local_dir=model_path,
+                    token=hf_token,
+                    max_workers=8,
+                )
                 print(f"Downloaded model to {model_path}")
                 model = FinAIForCausalLM.from_pretrained(model_path)
             except Exception as e:

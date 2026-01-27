@@ -8,6 +8,9 @@ on:
 jobs:
   train:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -16,19 +19,72 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
+          cache: 'pip'
+
+      - name: Cache model checkpoint
+        uses: actions/cache@v4
+        with:
+          path: checkpoints/model
+          key: finai-model-${{ github.sha }}
+          restore-keys: |
+            finai-model-
 
       - name: Install dependencies
         run: |
           pip install torch transformers bitsandbytes accelerate datasets pyyaml huggingface_hub
           pip install -e .
 
+      - name: Download model from HF (if not cached)
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        timeout-minutes: 10
+        continue-on-error: true
+        run: |
+          if [ ! -d "checkpoints/model" ] || [ -z "$(ls -A checkpoints/model)" ]; then
+            echo "Downloading model from HuggingFace..."
+            python -c "
+          from huggingface_hub import snapshot_download
+          import os
+          
+          token = os.environ.get('HF_TOKEN')
+          repo_id = 'MeridianAlgo/FinAI-Lite'
+          
+          try:
+              snapshot_download(
+                  repo_id=repo_id,
+                  local_dir='checkpoints/model',
+                  token=token,
+                  max_workers=8
+              )
+              print('Model downloaded successfully')
+          except Exception as e:
+              print(f'Download failed: {e}')
+              print('Will initialize new model during training')
+          "
+          else
+            echo "Using cached model"
+          fi
+
       - name: Train FinAI on FineWeb-Edu Slice
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           # train.py handles:
-          # 1. Pulling latest model from HF (if not local)
+          # 1. Loading model from checkpoints/model (or initializing new)
           # 2. Loading next slice of FineWeb-Edu
-          # 3. Training
+          # 3. Training for 400 steps
           # 4. Pushing updated model back to HF
-          python train.py --max-steps 400 --save-steps 400
+          python train.py
+
+      - name: Commit dataset state
+        run: |
+          git config user.name "GitHub Action"
+          git config user.email "action@github.com"
+          
+          if [ -f "dataset_state.json" ]; then
+            git add dataset_state.json
+            if ! git diff --quiet --cached; then
+              git commit -m "Update dataset state after training [skip ci]"
+              git push
+            fi
+          fi
