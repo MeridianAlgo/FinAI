@@ -26,6 +26,7 @@ def sample_config():
         ff_dim=512,
         max_seq_len=128,
         dropout=0.1,
+        tie_word_embeddings=False,  # Disable for easier testing with safetensors
     )
 
 

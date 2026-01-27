@@ -63,6 +63,7 @@ class TestEndToEnd:
             n_heads=4,
             n_kv_heads=2,
             embed_dim=128,
+            tie_word_embeddings=False,  # Disable for easier testing with safetensors
         )
         model = FinAIForCausalLM(config).to(device)
 
