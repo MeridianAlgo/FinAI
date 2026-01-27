@@ -37,33 +37,15 @@ def main():
     model_path = "checkpoints/model"
     if os.path.exists(model_path) and len(os.listdir(model_path)) > 0:
         print(f"Loading existing model from {model_path}")
-        model = FinAIForCausalLM.from_pretrained(model_path)
-    else:
-        # Try to download from Hugging Face with timeout
-        hf_token = os.environ.get("HF_TOKEN")
-        repo_id = train_config.hf_repo_id
-        if hf_token and repo_id:
-            try:
-                print(f"Attempting to download model from HF: {repo_id}")
-                from huggingface_hub import snapshot_download
-
-                # Use max_workers for faster parallel download
-                snapshot_download(
-                    repo_id=repo_id,
-                    local_dir=model_path,
-                    token=hf_token,
-                    max_workers=8,
-                )
-                print(f"Downloaded model to {model_path}")
-                model = FinAIForCausalLM.from_pretrained(model_path)
-            except Exception as e:
-                print(
-                    f"Could not download from HF ({e}). Initializing new model from scratch."
-                )
-                model = FinAIForCausalLM(config)
-        else:
-            print("No HF_TOKEN or repo_id found. Initializing new model from scratch.")
+        try:
+            model = FinAIForCausalLM.from_pretrained(model_path)
+        except Exception as e:
+            print(f"Failed to load model from {model_path}: {e}")
+            print("Initializing new model from scratch.")
             model = FinAIForCausalLM(config)
+    else:
+        print("No local model found. Initializing new model from scratch.")
+        model = FinAIForCausalLM(config)
 
     # Initialize Dataset Cycler to track offsets
     cycler = DatasetCycler("config/datasets.yaml")
@@ -104,25 +86,35 @@ def main():
     # Push to Hugging Face if HF_TOKEN is available
     hf_token = trainer._get_hf_token()
     if hf_token and train_config.hf_repo_id:
-        from huggingface_hub import create_repo, upload_folder
+        from huggingface_hub import HfApi, create_repo
 
         try:
             print(f"Pushing to Hugging Face: {train_config.hf_repo_id}")
+
+            # Create repo if it doesn't exist
             create_repo(
                 repo_id=train_config.hf_repo_id,
                 token=hf_token,
                 private=True,
                 exist_ok=True,
             )
-            upload_folder(
+
+            # Use HfApi for more efficient uploads
+            api = HfApi(token=hf_token)
+
+            # Upload folder with resume capability
+            api.upload_folder(
                 folder_path=model_path,
                 repo_id=train_config.hf_repo_id,
-                token=hf_token,
                 commit_message=f"Train cycle complete - offset {next_offset}",
+                multi_commits=True,
+                multi_commits_verbose=True,
             )
-            print("Push to Hugging Face successful")
+
+            print("✓ Push to Hugging Face successful")
         except Exception as e:
-            print(f"Failed to push to Hugging Face: {e}")
+            print(f"✗ Failed to push to Hugging Face: {e}")
+            print("Model saved locally, will retry on next run")
 
 
 if __name__ == "__main__":

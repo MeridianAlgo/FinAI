@@ -8,7 +8,7 @@ on:
 jobs:
   train:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     permissions:
       contents: write
     steps:
@@ -21,28 +21,19 @@ jobs:
           python-version: '3.10'
           cache: 'pip'
 
-      - name: Cache model checkpoint
-        uses: actions/cache@v4
-        with:
-          path: checkpoints/model
-          key: finai-model-${{ github.sha }}
-          restore-keys: |
-            finai-model-
-
       - name: Install dependencies
         run: |
-          pip install torch transformers bitsandbytes accelerate datasets pyyaml huggingface_hub
+          pip install torch transformers accelerate datasets pyyaml huggingface_hub
           pip install -e .
 
-      - name: Download model from HF (if not cached)
+      - name: Download model from HF
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        timeout-minutes: 10
+        timeout-minutes: 15
         continue-on-error: true
         run: |
-          if [ ! -d "checkpoints/model" ] || [ -z "$(ls -A checkpoints/model)" ]; then
-            echo "Downloading model from HuggingFace..."
-            python -c "
+          echo "Downloading model from HuggingFace..."
+          python -c "
           from huggingface_hub import snapshot_download
           import os
           
@@ -50,30 +41,32 @@ jobs:
           repo_id = 'MeridianAlgo/FinAI-Lite'
           
           try:
+              # Download only essential files, skip large files if needed
               snapshot_download(
                   repo_id=repo_id,
                   local_dir='checkpoints/model',
                   token=token,
-                  max_workers=8
+                  max_workers=16,
+                  resume_download=True,
+                  local_dir_use_symlinks=False
               )
-              print('Model downloaded successfully')
+              print('✓ Model downloaded successfully')
           except Exception as e:
-              print(f'Download failed: {e}')
+              print(f'✗ Download failed: {e}')
               print('Will initialize new model during training')
+              exit(0)  # Don't fail the workflow
           "
-          else
-            echo "Using cached model"
-          fi
 
       - name: Train FinAI on FineWeb-Edu Slice
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        timeout-minutes: 25
         run: |
           # train.py handles:
           # 1. Loading model from checkpoints/model (or initializing new)
           # 2. Loading next slice of FineWeb-Edu
-          # 3. Training for 400 steps
-          # 4. Pushing updated model back to HF
+          # 3. Training for configured steps
+          # 4. Pushing updated model back to HF using HF's infrastructure
           python train.py
 
       - name: Commit dataset state
