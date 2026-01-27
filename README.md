@@ -26,15 +26,17 @@ A continuously learning hybrid Mamba-2 + Transformer model that trains automatic
 
 FinAI-Core v2.2 Ultra-Lite is an experimental language model featuring a novel hybrid architecture designed for efficiency and performance. It trains continuously on slices of the FineWeb-Edu dataset, leveraging a "Pull-Train-Push" workflow via GitHub Actions.
 
-## Model Architecture: FinAI-Core v2.2
+## Model Architecture: FinAI-Core v2.2 Ultra-Lite
 
 This model implements a cutting-edge hybrid architecture:
 
 *   **Hybrid Core**: Combines **Mamba-2 State Space Models (SSM)** with **Transformer** layers (Mamba Ratio: 0.6).
+*   **Delta-RoPE**: Learns gated updates to rotary frequencies for better context extrapolation.
+*   **Sparse Recurrent Skipping**: Token-wise importance heuristic that skips SSM updates on low-information tokens.
 *   **Mixture of Experts (MoE)**: DeepSeek-style MoE with 6 experts (2 active per token) for efficient scaling.
-*   **Multi-Head Latent Attention (MLA)**: Optimized attention mechanism for better long-context performance.
-*   **Multi-Token Prediction (MTP)**: Predicts multiple future tokens simultaneously for faster convergence and inference.
-*   **Optimization**: Rotary Embeddings (RoPE), RMSNorm, SwiGLU activations.
+*   **Multi-Head Latent Attention (MLA)**: Optimized attention mechanism with rank-48 latent compression.
+*   **Multi-Token Prediction (MTP)**: Predicts 4 tokens simultaneously (1 main + 3 auxiliary) for faster convergence.
+*   **Optimization**: RMSNorm, SwiGLU activations, 100% unlocked (no censorship).
 
 ### Specifications
 

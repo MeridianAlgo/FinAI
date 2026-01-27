@@ -1,10 +1,9 @@
 """
 FinAI-Core v2.2 Ultra-Lite - High-Efficiency Financial Model
-Hybrid Mamba-2 SSM + Transformer with MoE and MTP
+Hybrid Mamba-2 SSM + Transformer with MoE, MLA, MTP and Delta-RoPE
 """
 
 import math
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -24,28 +23,51 @@ class FinAIRMSNorm(nn.Module):
         x = x * torch.rsqrt(variance + self.eps)
         return self.weight * x
 
+class DeltaRoPE(nn.Module):
+    """Gated MLP that learns delta updates to rotary frequencies"""
+    def __init__(self, config: FinAIConfig):
+        super().__init__()
+        self.dim = config.hidden_size // config.num_attention_heads
+        self.gate = nn.Linear(config.hidden_size, 1)
+        self.mlp = nn.Sequential(
+            nn.Linear(config.hidden_size, self.dim // 4),
+            nn.SiLU(),
+            nn.Linear(self.dim // 4, self.dim)
+        )
+
+    def forward(self, hidden_states, inv_freq):
+        # hidden_states: [bs, seq, dim]
+        # inv_freq: [head_dim // 2]
+        gate = torch.sigmoid(self.gate(hidden_states.mean(dim=1, keepdim=True))) # [bs, 1, 1]
+        delta = self.mlp(hidden_states.mean(dim=1, keepdim=True)) # [bs, 1, head_dim]
+        # Only affect the frequencies (real/imag parts)
+        delta_freq = delta[..., :inv_freq.shape[0]]
+        return inv_freq + gate * delta_freq
+
 class FinAIRotaryEmbedding(nn.Module):
-    def __init__(self, dim, max_position_embeddings=4096, base=10000):
+    def __init__(self, dim, max_position_embeddings=8192, base=10000):
         super().__init__()
         self.dim = dim
         self.max_position_embeddings = max_position_embeddings
         self.base = base
         inv_freq = 1.0 / (self.base ** (torch.arange(0, self.dim, 2).float() / self.dim))
         self.register_buffer("inv_freq", inv_freq, persistent=False)
-        self.max_seq_len_cached = max_position_embeddings
-        t = torch.arange(self.max_seq_len_cached).type_as(self.inv_freq)
-        freqs = torch.outer(t, self.inv_freq)
-        emb = torch.cat((freqs, freqs), dim=-1)
-        self.register_buffer("cos_cached", emb.cos(), persistent=False)
-        self.register_buffer("sin_cached", emb.sin(), persistent=False)
 
-    def forward(self, x, seq_len=None):
-        if seq_len > self.max_seq_len_cached:
-            t = torch.arange(seq_len).type_as(self.inv_freq)
-            freqs = torch.outer(t, self.inv_freq)
-            emb = torch.cat((freqs, freqs), dim=-1)
-            return emb.cos().to(x.device), emb.sin().to(x.device)
-        return self.cos_cached[:seq_len].to(x.device), self.sin_cached[:seq_len].to(x.device)
+    def forward(self, x, seq_len, delta_inv_freq=None):
+        t = torch.arange(seq_len, device=x.device).type_as(self.inv_freq)
+
+        freqs_base = self.inv_freq
+        if delta_inv_freq is not None:
+            # delta_inv_freq: [bs, 1, head_dim // 2]
+            freqs = torch.einsum("i, bnj -> bnij", t, delta_inv_freq)
+        else:
+            freqs = torch.outer(t, freqs_base)
+
+        emb = torch.cat((freqs, freqs), dim=-1)
+        if emb.dim() == 2: # [seq, head_dim]
+            return emb.cos(), emb.sin()
+        else: # [bs, 1, seq, head_dim]
+            return emb.cos(), emb.sin()
 
 def rotate_half(x):
     x1 = x[..., : x.shape[-1] // 2]
@@ -53,15 +75,20 @@ def rotate_half(x):
     return torch.cat((-x2, x1), dim=-1)
 
 def apply_rotary_pos_emb(q, k, cos, sin, position_ids):
-    # Ensure cos/sin are on the correct device and have correct shape
-    cos = cos[position_ids].unsqueeze(1)
-    sin = sin[position_ids].unsqueeze(1)
+    # Adjust shapes for broadcasting
+    if cos.dim() == 2: # [seq, dim]
+        cos = cos[position_ids].unsqueeze(1) # [bs, 1, seq, dim]
+        sin = sin[position_ids].unsqueeze(1)
+    else: # [bs, 1, seq, dim]
+        cos = cos.transpose(1, 2)
+        sin = sin.transpose(1, 2)
+
     q_embed = (q * cos) + (rotate_half(q) * sin)
     k_embed = (k * cos) + (rotate_half(k) * sin)
     return q_embed, k_embed
 
 class Mamba2Block(nn.Module):
-    """Simplified Mamba-2 SSM block optimized for CPU"""
+    """Simplified Mamba-2 SSM block with Sparse Recurrent Skipping"""
     def __init__(self, config: FinAIConfig):
         super().__init__()
         self.config = config
@@ -83,31 +110,37 @@ class Mamba2Block(nn.Module):
         self.x_proj = nn.Linear(self.d_inner, self.config.mamba_d_state + 1, bias=False)
         self.dt_proj = nn.Linear(1, self.d_inner, bias=True)
         self.out_proj = nn.Linear(self.d_inner, self.d_model, bias=False)
-        self.skip_rate = config.ssm_skip_rate
+
+        # Sparse skipping heuristic: small head to predict token importance
+        self.skip_heuristic = nn.Linear(self.d_model, 1)
+        self.skip_threshold = config.ssm_skip_threshold
 
     def forward(self, x):
-        if self.training and torch.rand(1).item() < self.skip_rate:
-            return x
-
         batch, seqlen, dim = x.shape
+
+        # Token-wise skipping heuristic
+        importance = torch.sigmoid(self.skip_heuristic(x)) # [bs, seq, 1]
+        mask = (importance > self.skip_threshold).float()
+
         xz = self.in_proj(x)
-        x, z = xz.chunk(2, dim=-1)
+        x_inner, z = xz.chunk(2, dim=-1)
 
-        x = x.transpose(1, 2)
-        x = self.conv1d(x)[:, :, :seqlen]
-        x = x.transpose(1, 2)
+        x_inner = x_inner.transpose(1, 2)
+        x_inner = self.conv1d(x_inner)[:, :, :seqlen]
+        x_inner = x_inner.transpose(1, 2)
 
-        x = F.silu(x)
+        x_inner = F.silu(x_inner)
 
-        x_db = self.x_proj(x)
+        x_db = self.x_proj(x_inner)
         dt, B, C = torch.split(x_db, [1, self.d_state // 2, self.d_state // 2], dim=-1)
         dt = F.softplus(self.dt_proj(dt))
 
-        y = x * torch.tanh(dt)
+        # Apply skipping: only update where mask is 1
+        y = x_inner * torch.tanh(dt) * mask
         return self.out_proj(y * F.silu(z))
 
 class MLAAttention(nn.Module):
-    """Multi-head Latent Attention"""
+    """Multi-head Latent Attention with Delta-RoPE"""
     def __init__(self, config: FinAIConfig):
         super().__init__()
         self.hidden_size = config.hidden_size
@@ -123,6 +156,7 @@ class MLAAttention(nn.Module):
 
         self.o_proj = nn.Linear(self.num_heads * self.head_dim, self.hidden_size, bias=False)
         self.rotary_emb = FinAIRotaryEmbedding(self.head_dim)
+        self.delta_rope = DeltaRoPE(config)
 
     def forward(self, hidden_states, attention_mask=None, position_ids=None):
         bsz, q_len, _ = hidden_states.size()
@@ -137,7 +171,10 @@ class MLAAttention(nn.Module):
         if position_ids is None:
             position_ids = torch.arange(q_len, device=hidden_states.device).unsqueeze(0)
 
-        cos, sin = self.rotary_emb(v, seq_len=q_len)
+        # Delta-RoPE frequencies
+        delta_inv_freq = self.delta_rope(hidden_states, self.rotary_emb.inv_freq)
+        cos, sin = self.rotary_emb(v, seq_len=q_len, delta_inv_freq=delta_inv_freq)
+
         q, k = apply_rotary_pos_emb(q, k, cos, sin, position_ids)
 
         attn_weights = torch.matmul(q, k.transpose(-1, -2)) / math.sqrt(self.head_dim)
@@ -182,10 +219,7 @@ class DeepSeekMoE(nn.Module):
             mask = (top_indices == i).any(dim=-1)
             if mask.any():
                 expert_out = expert(x_flat[mask])
-                # Find matching top_k indices for this expert
                 matches = (top_indices[mask] == i)
-                # For each sample that matched, get the weight from top_weights
-                # This is a vectorized way to do: weight = top_weights[mask][matches]
                 weight = top_weights[mask][matches].unsqueeze(-1)
                 out[mask] += expert_out * weight
 
@@ -271,6 +305,7 @@ class FinAIForCausalLM(FinAIPreTrainedModel, GenerationMixin):
         self.model = FinAIModel(config)
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
+        # MTP Auxiliary Heads (Predict next 3 tokens)
         self.mtp_heads = nn.ModuleList([
             nn.Linear(config.hidden_size, config.vocab_size, bias=False)
             for _ in range(config.num_mtp_heads - 1)
@@ -295,16 +330,18 @@ class FinAIForCausalLM(FinAIPreTrainedModel, GenerationMixin):
             shift_labels = labels[..., 1:].contiguous()
             loss = F.cross_entropy(shift_logits.view(-1, self.config.vocab_size), shift_labels.view(-1))
 
-            # MTP losses
+            # MTP losses (Auxiliary next-k-token prediction)
             if self.config.num_mtp_heads > 1:
-                mtp_weight = self.config.mtp_weight / (self.config.num_mtp_heads - 1)
+                # mtp_weight=0.5 split among auxiliary heads
+                mtp_weight_per_head = self.config.mtp_weight / (self.config.num_mtp_heads - 1)
                 for i, head in enumerate(self.mtp_heads):
+                    # head 0 predicts t+2, head 1 predicts t+3, head 2 predicts t+4
                     offset = i + 2
                     if labels.shape[1] > offset:
                         mtp_logits = head(hidden_states[..., :-offset, :]).contiguous()
                         mtp_labels = labels[..., offset:].contiguous()
                         mtp_loss = F.cross_entropy(mtp_logits.view(-1, self.config.vocab_size), mtp_labels.view(-1))
-                        loss = loss + mtp_weight * mtp_loss
+                        loss = loss + mtp_weight_per_head * mtp_loss
 
         return CausalLMOutputWithPast(loss=loss, logits=logits)
 

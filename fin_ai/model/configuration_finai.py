@@ -8,14 +8,14 @@ class FinAIConfig(PretrainedConfig):
 
     def __init__(
         self,
-        vocab_size=51200,  # Finance-enhanced (gpt2 + ~1k extra)
+        vocab_size=51200,
         hidden_size=1280,
         num_hidden_layers=20,
-        num_attention_heads=10, # For GQA (6 query heads, 2 KV heads) - mapping needed
+        num_attention_heads=10,
         num_key_value_heads=2,
-        intermediate_size=2560,
+        intermediate_size=2048, # Slightly reduced for 700M target
         hidden_act="swiglu",
-        max_position_embeddings=4096,
+        max_position_embeddings=8192, # Default 8k
         initializer_range=0.02,
         rms_norm_eps=1e-6,
         use_cache=True,
@@ -24,21 +24,21 @@ class FinAIConfig(PretrainedConfig):
         eos_token_id=50256,
         tie_word_embeddings=True,
         rope_theta=10000.0,
-        # FinAI-Core v2.2 Specifics
+        # FinAI-Core v2.2 Ultra-Lite Specifics
         mamba_ratio=0.6,
         mamba_d_state=16,
         mamba_d_conv=4,
         mamba_expand=2,
-        ssm_skip_rate=0.45,
+        ssm_skip_threshold=0.1, # Heuristic threshold for skipping
         # MoE
         use_moe=True,
         num_experts=6,
         num_experts_per_tok=2,
-        moe_intermediate_size=2560,
+        moe_intermediate_size=2048, # Slightly reduced for 700M target
         # MLA
-        mla_latent_rank=64,
+        mla_latent_rank=48, # Spec rank 48-64
         # MTP
-        num_mtp_heads=3,
+        num_mtp_heads=4, # 1 main + 3 additional
         mtp_weight=0.5,
         **kwargs,
     ):
@@ -59,7 +59,7 @@ class FinAIConfig(PretrainedConfig):
         self.mamba_d_state = mamba_d_state
         self.mamba_d_conv = mamba_d_conv
         self.mamba_expand = mamba_expand
-        self.ssm_skip_rate = ssm_skip_rate
+        self.ssm_skip_threshold = ssm_skip_threshold
 
         self.use_moe = use_moe
         self.num_experts = num_experts
@@ -77,11 +77,3 @@ class FinAIConfig(PretrainedConfig):
             tie_word_embeddings=tie_word_embeddings,
             **kwargs,
         )
-
-    @classmethod
-    def from_yaml(cls, yaml_path):
-        import yaml
-        with open(yaml_path, "r") as f:
-            config = yaml.safe_load(f)
-        model_config = config.get("model", {})
-        return cls(**model_config)
