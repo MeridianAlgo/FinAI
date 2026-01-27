@@ -1,4 +1,4 @@
-"""DataLoader utilities for Fin.AI"""
+"""DataLoader utilities for FinAI"""
 
 import torch
 from torch.utils.data import DataLoader

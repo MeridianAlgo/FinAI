@@ -150,7 +150,7 @@ def main():
 
         elif choice == "2":
             repo_id = input(
-                "Enter repo ID (e.g., MeridianAlgo/FinAI-Core-v2.2-UltraLite): "
+                "Enter repo ID (e.g., MeridianAlgo/FinAI-Lite): "
             ).strip()
             list_repo_contents(repo_id)
 

@@ -7,7 +7,7 @@ Can be run locally or in CI.
 
 Usage:
     python scripts/daily_eval.py --model-path checkpoints/model
-    python scripts/daily_eval.py --hf-repo MeridianAlgo/Fin.AI
+    python scripts/daily_eval.py --hf-repo MeridianAlgo/FinAI-Lite
 """
 
 import argparse

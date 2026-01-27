@@ -1,5 +1,5 @@
 """
-Integration tests for Fin.AI
+Integration tests for FinAI
 """
 
 import pytest

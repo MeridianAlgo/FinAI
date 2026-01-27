@@ -1,3 +1,3 @@
 """
-Fin.AI Test Suite
+FinAI Test Suite
 """

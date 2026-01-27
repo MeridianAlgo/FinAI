@@ -1,5 +1,5 @@
 """
-Shared test fixtures and configuration for Fin.AI tests
+Shared test fixtures and configuration for FinAI tests
 """
 
 import pytest

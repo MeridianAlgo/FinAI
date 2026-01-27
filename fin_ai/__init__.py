@@ -1,9 +1,9 @@
 """
-Fin.AI - A trainable transformer-based language model
+FinAI - A trainable transformer-based language model
 """
 
 __version__ = "0.1.0"
-__author__ = "Fin.AI Team"
+__author__ = "FinAI Team"
 
 from fin_ai.model import FinAIConfig, FinAIModel
 

@@ -1,5 +1,5 @@
 """
-Unit tests for Fin.AI model configuration
+Unit tests for FinAI model configuration
 """
 
 import pytest

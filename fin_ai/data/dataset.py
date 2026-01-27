@@ -1,4 +1,4 @@
-"""Dataset loading and processing for Fin.AI"""
+"""Dataset loading and processing for FinAI"""
 
 import logging
 import warnings
