@@ -61,6 +61,83 @@ class TrainingConfig:
         )
 
 
+def pull_from_hf(repo_id, output_dir, token=None, dataset_name="unknown"):
+    """Standalone function to pull checkpoint/model from HF."""
+    if not repo_id:
+        return False
+
+    try:
+        from huggingface_hub import hf_hub_download, list_repo_files
+
+        # Look for single checkpoint file for this dataset
+        try:
+            files = list_repo_files(repo_id, token=token, repo_type="model")
+            checkpoint_filename = f"checkpoint-{dataset_name}.pt"
+
+            if checkpoint_filename in files:
+                print(f"Found checkpoint: {checkpoint_filename}")
+                # Download checkpoint
+                os.makedirs(output_dir, exist_ok=True)
+                hf_hub_download(
+                    repo_id=repo_id,
+                    filename=checkpoint_filename,
+                    local_dir=output_dir,
+                    token=token,
+                    repo_type="model",
+                )
+            else:
+                print(f"INFO: No checkpoint found for {dataset_name} in {repo_id}")
+
+            # Also try to download model weights if available
+            model_files_to_check = [
+                ("model.safetensors", "model/model.safetensors"),
+                ("pytorch_model.bin", "model/pytorch_model.bin"),
+                ("config.json", "model/config.json"),
+                ("generation_config.json", "model/generation_config.json"),
+                ("configuration_finai.py", "model/configuration_finai.py"),
+                ("modeling_finai.py", "model/modeling_finai.py"),
+                ("__init__.py", "model/__init__.py"),
+                # Check for files that might be in a model/ subfolder in the repo too
+                ("model/model.safetensors", "model/model.safetensors"),
+                ("model/pytorch_model.bin", "model/pytorch_model.bin"),
+                ("model/config.json", "model/config.json"),
+                ("model/generation_config.json", "model/generation_config.json"),
+                ("model/configuration_finai.py", "model/configuration_finai.py"),
+                ("model/modeling_finai.py", "model/modeling_finai.py"),
+                ("model/__init__.py", "model/__init__.py"),
+            ]
+
+            for repo_file, local_file in model_files_to_check:
+                if repo_file in files:
+                    try:
+                        local_path = os.path.join(output_dir, local_file)
+                        os.makedirs(os.path.dirname(local_path), exist_ok=True)
+                        downloaded_path = hf_hub_download(
+                            repo_id=repo_id,
+                            filename=repo_file,
+                            local_dir=output_dir,
+                            token=token,
+                            repo_type="model",
+                        )
+                        if downloaded_path != local_path:
+                            import shutil
+
+                            shutil.move(downloaded_path, local_path)
+                        print(f"Downloaded {repo_file} from HF")
+                    except Exception as e:
+                        logger.warning(f"Could not download {repo_file}: {e}")
+
+            return True
+
+        except Exception as e:
+            print(f"WARNING: Failed to pull from HF: {e}")
+            return False
+
+    except ImportError:
+        print("WARNING: huggingface_hub not available")
+        return False
+
+
 class DatasetCycler:
     def __init__(
         self,
@@ -307,7 +384,7 @@ class FinAITrainer:
                 pass
         return token
 
-    def _pull_checkpoint_from_hf(self):
+    def _pull_checkpoint_from_hf(self, dataset_name=None):
         """Pull latest checkpoint from Hugging Face Hub."""
         if not self.config.hf_repo_id or not self.config.push_to_hub:
             return False
@@ -316,97 +393,21 @@ class FinAITrainer:
         if not token:
             print("WARNING: HF_TOKEN not found in environment or .env file")
             print("   Skipping checkpoint pull from Hugging Face")
-            print("   Add HF_TOKEN to .env file to enable checkpoint sync")
             return False
 
-        try:
-            from huggingface_hub import hf_hub_download, list_repo_files
-
-            repo_id = self.config.hf_repo_id
+        if dataset_name is None:
             dataset_name = (
                 self.dataset_cycler.current_dataset_name
                 if self.dataset_cycler
                 else "unknown"
             )
 
-            # Look for single checkpoint file for this dataset
-            try:
-                files = list_repo_files(repo_id, token=token, repo_type="model")
-                checkpoint_filename = f"checkpoint-{dataset_name}.pt"
-
-                if checkpoint_filename not in files:
-                    print(f"INFO: No checkpoint found for {dataset_name} in {repo_id}")
-                    return False
-
-                print(f"Found checkpoint: {checkpoint_filename}")
-
-                # Download checkpoint
-                os.makedirs(self.config.output_dir, exist_ok=True)
-                hf_hub_download(
-                    repo_id=repo_id,
-                    filename=checkpoint_filename,
-                    local_dir=self.config.output_dir,
-                    token=token,
-                    repo_type="model",
-                )
-
-                # Also try to download model weights if available
-                # Check for files at root level first, then model/ subdirectory
-                model_files_to_check = [
-                    (
-                        "model.safetensors",
-                        "model.safetensors",
-                    ),  # (repo_path, local_path)
-                    ("pytorch_model.bin", "pytorch_model.bin"),
-                    ("model/model.safetensors", "model/model.safetensors"),
-                    ("model/pytorch_model.bin", "model/pytorch_model.bin"),
-                    ("config.json", "model/config.json"),
-                    ("generation_config.json", "model/generation_config.json"),
-                    ("configuration_finai.py", "model/configuration_finai.py"),
-                    ("modeling_finai.py", "model/modeling_finai.py"),
-                    ("__init__.py", "model/__init__.py"),
-                ]
-                model_dir = os.path.join(self.config.output_dir, "model")
-                os.makedirs(model_dir, exist_ok=True)
-
-                for repo_file, local_file in model_files_to_check:
-                    if repo_file in files:
-                        try:
-                            # Ensure local directory exists
-                            local_path = os.path.join(
-                                self.config.output_dir, local_file
-                            )
-                            os.makedirs(os.path.dirname(local_path), exist_ok=True)
-
-                            # Download file
-                            downloaded_path = hf_hub_download(
-                                repo_id=repo_id,
-                                filename=repo_file,
-                                local_dir=self.config.output_dir,
-                                token=token,
-                                repo_type="model",
-                            )
-
-                            # Move to correct location if needed
-                            if downloaded_path != local_path:
-                                import shutil
-
-                                shutil.move(downloaded_path, local_path)
-
-                            print(f"Downloaded {repo_file} from HF")
-                        except Exception as e:
-                            logger.warning(f"Could not download {repo_file}: {e}")
-
-                print(f"Successfully pulled checkpoint from {repo_id}")
-                return True
-
-            except Exception as e:
-                print(f"WARNING: Failed to pull checkpoint from HF: {e}")
-                return False
-
-        except ImportError:
-            print("WARNING: huggingface_hub not available, skipping HF checkpoint pull")
-            return False
+        return pull_from_hf(
+            repo_id=self.config.hf_repo_id,
+            output_dir=self.config.output_dir,
+            token=token,
+            dataset_name=dataset_name,
+        )
 
     def _push_checkpoint_to_hf(self, checkpoint_path: str):
         """Push checkpoint to Hugging Face Hub."""
@@ -517,19 +518,6 @@ class FinAITrainer:
         print(f"\nStarting Fin.AI training on {self.device}")
         print(f"Model: {self.model.config.num_parameters:,} parameters")
         print(f"Checkpoints: {self.config.output_dir}\n")
-
-        # Pull checkpoint from HF if enabled (before loading local checkpoints)
-        if self.config.push_to_hub and self.config.hf_repo_id:
-            print(
-                f"Attempting to pull latest checkpoint from Hugging Face ({self.config.hf_repo_id})..."
-            )
-            hf_pulled = self._pull_checkpoint_from_hf()
-            if hf_pulled:
-                print("Successfully pulled checkpoint from Hugging Face")
-            else:
-                print(
-                    "INFO: No checkpoint found on Hugging Face, will start fresh or use local"
-                )
 
         # Load checkpoint (from HF or local)
         starting_step = 0
@@ -766,7 +754,26 @@ class FinAITrainer:
 
         # Save model in Hugging Face format to 'model' subdir
         model_save_path = os.path.join(self.config.output_dir, "model")
-        self.model.save_pretrained(model_save_path, safe_serialization=True)
+
+        # CRITICAL FIX: Ensure weights are tied before saving
+        if self.model.config.tie_word_embeddings:
+            print("Verifying weight tying before save...")
+            if self.model.lm_head.weight is not self.model.model.embed_tokens.weight:
+                print("⚠ Re-tying weights before save...")
+                self.model.tie_weights()
+            print("✓ Weight tying verified before save")
+
+        try:
+            self.model.save_pretrained(model_save_path, safe_serialization=True)
+        except Exception as e:
+            if "mapped section open" in str(e) or "1224" in str(e):
+                # Fallback for Windows memory-mapping issue
+                logger.warning(
+                    f"Safetensor save failed (mapped file), falling back to .bin: {e}"
+                )
+                self.model.save_pretrained(model_save_path, safe_serialization=False)
+            else:
+                raise e
 
         # Push checkpoint to Hugging Face
         if self.config.push_to_hub and self.config.hf_repo_id:
@@ -880,6 +887,21 @@ class FinAITrainer:
                     missing_keys, unexpected_keys = self.model.load_state_dict(
                         sd, strict=False
                     )
+
+                    # CRITICAL FIX: Re-tie weights after loading state dict
+                    if self.model.config.tie_word_embeddings:
+                        print("Re-tying weights after checkpoint load...")
+                        self.model.tie_weights()
+                        if (
+                            self.model.lm_head.weight
+                            is self.model.model.embed_tokens.weight
+                        ):
+                            print("✓ Weight tying verified after checkpoint load")
+                        else:
+                            print("⚠ WARNING: Forcing weight tie...")
+                            self.model.lm_head.weight = (
+                                self.model.model.embed_tokens.weight
+                            )
 
                     if len(missing_keys) > 10 or len(unexpected_keys) > 10:
                         print(

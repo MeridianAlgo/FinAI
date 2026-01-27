@@ -121,6 +121,35 @@ def main():
         state_file=os.path.join(training_config.output_dir, "dataset_state.json"),
     )
 
+    # Pull latest checkpoint/model from HF BEFORE loading model
+    if training_config.push_to_hub and training_config.hf_repo_id:
+        print(
+            f"Attempting to pull latest checkpoint from Hugging Face ({training_config.hf_repo_id})..."
+        )
+        from fin_ai.training.trainer import pull_from_hf
+
+        # Get token
+        token = os.environ.get("HF_TOKEN")
+        if not token and os.path.exists(".env"):
+            try:
+                with open(".env", "r", encoding="utf-8") as f:
+                    for line in f:
+                        if line.startswith("HF_TOKEN="):
+                            token = line.split("=", 1)[1].strip().strip('"').strip("'")
+                            break
+            except Exception:
+                pass
+
+        if pull_from_hf(
+            repo_id=training_config.hf_repo_id,
+            output_dir=training_config.output_dir,
+            token=token,
+            dataset_name=dataset_cycler.current_dataset_name,
+        ):
+            print("Successfully pulled checkpoint from Hugging Face")
+        else:
+            print("No checkpoint found on Hugging Face, using local or fresh")
+
     print(f"Dataset: {dataset_cycler.current_dataset_name}")
 
     # Load datasets
@@ -152,10 +181,39 @@ def main():
             print(f"Loading model from {model_dir}...")
             model = FinAIForCausalLM.from_pretrained(model_dir)
             model_config = model.config
+
+            # CRITICAL FIX: Ensure weight tying after loading
+            if model_config.tie_word_embeddings:
+                print("Re-tying weights after model load...")
+                model.tie_weights()
+
+                # Verify the weights are actually tied
+                if model.lm_head.weight is model.model.embed_tokens.weight:
+                    print(
+                        "✓ Weight tying verified - lm_head and embeddings share weights"
+                    )
+                else:
+                    print("⚠ WARNING: Weight tying failed - manually tying...")
+                    model.lm_head.weight = model.model.embed_tokens.weight
+
         except UnicodeEncodeError:
             print(f"Loading model from {model_dir}...")
             model = FinAIForCausalLM.from_pretrained(model_dir)
             model_config = model.config
+
+            # CRITICAL FIX: Ensure weight tying after loading
+            if model_config.tie_word_embeddings:
+                print("Re-tying weights after model load...")
+                model.tie_weights()
+
+                # Verify the weights are actually tied
+                if model.lm_head.weight is model.model.embed_tokens.weight:
+                    print(
+                        "✓ Weight tying verified - lm_head and embeddings share weights"
+                    )
+                else:
+                    print("⚠ WARNING: Weight tying failed - manually tying...")
+                    model.lm_head.weight = model.model.embed_tokens.weight
     else:
         model = FinAIForCausalLM(model_config)
 
