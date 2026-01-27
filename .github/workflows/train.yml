@@ -19,21 +19,16 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install torch transformers bitsandbytes accelerate datasets pyyaml
+          pip install torch transformers bitsandbytes accelerate datasets pyyaml huggingface_hub
           pip install -e .
 
-      - name: Ingest Fresh Data
-        run: python continual_ingest.py
-
-      - name: Train FinAI
+      - name: Train FinAI on FineWeb-Edu Slice
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
+          # train.py handles:
+          # 1. Pulling latest model from HF (if not local)
+          # 2. Loading next slice of FineWeb-Edu
+          # 3. Training
+          # 4. Pushing updated model back to HF
           python train.py --max-steps 400 --save-steps 400
-
-      - name: Push to HF
-        if: success()
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: |
-          python scripts/publish_to_hf.py

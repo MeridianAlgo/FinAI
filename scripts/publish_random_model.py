@@ -1,9 +1,8 @@
 import os
-import torch
 from transformers import AutoTokenizer
 from fin_ai.model.modeling_finai import FinAIForCausalLM
 from fin_ai.model.configuration_finai import FinAIConfig
-from huggingface_hub import HfApi, create_repo, upload_folder
+from huggingface_hub import create_repo, upload_folder
 import yaml
 
 def get_hf_token():
@@ -31,20 +30,20 @@ def main():
     print("Loading configuration...")
     with open("config/model_config.yaml", "r") as f:
         full_config = yaml.safe_load(f)
-    
+
     config_dict = full_config.get("model", {})
     repo_id = full_config.get("training", {}).get("hf_repo_id", "MeridianAlgo/FinAI-Core-v2.2-UltraLite")
-    
+
     # Initialize Tokenizer
     print("Initializing tokenizer...")
     tokenizer = AutoTokenizer.from_pretrained("gpt2")
     special_tokens = ["<TICKER>", "<ACCOUNTING>", "<SEC_FILING>", "<ARXIV_FIN>"]
     tokenizer.add_special_tokens({"additional_special_tokens": special_tokens})
-    
+
     # Update config with vocab size
     config = FinAIConfig(**config_dict)
     config.vocab_size = len(tokenizer)
-    
+
     # Initialize Model with random weights
     print(f"Initializing model with random weights (~{config.hidden_size} hidden size)...")
     model = FinAIForCausalLM(config)
@@ -53,9 +52,10 @@ def main():
     # Save locally first
     model_path = "checkpoints/random_model"
     os.makedirs(model_path, exist_ok=True)
-    model.save_pretrained(model_path)
+    # safe_serialization=False required for tied weights in some versions
+    model.save_pretrained(model_path, safe_serialization=False)
     tokenizer.save_pretrained(model_path)
-    
+
     # Push to Hub
     print(f"Pushing to Hugging Face: {repo_id}")
     try:

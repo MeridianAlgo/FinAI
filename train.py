@@ -6,7 +6,6 @@ Optimized for Continual Learning and CPU Performance
 
 import os
 import torch
-import json
 import multiprocessing
 from transformers import AutoTokenizer
 from fin_ai.model.modeling_finai import FinAIForCausalLM
@@ -23,7 +22,7 @@ def main():
     # Load configuration
     config = FinAIConfig()
     train_config = TrainingConfig.from_yaml("config/model_config.yaml")
-    
+
     # Initialize Tokenizer (gpt2 base + finance tokens)
     tokenizer = AutoTokenizer.from_pretrained("gpt2")
     # Add special finance tokens
@@ -33,17 +32,31 @@ def main():
 
     # Initialize Model
     model_path = "checkpoints/model"
-    if os.path.exists(model_path):
+    if os.path.exists(model_path) and len(os.listdir(model_path)) > 0:
         print(f"Loading existing model from {model_path}")
         model = FinAIForCausalLM.from_pretrained(model_path)
     else:
-        print("Initializing new model from scratch")
-        model = FinAIForCausalLM(config)
+        # Try to download from Hugging Face
+        hf_token = os.environ.get("HF_TOKEN")
+        repo_id = train_config.hf_repo_id
+        if hf_token and repo_id:
+            try:
+                print(f"Attempting to download model from HF: {repo_id}")
+                from huggingface_hub import snapshot_download
+                snapshot_download(repo_id=repo_id, local_dir=model_path, token=hf_token)
+                print(f"Downloaded model to {model_path}")
+                model = FinAIForCausalLM.from_pretrained(model_path)
+            except Exception as e:
+                print(f"Could not download from HF ({e}). Initializing new model from scratch.")
+                model = FinAIForCausalLM(config)
+        else:
+            print("No HF_TOKEN or repo_id found. Initializing new model from scratch.")
+            model = FinAIForCausalLM(config)
 
     # Initialize Dataset Cycler to track offsets
     cycler = DatasetCycler("config/datasets.yaml")
     current_offset = cycler.get_current_offset()
-    
+
     # Load dataset with current offset
     dataset, next_offset = load_datasets_from_config(
         "config/datasets.yaml",
@@ -52,7 +65,7 @@ def main():
         max_samples=5000, # Train on 5000 samples per run for "slices"
         offset=current_offset
     )
-    
+
     # Update cycler with how many samples we actually skipped/read
     cycler.increment_offset(next_offset - current_offset)
 
@@ -79,7 +92,7 @@ def main():
     # Push to Hugging Face if HF_TOKEN is available
     hf_token = trainer._get_hf_token()
     if hf_token and train_config.hf_repo_id:
-        from huggingface_hub import HfApi, create_repo, upload_folder
+        from huggingface_hub import create_repo, upload_folder
         try:
             print(f"Pushing to Hugging Face: {train_config.hf_repo_id}")
             create_repo(repo_id=train_config.hf_repo_id, token=hf_token, private=True, exist_ok=True)
