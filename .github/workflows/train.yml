@@ -32,42 +32,121 @@ jobs:
         timeout-minutes: 15
         continue-on-error: true
         run: |
-          echo "Downloading model from HuggingFace..."
+          echo "=========================================="
+          echo "Starting model download from HuggingFace"
+          echo "=========================================="
+          echo "Timestamp: $(date)"
+          echo "Repo: MeridianAlgo/FinAI-Lite"
+          echo ""
+          
           python -c "
-          from huggingface_hub import snapshot_download
+          from huggingface_hub import snapshot_download, list_repo_files
           import os
+          import time
           
           token = os.environ.get('HF_TOKEN')
           repo_id = 'MeridianAlgo/FinAI-Lite'
           
+          print(f'Token available: {bool(token)}')
+          print(f'Token length: {len(token) if token else 0}')
+          print('')
+          
           try:
-              # Download only essential files, skip large files if needed
+              # First, list files to see what's available
+              print('Listing files in repository...')
+              files = list_repo_files(repo_id=repo_id, token=token)
+              print(f'Found {len(files)} files:')
+              for f in files[:10]:  # Show first 10
+                  print(f'  - {f}')
+              if len(files) > 10:
+                  print(f'  ... and {len(files) - 10} more files')
+              print('')
+              
+              # Download with progress
+              print('Starting download...')
+              start_time = time.time()
+              
               snapshot_download(
                   repo_id=repo_id,
                   local_dir='checkpoints/model',
                   token=token,
-                  max_workers=16,
+                  max_workers=8,
                   resume_download=True,
                   local_dir_use_symlinks=False
               )
-              print('✓ Model downloaded successfully')
+              
+              elapsed = time.time() - start_time
+              print(f'')
+              print(f'✓ Model downloaded successfully in {elapsed:.1f} seconds')
+              
+              # Verify download
+              import os
+              model_files = os.listdir('checkpoints/model')
+              print(f'Downloaded files: {len(model_files)}')
+              for f in sorted(model_files):
+                  size = os.path.getsize(f'checkpoints/model/{f}')
+                  print(f'  - {f}: {size / 1024 / 1024:.1f} MB')
+              
           except Exception as e:
+              print(f'')
               print(f'✗ Download failed: {e}')
+              print(f'Error type: {type(e).__name__}')
+              import traceback
+              traceback.print_exc()
+              print('')
               print('Will initialize new model during training')
               exit(0)  # Don't fail the workflow
           "
+          
+          echo ""
+          echo "Download step completed at $(date)"
+          echo "=========================================="
 
       - name: Train FinAI on FineWeb-Edu Slice
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         timeout-minutes: 25
         run: |
-          # train.py handles:
-          # 1. Loading model from checkpoints/model (or initializing new)
-          # 2. Loading next slice of FineWeb-Edu
-          # 3. Training for configured steps
-          # 4. Pushing updated model back to HF using HF's infrastructure
-          python train.py
+          echo "=========================================="
+          echo "Starting Training"
+          echo "=========================================="
+          echo "Timestamp: $(date)"
+          echo ""
+          
+          # Check if model exists
+          if [ -d "checkpoints/model" ]; then
+            echo "Model directory exists"
+            echo "Files in checkpoints/model:"
+            ls -lh checkpoints/model/ | head -20
+            echo ""
+          else
+            echo "No model directory found - will initialize new model"
+            echo ""
+          fi
+          
+          # Check dataset state
+          if [ -f "checkpoints/dataset_state.json" ]; then
+            echo "Dataset state exists:"
+            cat checkpoints/dataset_state.json
+            echo ""
+          else
+            echo "No dataset state found - starting from beginning"
+            echo ""
+          fi
+          
+          echo "Starting train.py..."
+          echo "=========================================="
+          echo ""
+          
+          # Run training with verbose output
+          python -u train.py 2>&1 | while IFS= read -r line; do
+            echo "[$(date +%H:%M:%S)] $line"
+          done
+          
+          echo ""
+          echo "=========================================="
+          echo "Training completed at $(date)"
+          echo "=========================================="
 
       - name: Commit dataset state
         run: |
