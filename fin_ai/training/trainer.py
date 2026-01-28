@@ -179,7 +179,10 @@ class FinAITrainer:
         self.model.train()
         train_iter = iter(self.train_dataloader)
 
-        for step in range(self.config.max_steps):
+        # max_steps refers to optimizer steps (after gradient accumulation)
+        total_forward_steps = self.config.max_steps * self.config.gradient_accumulation_steps
+        
+        for step in range(total_forward_steps):
             try:
                 batch = next(train_iter)
             except StopIteration:
@@ -208,6 +211,10 @@ class FinAITrainer:
 
                 if self.global_step % self.config.save_steps == 0:
                     self.save_checkpoint()
+                
+                # Stop if we've reached max_steps optimizer updates
+                if self.global_step >= self.config.max_steps:
+                    break
 
     def save_checkpoint(self):
         os.makedirs(self.config.output_dir, exist_ok=True)
