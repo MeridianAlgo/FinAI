@@ -8,6 +8,7 @@ import multiprocessing
 import os
 
 import torch
+import yaml
 from transformers import AutoTokenizer
 
 from fin_ai.data.dataset import create_dataloader, load_datasets_from_config
@@ -31,8 +32,10 @@ def main():
 
     # Load configuration
     print("Loading configuration...")
-    config = FinAIConfig()
     train_config = TrainingConfig.from_yaml("config/model_config.yaml")
+    with open("config/model_config.yaml", "r") as f:
+        yaml_config = yaml.safe_load(f)
+    config = FinAIConfig(**yaml_config.get("model", {}))
     print("✓ Config loaded")
     print(f"  - Batch size: {train_config.batch_size}")
     print(f"  - Max steps: {train_config.max_steps}")
