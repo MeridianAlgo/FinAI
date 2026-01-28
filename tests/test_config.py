@@ -16,8 +16,8 @@ class TestFinAIConfig:
         config = FinAIConfig()
 
         assert config.vocab_size == 51200
-        assert config.num_hidden_layers == 20
-        assert config.hidden_size == 1280
+        assert config.num_hidden_layers == 24
+        assert config.hidden_size == 1024
         assert config.max_position_embeddings == 8192
 
     def test_custom_config(self):
