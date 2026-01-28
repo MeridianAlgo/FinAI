@@ -153,7 +153,9 @@ jobs:
           git config user.name "GitHub Action"
           git config user.email "action@github.com"
           
-          if [ -f "dataset_state.json" ]; then
+          # Move dataset_state.json from checkpoints to root for tracking
+          if [ -f "checkpoints/dataset_state.json" ]; then
+            cp checkpoints/dataset_state.json dataset_state.json
             git add dataset_state.json
             if ! git diff --quiet --cached; then
               git commit -m "Update dataset state after training [skip ci]"
