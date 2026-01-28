@@ -24,14 +24,14 @@ def main():
     # Load configuration
     config = FinAIConfig()
     train_config = TrainingConfig.from_yaml("config/model_config.yaml")
-    
+
     # Override for quick training
     train_config.max_steps = 50  # Just 50 steps for quick test
     train_config.save_steps = 25  # Save halfway through
     train_config.log_steps = 5
     train_config.batch_size = 1
     train_config.gradient_accumulation_steps = 4  # Smaller for faster iteration
-    
+
     print(f"Quick training mode: {train_config.max_steps} steps")
 
     # Initialize Tokenizer
@@ -75,12 +75,12 @@ def main():
     dataloader = create_dataloader(dataset, batch_size=train_config.batch_size)
 
     print(f"\n{'='*60}")
-    print(f"Starting Quick Training Run")
+    print("Starting Quick Training Run")
     print(f"{'='*60}")
     print(f"Model: {model.num_parameters():,} parameters")
     print(f"Dataset: {cycler.current_dataset_name}")
     print(f"Offset: {current_offset} -> {next_offset}")
-    print(f"Samples: 200 (~10-15MB)")
+    print("Samples: 200 (~10-15MB)")
     print(f"Steps: {train_config.max_steps}")
     print(f"Batch size: {train_config.batch_size}")
     print(f"Gradient accumulation: {train_config.gradient_accumulation_steps}")
@@ -126,7 +126,9 @@ def main():
             )
 
             print("✓ Push to Hugging Face successful")
-            print(f"✓ Model available at: https://huggingface.co/{train_config.hf_repo_id}")
+            print(
+                f"✓ Model available at: https://huggingface.co/{train_config.hf_repo_id}"
+            )
         except Exception as e:
             print(f"✗ Failed to push to Hugging Face: {e}")
             print("Model saved locally, will retry on next run")

@@ -219,7 +219,9 @@ class FinAITrainer:
         save_path = os.path.join(
             self.config.output_dir, f"checkpoint-{dataset_name}-step-{self.global_step}"
         )
-        self.model.save_pretrained(os.path.join(save_path, "model"), safe_serialization=False)
+        self.model.save_pretrained(
+            os.path.join(save_path, "model"), safe_serialization=False
+        )
         torch.save(
             {
                 "optimizer": self.optimizer.state_dict(),
