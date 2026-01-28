@@ -74,9 +74,9 @@ def main():
 
     dataloader = create_dataloader(dataset, batch_size=train_config.batch_size)
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("Starting Quick Training Run")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"Model: {model.num_parameters():,} parameters")
     print(f"Dataset: {cycler.current_dataset_name}")
     print(f"Offset: {current_offset} -> {next_offset}")
@@ -84,7 +84,7 @@ def main():
     print(f"Steps: {train_config.max_steps}")
     print(f"Batch size: {train_config.batch_size}")
     print(f"Gradient accumulation: {train_config.gradient_accumulation_steps}")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
     trainer = FinAITrainer(
         model=model,
@@ -135,9 +135,9 @@ def main():
     else:
         print("\n⚠ No HF_TOKEN found, skipping push to Hugging Face")
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("Training Complete!")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
 
 if __name__ == "__main__":

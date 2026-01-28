@@ -20,24 +20,24 @@ def main():
     # CPU Optimization
     num_cores = multiprocessing.cpu_count()
     torch.set_num_threads(num_cores)
-    print(f"========================================")
-    print(f"FinAI-Core v2.2 Training")
-    print(f"========================================")
+    print("========================================")
+    print("FinAI-Core v2.2 Training")
+    print("========================================")
     print(f"Timestamp: {__import__('datetime').datetime.now()}")
     print(f"CPU cores: {num_cores}")
     print(f"PyTorch version: {torch.__version__}")
     print(f"CUDA available: {torch.cuda.is_available()}")
-    print(f"")
+    print("")
 
     # Load configuration
     print("Loading configuration...")
     config = FinAIConfig()
     train_config = TrainingConfig.from_yaml("config/model_config.yaml")
-    print(f"✓ Config loaded")
+    print("✓ Config loaded")
     print(f"  - Batch size: {train_config.batch_size}")
     print(f"  - Max steps: {train_config.max_steps}")
     print(f"  - Learning rate: {train_config.learning_rate}")
-    print(f"")
+    print("")
 
     # Initialize Tokenizer (gpt2 base + finance tokens)
     print("Initializing tokenizer...")
@@ -47,19 +47,20 @@ def main():
     tokenizer.add_special_tokens({"additional_special_tokens": special_tokens})
     config.vocab_size = len(tokenizer)
     print(f"✓ Tokenizer initialized (vocab size: {config.vocab_size})")
-    print(f"")
+    print("")
 
     # Initialize Model
     model_path = "checkpoints/model"
     print(f"Checking for existing model at {model_path}...")
     if os.path.exists(model_path) and len(os.listdir(model_path)) > 0:
-        print(f"✓ Found existing model, attempting to load...")
+        print("✓ Found existing model, attempting to load...")
         print(f"  Files in {model_path}:")
         for f in os.listdir(model_path)[:10]:
             size = os.path.getsize(os.path.join(model_path, f)) / 1024 / 1024
             print(f"    - {f}: {size:.1f} MB")
         try:
             import time
+
             start = time.time()
             model = FinAIForCausalLM.from_pretrained(model_path)
             elapsed = time.time() - start
@@ -72,22 +73,23 @@ def main():
     else:
         print("✗ No local model found. Initializing new model from scratch.")
         model = FinAIForCausalLM(config)
-    
+
     print(f"Model parameters: {model.num_parameters():,}")
-    print(f"")
+    print("")
 
     # Initialize Dataset Cycler to track offsets
     print("Initializing dataset cycler...")
     cycler = DatasetCycler("config/datasets.yaml")
     current_offset = cycler.get_current_offset()
-    print(f"✓ Dataset cycler initialized")
+    print("✓ Dataset cycler initialized")
     print(f"  - Current dataset: {cycler.current_dataset_name}")
     print(f"  - Current offset: {current_offset}")
-    print(f"")
+    print("")
 
     # Load dataset with current offset
     print(f"Loading dataset (max 1000 samples from offset {current_offset})...")
     import time
+
     start = time.time()
     dataset, next_offset = load_datasets_from_config(
         "config/datasets.yaml",
@@ -100,25 +102,25 @@ def main():
     print(f"✓ Dataset loaded in {elapsed:.1f}s")
     print(f"  - Samples loaded: {next_offset - current_offset}")
     print(f"  - New offset: {next_offset}")
-    print(f"")
+    print("")
 
     # Update cycler with how many samples we actually skipped/read
     cycler.increment_offset(next_offset - current_offset)
 
     dataloader = create_dataloader(dataset, batch_size=train_config.batch_size)
-    print(f"✓ Dataloader created")
-    print(f"")
+    print("✓ Dataloader created")
+    print("")
 
-    print(f"========================================")
-    print(f"Starting Training")
-    print(f"========================================")
+    print("========================================")
+    print("Starting Training")
+    print("========================================")
     print(f"Dataset: {cycler.current_dataset_name}")
     print(f"Offset: {current_offset} -> {next_offset}")
     print(f"Model: {model.num_parameters():,} parameters")
     print(f"Steps: {train_config.max_steps}")
     print(f"Batch size: {train_config.batch_size}")
     print(f"Gradient accumulation: {train_config.gradient_accumulation_steps}")
-    print(f"")
+    print("")
 
     trainer = FinAITrainer(
         model=model,
@@ -130,7 +132,7 @@ def main():
     trainer.train()
 
     # Save final model
-    print(f"")
+    print("")
     print(f"Saving model to {model_path}...")
     os.makedirs(model_path, exist_ok=True)
     start = time.time()
@@ -138,7 +140,7 @@ def main():
     tokenizer.save_pretrained(model_path)
     elapsed = time.time() - start
     print(f"✓ Model saved in {elapsed:.1f}s")
-    print(f"")
+    print("")
 
     # Push to Hugging Face if HF_TOKEN is available
     hf_token = trainer._get_hf_token()
@@ -146,11 +148,11 @@ def main():
         from huggingface_hub import HfApi, create_repo
 
         try:
-            print(f"========================================")
-            print(f"Pushing to Hugging Face")
-            print(f"========================================")
+            print("========================================")
+            print("Pushing to Hugging Face")
+            print("========================================")
             print(f"Repository: {train_config.hf_repo_id}")
-            print(f"")
+            print("")
 
             # Create repo if it doesn't exist
             print("Creating/verifying repository...")
@@ -161,21 +163,20 @@ def main():
                 exist_ok=True,
             )
             print("✓ Repository ready")
-            print(f"")
+            print("")
 
             # Use HfApi for more efficient uploads
             api = HfApi(token=hf_token)
 
             # Get model size
-            import os
             total_size = sum(
                 os.path.getsize(os.path.join(model_path, f))
                 for f in os.listdir(model_path)
                 if os.path.isfile(os.path.join(model_path, f))
             )
             print(f"Uploading {total_size / 1024 / 1024 / 1024:.2f} GB...")
-            print(f"This may take several minutes...")
-            print(f"")
+            print("This may take several minutes...")
+            print("")
 
             # Upload folder with resume capability
             start = time.time()
@@ -185,24 +186,27 @@ def main():
                 commit_message=f"Train cycle complete - offset {next_offset}",
             )
             elapsed = time.time() - start
-            
-            print(f"")
+
+            print("")
             print(f"✓ Push to Hugging Face successful in {elapsed:.1f}s")
-            print(f"✓ Model available at: https://huggingface.co/{train_config.hf_repo_id}")
+            print(
+                f"✓ Model available at: https://huggingface.co/{train_config.hf_repo_id}"
+            )
         except Exception as e:
-            print(f"")
+            print("")
             print(f"✗ Failed to push to Hugging Face: {e}")
             print(f"Error type: {type(e).__name__}")
             import traceback
+
             traceback.print_exc()
             print("Model saved locally, will retry on next run")
     else:
-        print(f"⚠ No HF_TOKEN or repo_id configured, skipping push")
-    
-    print(f"")
-    print(f"========================================")
-    print(f"Training Complete!")
-    print(f"========================================")
+        print("⚠ No HF_TOKEN or repo_id configured, skipping push")
+
+    print("")
+    print("========================================")
+    print("Training Complete!")
+    print("========================================")
     print(f"Timestamp: {__import__('datetime').datetime.now()}")
 
 

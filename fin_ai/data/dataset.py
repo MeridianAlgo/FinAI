@@ -148,7 +148,7 @@ def load_datasets_from_config(
 
     if use_streaming:
         print("Using streaming mode (memory efficient)")
-    
+
     print(f"Target samples to load: {max_samples if max_samples else 'unlimited'}")
     print(f"Text column: {text_column}")
 
@@ -198,8 +198,10 @@ def load_datasets_from_config(
             # For streaming, skip 'offset' items from source
             current_idx = 0
             collected_count = 0
-            
-            print(f"Streaming dataset, will skip {offset} items and collect {chunk_size} items...")
+
+            print(
+                f"Streaming dataset, will skip {offset} items and collect {chunk_size} items..."
+            )
             last_progress = 0
 
             for item in dataset:
@@ -218,7 +220,7 @@ def load_datasets_from_config(
                 if text and len(str(text).strip()) > 10:
                     texts.append(str(text))
                     collected_count += 1
-                    
+
                     # Progress update every 100 items
                     if collected_count % 100 == 0:
                         print(f"  Collected {collected_count}/{chunk_size} samples...")
@@ -226,7 +228,9 @@ def load_datasets_from_config(
                 current_idx += 1
 
             new_offset = current_idx
-            print(f"Streaming complete: collected {len(texts)} samples, new offset: {new_offset}")
+            print(
+                f"Streaming complete: collected {len(texts)} samples, new offset: {new_offset}"
+            )
 
             # If we reached end of dataset and have no texts, reset offset
             if not texts and offset > 0:

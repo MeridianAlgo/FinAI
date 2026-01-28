@@ -20,13 +20,13 @@ model:
 
 training:
   batch_size: 1
-  gradient_accumulation_steps: 16  # Reduced from 32 for faster training
+  gradient_accumulation_steps: 8  # Reduced for faster training
   learning_rate: 0.0002
   weight_decay: 0.05
-  warmup_steps: 100  # Reduced from 500
-  max_steps: 200  # Reduced from 50000 for quick CI runs
+  warmup_steps: 50  # Reduced from 500
+  max_steps: 50  # Quick training runs
   optimizer: "adamw_8bit"
-  save_steps: 100  # Save halfway through
+  save_steps: 25  # Save halfway through
   log_steps: 5
   output_dir: "./checkpoints"
   push_to_hub: true
