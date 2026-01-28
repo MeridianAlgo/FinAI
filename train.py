@@ -36,7 +36,7 @@ def main():
     with open("config/model_config.yaml", "r") as f:
         yaml_config = yaml.safe_load(f)
     config = FinAIConfig(**yaml_config.get("model", {}))
-    print("✓ Config loaded")
+    print("[OK] Config loaded")
     print(f"  - Batch size: {train_config.batch_size}")
     print(f"  - Max steps: {train_config.max_steps}")
     print(f"  - Learning rate: {train_config.learning_rate}")
@@ -49,14 +49,14 @@ def main():
     special_tokens = ["<TICKER>", "<ACCOUNTING>", "<SEC_FILING>", "<ARXIV_FIN>"]
     tokenizer.add_special_tokens({"additional_special_tokens": special_tokens})
     config.vocab_size = len(tokenizer)
-    print(f"✓ Tokenizer initialized (vocab size: {config.vocab_size})")
+    print(f"[OK] Tokenizer initialized (vocab size: {config.vocab_size})")
     print("")
 
     # Initialize Model
     model_path = "checkpoints/model"
     print(f"Checking for existing model at {model_path}...")
     if os.path.exists(model_path) and len(os.listdir(model_path)) > 0:
-        print("✓ Found existing model, attempting to load...")
+        print("[OK] Found existing model, attempting to load...")
         print(f"  Files in {model_path}:")
         for f in os.listdir(model_path)[:10]:
             size = os.path.getsize(os.path.join(model_path, f)) / 1024 / 1024
@@ -67,14 +67,14 @@ def main():
             start = time.time()
             model = FinAIForCausalLM.from_pretrained(model_path)
             elapsed = time.time() - start
-            print(f"✓ Model loaded successfully in {elapsed:.1f}s")
+            print(f"[OK] Model loaded successfully in {elapsed:.1f}s")
         except Exception as e:
-            print(f"✗ Failed to load model: {e}")
+            print(f"[FAIL] Failed to load model: {e}")
             print(f"  Error type: {type(e).__name__}")
             print("Initializing new model from scratch.")
             model = FinAIForCausalLM(config)
     else:
-        print("✗ No local model found. Initializing new model from scratch.")
+        print("[FAIL] No local model found. Initializing new model from scratch.")
         model = FinAIForCausalLM(config)
 
     print(f"Model parameters: {model.num_parameters():,}")
@@ -84,7 +84,7 @@ def main():
     print("Initializing dataset cycler...")
     cycler = DatasetCycler("config/datasets.yaml")
     current_offset = cycler.get_current_offset()
-    print("✓ Dataset cycler initialized")
+    print("[OK] Dataset cycler initialized")
     print(f"  - Current dataset: {cycler.current_dataset_name}")
     print(f"  - Current offset: {current_offset}")
     print("")
@@ -102,7 +102,7 @@ def main():
         offset=current_offset,
     )
     elapsed = time.time() - start
-    print(f"✓ Dataset loaded in {elapsed:.1f}s")
+    print(f"[OK] Dataset loaded in {elapsed:.1f}s")
     print(f"  - Samples loaded: {next_offset - current_offset}")
     print(f"  - New offset: {next_offset}")
     print("")
@@ -111,7 +111,7 @@ def main():
     cycler.increment_offset(next_offset - current_offset)
 
     dataloader = create_dataloader(dataset, batch_size=train_config.batch_size)
-    print("✓ Dataloader created")
+    print("[OK] Dataloader created")
     print("")
 
     print("========================================")
@@ -142,7 +142,7 @@ def main():
     model.save_pretrained(model_path, safe_serialization=False)
     tokenizer.save_pretrained(model_path)
     elapsed = time.time() - start
-    print(f"✓ Model saved in {elapsed:.1f}s")
+    print(f"[OK] Model saved in {elapsed:.1f}s")
     print("")
 
     # Push to Hugging Face if HF_TOKEN is available
@@ -165,7 +165,7 @@ def main():
                 private=True,
                 exist_ok=True,
             )
-            print("✓ Repository ready")
+            print("[OK] Repository ready")
             print("")
 
             # Use HfApi for more efficient uploads
@@ -191,20 +191,20 @@ def main():
             elapsed = time.time() - start
 
             print("")
-            print(f"✓ Push to Hugging Face successful in {elapsed:.1f}s")
+            print(f"[OK] Push to Hugging Face successful in {elapsed:.1f}s")
             print(
-                f"✓ Model available at: https://huggingface.co/{train_config.hf_repo_id}"
+                f"[OK] Model available at: https://huggingface.co/{train_config.hf_repo_id}"
             )
         except Exception as e:
             print("")
-            print(f"✗ Failed to push to Hugging Face: {e}")
+            print(f"[FAIL] Failed to push to Hugging Face: {e}")
             print(f"Error type: {type(e).__name__}")
             import traceback
 
             traceback.print_exc()
             print("Model saved locally, will retry on next run")
     else:
-        print("⚠ No HF_TOKEN or repo_id configured, skipping push")
+        print("[WARN] No HF_TOKEN or repo_id configured, skipping push")
 
     print("")
     print("========================================")

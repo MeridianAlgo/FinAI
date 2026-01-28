@@ -231,6 +231,10 @@ class MLAAttention(nn.Module):
 
 
 class DeepSeekMoE(nn.Module):
+    """
+    DeepSeek-style MoE with Shared Experts + Routed Experts
+    """
+
     def __init__(self, config: FinAIConfig):
         super().__init__()
         self.num_experts = config.num_experts
@@ -238,6 +242,7 @@ class DeepSeekMoE(nn.Module):
         self.hidden_size = config.hidden_size
         self.intermediate_size = config.moe_intermediate_size
 
+        # Routed Experts (Standard MoE)
         self.gate = nn.Linear(self.hidden_size, self.num_experts, bias=False)
         self.experts = nn.ModuleList(
             [
@@ -250,24 +255,56 @@ class DeepSeekMoE(nn.Module):
             ]
         )
 
+        # Shared Expert (Always active)
+        # DeepSeek usually uses a slightly larger shared expert or multiple small ones.
+        # We'll use one expert of standard size for simplicity in this Lite version.
+        self.shared_expert = nn.Sequential(
+            nn.Linear(self.hidden_size, self.intermediate_size, bias=False),
+            nn.SiLU(),
+            nn.Linear(self.intermediate_size, self.hidden_size, bias=False),
+        )
+        # Optional: Learnable scaling factor for shared expert
+        # self.shared_gate = nn.Parameter(torch.ones(1))
+
     def forward(self, x):
         bsz, seq_len, h = x.shape
         x_flat = x.view(-1, h)
+
+        # 1. Shared Expert Path
+        shared_out = self.shared_expert(x_flat)
+
+        # 2. Routed Experts Path
         logits = self.gate(x_flat)
         weights = F.softmax(logits, dim=-1)
         top_weights, top_indices = torch.topk(weights, self.top_k, dim=-1)
         top_weights = top_weights / top_weights.sum(dim=-1, keepdim=True)
 
-        out = torch.zeros_like(x_flat)
+        routed_out = torch.zeros_like(x_flat)
         for i, expert in enumerate(self.experts):
+            # Efficient indexing for CPU
+            # Find which tokens chose this expert
+            # top_indices is [batch*seq, top_k]
             mask = (top_indices == i).any(dim=-1)
-            if mask.any():
-                expert_out = expert(x_flat[mask])
-                matches = top_indices[mask] == i
-                weight = top_weights[mask][matches].unsqueeze(-1)
-                out[mask] += expert_out * weight
 
-        return out.view(bsz, seq_len, h)
+            if mask.any():
+                # Extract tokens assigned to this expert
+                expert_input = x_flat[mask]
+                expert_output = expert(expert_input)
+
+                # Weighting: we need to find the weight corresponding to this expert for each token
+                # matches is boolean [num_active_tokens, top_k]
+                matches = top_indices[mask] == i
+                # selected_weights is [num_active_tokens, top_k]
+                selected_weights = top_weights[mask]
+                # We sum the weights in case an expert is selected multiple times (unlikely with top-k but possible in some routers)
+                # Or simply select the weight where match is True
+                # Flattening for simple multiplication
+                scaling = (selected_weights * matches.float()).sum(dim=-1, keepdim=True)
+
+                routed_out[mask] += expert_output * scaling
+
+        # Combine
+        return (shared_out + routed_out).view(bsz, seq_len, h)
 
 
 class FinAIBlock(nn.Module):

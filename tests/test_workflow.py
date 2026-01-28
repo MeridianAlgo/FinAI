@@ -3,9 +3,10 @@
 Test the GitHub Actions workflow locally
 """
 
-from huggingface_hub import snapshot_download, list_repo_files
 import os
 import time
+
+from huggingface_hub import list_repo_files, snapshot_download
 
 print("==========================================")
 print("Step 1: Download model from HuggingFace")

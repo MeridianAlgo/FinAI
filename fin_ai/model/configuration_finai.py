@@ -9,11 +9,11 @@ class FinAIConfig(PretrainedConfig):
     def __init__(
         self,
         vocab_size=51200,
-        hidden_size=1280,
-        num_hidden_layers=20,
-        num_attention_heads=10,
+        hidden_size=1024,
+        num_hidden_layers=24,
+        num_attention_heads=8,
         num_key_value_heads=2,
-        intermediate_size=2048,  # Slightly reduced for 700M target
+        intermediate_size=1536,  # Ultra-Lite target
         hidden_act="swiglu",
         max_position_embeddings=8192,  # Default 8k
         initializer_range=0.02,
@@ -25,20 +25,20 @@ class FinAIConfig(PretrainedConfig):
         tie_word_embeddings=True,
         rope_theta=10000.0,
         # FinAI-Core v2.2 Ultra-Lite Specifics
-        mamba_ratio=0.6,
+        mamba_ratio=0.5,
         mamba_d_state=16,
         mamba_d_conv=4,
         mamba_expand=2,
-        ssm_skip_threshold=0.1,  # Heuristic threshold for skipping
+        ssm_skip_threshold=0.15,  # Heuristic threshold for skipping
         # MoE
         use_moe=True,
         num_experts=6,
         num_experts_per_tok=2,
-        moe_intermediate_size=2048,  # Slightly reduced for 700M target
+        moe_intermediate_size=1536,  # Ultra-Lite target
         # MLA
-        mla_latent_rank=48,  # Spec rank 48-64
+        mla_latent_rank=64,  # Spec rank 48-64
         # MTP
-        num_mtp_heads=4,  # 1 main + 3 additional
+        num_mtp_heads=2,  # 1 main + 1 additional (total 2 in list usually means 1 main + 1 aux, but implementation uses list len for aux)
         mtp_weight=0.5,
         **kwargs,
     ):

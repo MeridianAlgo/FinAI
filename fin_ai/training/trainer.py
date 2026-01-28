@@ -39,6 +39,7 @@ class TrainingConfig:
     gradient_checkpointing: bool = False
     hf_repo_id: str = None
     push_to_hub: bool = True
+    max_time_seconds: int = 0  # 0 means no time limit
 
     @classmethod
     def from_yaml(cls, path: str):
@@ -179,12 +180,29 @@ class FinAITrainer:
         self.model.train()
         train_iter = iter(self.train_dataloader)
 
+        import time
+
+        start_time = time.time()
+
         # max_steps refers to optimizer steps (after gradient accumulation)
         total_forward_steps = (
             self.config.max_steps * self.config.gradient_accumulation_steps
         )
 
+        print(
+            f"Starting training loop for max {self.config.max_time_seconds}s or {self.config.max_steps} steps"
+        )
+
         for step in range(total_forward_steps):
+            # Check time limit
+            if self.config.max_time_seconds > 0:
+                elapsed = time.time() - start_time
+                if elapsed > self.config.max_time_seconds:
+                    print(
+                        f"Reached time limit ({elapsed:.1f}s > {self.config.max_time_seconds}s). Stopping."
+                    )
+                    break
+
             try:
                 batch = next(train_iter)
             except StopIteration:
