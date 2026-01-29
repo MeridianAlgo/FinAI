@@ -25,8 +25,7 @@ training:
   learning_rate: 0.0003
   weight_decay: 0.01
   warmup_steps: 100
-  max_steps: 1000 # High enough to be controlled by max_time_seconds
-  max_time_seconds: 1800 # 30 minutes training, 15 minutes for saving/pushing
+  max_steps: 400
   optimizer: "adamw_8bit"
   save_steps: 100
   log_steps: 10

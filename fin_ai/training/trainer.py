@@ -39,7 +39,6 @@ class TrainingConfig:
     gradient_checkpointing: bool = False
     hf_repo_id: str = None
     push_to_hub: bool = True
-    max_time_seconds: int = 0  # 0 means no time limit
 
     @classmethod
     def from_yaml(cls, path: str):
@@ -200,21 +199,10 @@ class FinAITrainer:
             self.config.max_steps * self.config.gradient_accumulation_steps
         )
 
-        print(
-            f"Starting training loop for max {self.config.max_time_seconds}s or {self.config.max_steps} steps"
-        )
+        print(f"Starting training loop for {self.config.max_steps} steps")
         print("Logging every step: loss and progress")
 
         for step in range(total_forward_steps):
-            # Check time limit
-            if self.config.max_time_seconds > 0:
-                elapsed = time.time() - start_time
-                if elapsed > self.config.max_time_seconds:
-                    print(
-                        f"\nReached time limit ({elapsed:.1f}s > {self.config.max_time_seconds}s). Stopping gracefully."
-                    )
-                    break
-
             try:
                 batch = next(train_iter)
             except StopIteration:
@@ -240,28 +228,38 @@ class FinAITrainer:
                 self.global_step += 1
 
                 # Live tracking per optimizer step
+                import time
+
+                timestamp = time.strftime("%H:%M:%S")
                 print(
-                    f"Step {self.global_step}/{self.config.max_steps} | Loss: {current_loss:.4f} | LR: {self.scheduler.get_last_lr()[0]:.2e} | Progress: {(self.global_step/self.config.max_steps)*100:.1f}%",
-                    end="\r" if self.global_step % 10 != 0 else "\n",
+                    f"[{timestamp}] Step {self.global_step}/{self.config.max_steps} | Loss: {current_loss:.4f} | LR: {self.scheduler.get_last_lr()[0]:.2e} | Progress: {(self.global_step/self.config.max_steps)*100:.1f}%",
+                    flush=True,
                 )
 
                 if self.global_step % self.config.save_steps == 0:
-                    print(f"\n[INFO] Periodic checkpoint at step {self.global_step}")
+                    print(
+                        f"[{timestamp}] [INFO] Periodic checkpoint at step {self.global_step}",
+                        flush=True,
+                    )
                     self.save_checkpoint()
 
                 # Stop if we've reached max_steps optimizer updates
                 if self.global_step >= self.config.max_steps:
                     print(
-                        f"\n[OK] Reached max steps ({self.config.max_steps}). Training complete."
+                        f"[{timestamp}] [OK] Reached max steps ({self.config.max_steps}). Training complete.",
+                        flush=True,
                     )
                     break
             else:
                 # Accumulation step tracking
                 acc_step = (step % self.config.gradient_accumulation_steps) + 1
                 if acc_step % 4 == 0 or acc_step == 1:
+                    import time
+
+                    timestamp = time.strftime("%H:%M:%S")
                     print(
-                        f"  Forward {acc_step}/{self.config.gradient_accumulation_steps} | Loss: {current_loss:.4f}",
-                        end="\r",
+                        f"[{timestamp}]   Forward {acc_step}/{self.config.gradient_accumulation_steps} | Loss: {current_loss:.4f}",
+                        flush=True,
                     )
 
     def save_checkpoint(self):
