@@ -138,15 +138,26 @@ class FinAITrainer:
         try:
             import bitsandbytes as bnb
 
-            # bitsandbytes 8-bit optimizers require CUDA
-            use_8bit = "8bit" in self.config.optimizer and torch.cuda.is_available()
-            optim_cls = bnb.optim.AdamW8bit if use_8bit else torch.optim.AdamW
-            if "8bit" in self.config.optimizer and not torch.cuda.is_available():
-                logger.warning(
-                    "bitsandbytes 8-bit optimizer requested but CUDA not available. Falling back to torch.optim.AdamW."
-                )
+            # bitsandbytes 8-bit optimizers usually require CUDA
+            # We'll check if we can actually use it
+            use_8bit = "8bit" in self.config.optimizer
+
+            if use_8bit:
+                if torch.cuda.is_available():
+                    print("[OK] Using bitsandbytes 8-bit AdamW optimizer")
+                    optim_cls = bnb.optim.AdamW8bit
+                else:
+                    print(
+                        "[WARN] bitsandbytes 8-bit optimizer requested but CUDA not available."
+                    )
+                    print("[INFO] Falling back to standard torch.optim.AdamW")
+                    optim_cls = torch.optim.AdamW
+            else:
+                optim_cls = torch.optim.AdamW
         except ImportError:
-            logger.warning("bitsandbytes not found, falling back to standard AdamW")
+            if "8bit" in self.config.optimizer:
+                print("[WARN] bitsandbytes not found, falling back to standard AdamW")
+                print("[TIP] Install bitsandbytes with: pip install bitsandbytes")
             optim_cls = torch.optim.AdamW
 
         return optim_cls(
@@ -192,6 +203,7 @@ class FinAITrainer:
         print(
             f"Starting training loop for max {self.config.max_time_seconds}s or {self.config.max_steps} steps"
         )
+        print("Logging every step: loss and progress")
 
         for step in range(total_forward_steps):
             # Check time limit
@@ -199,7 +211,7 @@ class FinAITrainer:
                 elapsed = time.time() - start_time
                 if elapsed > self.config.max_time_seconds:
                     print(
-                        f"Reached time limit ({elapsed:.1f}s > {self.config.max_time_seconds}s). Stopping."
+                        f"\nReached time limit ({elapsed:.1f}s > {self.config.max_time_seconds}s). Stopping gracefully."
                     )
                     break
 
@@ -215,6 +227,9 @@ class FinAITrainer:
             loss = outputs.loss / self.config.gradient_accumulation_steps
             loss.backward()
 
+            # Per-forward-step logging (optional but good for tracking)
+            current_loss = loss.item() * self.config.gradient_accumulation_steps
+
             if (step + 1) % self.config.gradient_accumulation_steps == 0:
                 torch.nn.utils.clip_grad_norm_(
                     self.model.parameters(), self.config.max_grad_norm
@@ -224,17 +239,30 @@ class FinAITrainer:
                 self.optimizer.zero_grad()
                 self.global_step += 1
 
-                if self.global_step % self.config.log_steps == 0:
-                    print(
-                        f"Step {self.global_step} | Loss: {loss.item() * self.config.gradient_accumulation_steps:.4f} | LR: {self.scheduler.get_last_lr()[0]:.2e}"
-                    )
+                # Live tracking per optimizer step
+                print(
+                    f"Step {self.global_step}/{self.config.max_steps} | Loss: {current_loss:.4f} | LR: {self.scheduler.get_last_lr()[0]:.2e} | Progress: {(self.global_step/self.config.max_steps)*100:.1f}%",
+                    end="\r" if self.global_step % 10 != 0 else "\n",
+                )
 
                 if self.global_step % self.config.save_steps == 0:
+                    print(f"\n[INFO] Periodic checkpoint at step {self.global_step}")
                     self.save_checkpoint()
 
                 # Stop if we've reached max_steps optimizer updates
                 if self.global_step >= self.config.max_steps:
+                    print(
+                        f"\n[OK] Reached max steps ({self.config.max_steps}). Training complete."
+                    )
                     break
+            else:
+                # Accumulation step tracking
+                acc_step = (step % self.config.gradient_accumulation_steps) + 1
+                if acc_step % 4 == 0 or acc_step == 1:
+                    print(
+                        f"  Forward {acc_step}/{self.config.gradient_accumulation_steps} | Loss: {current_loss:.4f}",
+                        end="\r",
+                    )
 
     def save_checkpoint(self):
         os.makedirs(self.config.output_dir, exist_ok=True)

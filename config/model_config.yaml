@@ -26,7 +26,7 @@ training:
   weight_decay: 0.01
   warmup_steps: 100
   max_steps: 1000 # High enough to be controlled by max_time_seconds
-  max_time_seconds: 2700 # 45 minutes per hour run
+  max_time_seconds: 1800 # 30 minutes training, 15 minutes for saving/pushing
   optimizer: "adamw_8bit"
   save_steps: 100
   log_steps: 10

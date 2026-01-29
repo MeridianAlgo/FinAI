@@ -8,7 +8,7 @@ on:
 jobs:
   train:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     permissions:
       contents: write
     steps:
@@ -23,7 +23,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install torch transformers accelerate datasets pyyaml huggingface_hub[cli,torch] hf_transfer
+          pip install torch transformers accelerate datasets pyyaml huggingface_hub[cli,torch] hf_transfer bitsandbytes
           pip install -e .
 
       - name: Download model from HF
@@ -107,7 +107,7 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           HF_HUB_ENABLE_HF_TRANSFER: 1
-        timeout-minutes: 25
+        timeout-minutes: 45
         run: |
           echo "=========================================="
           echo "Starting Training"
