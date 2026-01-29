@@ -21,11 +21,11 @@ model:
 
 training:
   batch_size: 4  # Adjusted for CPU
-  gradient_accumulation_steps: 16  # High accumulation for stability
+  gradient_accumulation_steps: 8  # Reduced for more frequent updates
   learning_rate: 0.0003
   weight_decay: 0.01
   warmup_steps: 100
-  max_steps: 400
+  max_steps: 200
   optimizer: "adamw_8bit"
   save_steps: 100
   log_steps: 10

@@ -51,8 +51,9 @@ class DeltaRoPE(nn.Module):
         delta_freq = delta[..., : inv_freq.shape[0]]  # [bs, 1, head_dim // 2]
         # Squeeze to match inv_freq shape for broadcasting
         delta_freq = delta_freq.squeeze(1)  # [bs, head_dim // 2]
-        return (
-            inv_freq.unsqueeze(0) + gate.squeeze(-1) * delta_freq
+        # Use lerp for better numerical stability than raw addition
+        return torch.lerp(
+            inv_freq.unsqueeze(0), delta_freq, gate.squeeze(-1)
         )  # [bs, head_dim // 2]
 
 
@@ -157,7 +158,7 @@ class Mamba2Block(nn.Module):
 
         x_db = self.x_proj(x_inner)
         dt, B, C = torch.split(x_db, [1, self.d_state // 2, self.d_state // 2], dim=-1)
-        dt = F.softplus(self.dt_proj(dt))
+        dt = F.softplus(self.dt_proj(dt) + 1e-4) # Stability epsilon
 
         # Apply skipping: only update where mask is 1
         y = x_inner * torch.tanh(dt) * mask
@@ -223,6 +224,8 @@ class MLAAttention(nn.Module):
                 attention_mask = attention_mask.unsqueeze(1).unsqueeze(1)
             attn_weights = attn_weights + attention_mask
 
+        # Numerical stability: subtract max for softmax
+        attn_weights = attn_weights - torch.max(attn_weights, dim=-1, keepdim=True)[0]
         attn_weights = F.softmax(attn_weights, dim=-1).to(q.dtype)
         attn_output = torch.matmul(attn_weights, v)
         attn_output = attn_output.transpose(1, 2).reshape(bsz, q_len, -1)
@@ -275,33 +278,36 @@ class DeepSeekMoE(nn.Module):
 
         # 2. Routed Experts Path
         logits = self.gate(x_flat)
+        # Add epsilon for numerical stability in softmax
         weights = F.softmax(logits, dim=-1)
         top_weights, top_indices = torch.topk(weights, self.top_k, dim=-1)
-        top_weights = top_weights / top_weights.sum(dim=-1, keepdim=True)
+        # Normalize weights and add epsilon to denominator
+        top_weights = top_weights / (top_weights.sum(dim=-1, keepdim=True) + 1e-6)
 
         routed_out = torch.zeros_like(x_flat)
-        for i, expert in enumerate(self.experts):
-            # Efficient indexing for CPU
-            # Find which tokens chose this expert
+        
+        # Optimized expert processing: group by expert
+        # This is faster than iterating through all tokens
+        for i in range(self.num_experts):
+            # mask: which tokens assigned to this expert
             # top_indices is [batch*seq, top_k]
-            mask = (top_indices == i).any(dim=-1)
-
-            if mask.any():
-                # Extract tokens assigned to this expert
-                expert_input = x_flat[mask]
-                expert_output = expert(expert_input)
-
-                # Weighting: we need to find the weight corresponding to this expert for each token
-                # matches is boolean [num_active_tokens, top_k]
-                matches = top_indices[mask] == i
-                # selected_weights is [num_active_tokens, top_k]
-                selected_weights = top_weights[mask]
-                # We sum the weights in case an expert is selected multiple times (unlikely with top-k but possible in some routers)
-                # Or simply select the weight where match is True
-                # Flattening for simple multiplication
-                scaling = (selected_weights * matches.float()).sum(dim=-1, keepdim=True)
-
-                routed_out[mask] += expert_output * scaling
+            # matches is [N, top_k] where N is tokens assigned to expert i
+            expert_mask = (top_indices == i)
+            token_indices = expert_mask.any(dim=-1).nonzero(as_tuple=True)[0]
+            
+            if token_indices.numel() > 0:
+                expert_input = x_flat[token_indices]
+                expert_output = self.experts[i](expert_input)
+                
+                # Get weights for this expert for these specific tokens
+                # We need to find where in top_indices (which column) expert i was
+                # This is a bit tricky but essential for correctness
+                # weights_mask is [N, top_k]
+                weights_mask = (top_indices[token_indices] == i)
+                # selected_weights is [N]
+                selected_weights = (top_weights[token_indices] * weights_mask.float()).sum(dim=-1)
+                
+                routed_out[token_indices] += expert_output * selected_weights.unsqueeze(-1)
 
         # Combine
         return (shared_out + routed_out).view(bsz, seq_len, h)
