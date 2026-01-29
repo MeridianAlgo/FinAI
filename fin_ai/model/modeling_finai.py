@@ -162,7 +162,10 @@ class Mamba2Block(nn.Module):
 
         # Apply skipping: only update where mask is 1
         y = x_inner * torch.tanh(dt) * mask
-        return self.out_proj(y * F.silu(z))
+        
+        # Stability: clamp output to prevent explosion
+        output = self.out_proj(y * F.silu(z))
+        return torch.clamp(output, min=-65504, max=65504) # FP16 max safely
 
 
 class MLAAttention(nn.Module):
@@ -230,7 +233,9 @@ class MLAAttention(nn.Module):
         attn_output = torch.matmul(attn_weights, v)
         attn_output = attn_output.transpose(1, 2).reshape(bsz, q_len, -1)
 
-        return self.o_proj(attn_output)
+        # Stability: clamp output
+        output = self.o_proj(attn_output)
+        return torch.clamp(output, min=-65504, max=65504)
 
 
 class DeepSeekMoE(nn.Module):
@@ -428,6 +433,9 @@ class FinAIForCausalLM(FinAIPreTrainedModel, GenerationMixin):
     ):
         hidden_states = self.model(input_ids, attention_mask, position_ids)
         logits = self.lm_head(hidden_states)
+        
+        # Stability: Clamp logits for cross entropy
+        logits = torch.clamp(logits, min=-100.0, max=100.0)
 
         loss = None
         if labels is not None:

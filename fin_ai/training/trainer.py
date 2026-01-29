@@ -204,6 +204,9 @@ class FinAITrainer:
         print(f"Gradient Accumulation: {self.config.gradient_accumulation_steps}")
         print("Logging every step: loss and progress")
 
+        consecutive_nan_count = 0
+        max_consecutive_nans = 50
+
         try:
             for step in range(total_forward_steps):
                 try:
@@ -229,7 +232,12 @@ class FinAITrainer:
 
                 # DEBUG: Check for NaN loss immediately
                 if torch.isnan(loss):
-                    print(f"\n[CRITICAL] NaN loss detected at step {step}")
+                    consecutive_nan_count += 1
+                    print(f"\n[CRITICAL] NaN loss detected at step {step} ({consecutive_nan_count}/{max_consecutive_nans})")
+
+                    if consecutive_nan_count >= max_consecutive_nans:
+                        print("\n[FATAL] Too many consecutive NaN losses. Model has fully diverged.")
+                        raise ValueError("Model diverged permanently. Stopping training.")
 
                     has_inf = False
                     with torch.no_grad():
@@ -251,6 +259,9 @@ class FinAITrainer:
 
                     print("[WARN] Skipping step due to NaN loss to prevent divergence.")
                     continue
+                
+                # Reset count on successful batch
+                consecutive_nan_count = 0
 
                 loss = loss / self.config.gradient_accumulation_steps
                 loss.backward()
