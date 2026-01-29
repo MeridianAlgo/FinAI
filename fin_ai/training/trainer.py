@@ -204,98 +204,113 @@ class FinAITrainer:
         print(f"Gradient Accumulation: {self.config.gradient_accumulation_steps}")
         print("Logging every step: loss and progress")
 
-        for step in range(total_forward_steps):
-            try:
-                batch = next(train_iter)
-            except StopIteration:
-                train_iter = iter(self.train_dataloader)
-                batch = next(train_iter)
+        try:
+            for step in range(total_forward_steps):
+                try:
+                    batch = next(train_iter)
+                except StopIteration:
+                    train_iter = iter(self.train_dataloader)
+                    batch = next(train_iter)
 
-            batch = {k: v.to(self.device) for k, v in batch.items()}
+                batch = {k: v.to(self.device) for k, v in batch.items()}
 
-            # DEBUG: Check input IDs and mask
-            if step % 100 == 0:
-                with torch.no_grad():
-                    input_max = batch["input_ids"].max().item()
-                    input_min = batch["input_ids"].min().item()
-                    if input_max >= self.model.config.vocab_size or input_min < 0:
-                        print(
-                            f"[ERROR] input_ids out of range: min={input_min}, max={input_max}"
-                        )
+                # DEBUG: Check input IDs and mask
+                if step % 100 == 0:
+                    with torch.no_grad():
+                        input_max = batch["input_ids"].max().item()
+                        input_min = batch["input_ids"].min().item()
+                        if input_max >= self.model.config.vocab_size or input_min < 0:
+                            print(
+                                f"[ERROR] input_ids out of range: min={input_min}, max={input_max}"
+                            )
 
-            outputs = self.model(**batch)
-            loss = outputs.loss
+                outputs = self.model(**batch)
+                loss = outputs.loss
 
-            # DEBUG: Check for NaN loss immediately
-            if torch.isnan(loss):
-                print(f"\n[CRITICAL] NaN loss detected at step {step}")
-                # Log some stats to help debug
-                with torch.no_grad():
-                    for name, param in self.model.named_parameters():
-                        if param.requires_grad:
-                            p_max = param.max().item()
-                            p_min = param.min().item()
-                            if math.isnan(p_max) or math.isnan(p_min):
-                                print(f"  Parameter {name} has NaNs!")
+                # DEBUG: Check for NaN loss immediately
+                if torch.isnan(loss):
+                    print(f"\n[CRITICAL] NaN loss detected at step {step}")
+                    # Log some stats to help debug
+                    with torch.no_grad():
+                        for name, param in self.model.named_parameters():
+                            if param.requires_grad:
+                                p_max = param.max().item()
+                                p_min = param.min().item()
+                                if math.isnan(p_max) or math.isnan(p_min):
+                                    print(
+                                        f"  Parameter {name} has NaNs! (min={p_min}, max={p_max})"
+                                    )
 
-                # Try to recover by skipping or zeroing
-                loss = torch.tensor(0.0, device=self.device, requires_grad=True)
+                        # Check logits if available
+                        if hasattr(outputs, "logits"):
+                            l_max = outputs.logits.max().item()
+                            l_min = outputs.logits.min().item()
+                            print(f"  Logits range: [{l_min:.2f}, {l_max:.2f}]")
 
-            loss = loss / self.config.gradient_accumulation_steps
-            loss.backward()
+                    # Force a small loss to try to keep training if it's just one bad batch
+                    loss = torch.tensor(0.1, device=self.device, requires_grad=True)
 
-            # Per-forward-step logging
-            current_loss = loss.item() * self.config.gradient_accumulation_steps
+                loss = loss / self.config.gradient_accumulation_steps
+                loss.backward()
 
-            if (step + 1) % self.config.gradient_accumulation_steps == 0:
-                # Stability: Gradient Clipping
-                grad_norm = torch.nn.utils.clip_grad_norm_(
-                    self.model.parameters(), self.config.max_grad_norm
-                )
+                # Per-forward-step logging
+                current_loss = loss.item() * self.config.gradient_accumulation_steps
 
-                # DEBUG: Log grad norm if extremely high
-                if grad_norm > 10.0:
-                    print(f"\n[WARN] High grad_norm: {grad_norm:.4f}")
-
-                self.optimizer.step()
-                self.scheduler.step()
-                self.optimizer.zero_grad()
-                self.global_step += 1
-
-                # Live tracking per optimizer step
-                import time
-
-                timestamp = time.strftime("%H:%M:%S")
-                print(
-                    f"[{timestamp}] Step {self.global_step}/{self.config.max_steps} | Loss: {current_loss:.4f} | Grad: {grad_norm:.2f} | LR: {self.scheduler.get_last_lr()[0]:.2e} | {(self.global_step/self.config.max_steps)*100:.1f}%",
-                    flush=True,
-                )
-
-                if self.global_step % self.config.save_steps == 0:
-                    print(
-                        f"[{timestamp}] [INFO] Periodic checkpoint at step {self.global_step}",
-                        flush=True,
+                if (step + 1) % self.config.gradient_accumulation_steps == 0:
+                    # Stability: Gradient Clipping
+                    grad_norm = torch.nn.utils.clip_grad_norm_(
+                        self.model.parameters(), self.config.max_grad_norm
                     )
-                    self.save_checkpoint()
 
-                # Stop if we've reached max_steps optimizer updates
-                if self.global_step >= self.config.max_steps:
-                    print(
-                        f"[{timestamp}] [OK] Reached max steps ({self.config.max_steps}). Training complete.",
-                        flush=True,
-                    )
-                    break
-            else:
-                # Accumulation step tracking
-                acc_step = (step % self.config.gradient_accumulation_steps) + 1
-                if acc_step % 4 == 0 or acc_step == 1:
+                    # DEBUG: Log grad norm if extremely high
+                    if grad_norm > 10.0 or math.isnan(grad_norm):
+                        print(f"\n[WARN] High/NaN grad_norm: {grad_norm:.4f}")
+
+                    self.optimizer.step()
+                    self.scheduler.step()
+                    self.optimizer.zero_grad()
+                    self.global_step += 1
+
+                    # Live tracking per optimizer step
                     import time
 
                     timestamp = time.strftime("%H:%M:%S")
                     print(
-                        f"[{timestamp}]   Forward {acc_step}/{self.config.gradient_accumulation_steps} | Loss: {current_loss:.4f}",
+                        f"[{timestamp}] Step {self.global_step}/{self.config.max_steps} | Loss: {current_loss:.4f} | Grad: {grad_norm:.2f} | LR: {self.scheduler.get_last_lr()[0]:.2e} | {(self.global_step/self.config.max_steps)*100:.1f}%",
                         flush=True,
                     )
+
+                    if self.global_step % self.config.save_steps == 0:
+                        print(
+                            f"[{timestamp}] [INFO] Periodic checkpoint at step {self.global_step}",
+                            flush=True,
+                        )
+                        self.save_checkpoint()
+
+                    # Stop if we've reached max_steps optimizer updates
+                    if self.global_step >= self.config.max_steps:
+                        print(
+                            f"[{timestamp}] [OK] Reached max steps ({self.config.max_steps}). Training complete.",
+                            flush=True,
+                        )
+                        break
+                else:
+                    # Accumulation step tracking
+                    acc_step = (step % self.config.gradient_accumulation_steps) + 1
+                    if acc_step % 4 == 0 or acc_step == 1:
+                        import time
+
+                        timestamp = time.strftime("%H:%M:%S")
+                        print(
+                            f"[{timestamp}]   Forward {acc_step}/{self.config.gradient_accumulation_steps} | Loss: {current_loss:.4f}",
+                            flush=True,
+                        )
+        except Exception as e:
+            print(f"\n[FATAL] Training loop crashed: {e}")
+            import traceback
+
+            traceback.print_exc()
+            raise e
 
     def save_checkpoint(self):
         os.makedirs(self.config.output_dir, exist_ok=True)
