@@ -230,25 +230,27 @@ class FinAITrainer:
                 # DEBUG: Check for NaN loss immediately
                 if torch.isnan(loss):
                     print(f"\n[CRITICAL] NaN loss detected at step {step}")
-                    # Log some stats to help debug
+
+                    has_inf = False
                     with torch.no_grad():
                         for name, param in self.model.named_parameters():
                             if param.requires_grad:
                                 p_max = param.max().item()
                                 p_min = param.min().item()
-                                if math.isnan(p_max) or math.isnan(p_min):
-                                    print(
-                                        f"  Parameter {name} has NaNs! (min={p_min}, max={p_max})"
-                                    )
+                                if not math.isfinite(p_max) or not math.isfinite(p_min):
+                                    print(f"  [FATAL] Parameter {name} is {p_max}/{p_min}!")
+                                    has_inf = True
 
-                        # Check logits if available
                         if hasattr(outputs, "logits"):
                             l_max = outputs.logits.max().item()
                             l_min = outputs.logits.min().item()
                             print(f"  Logits range: [{l_min:.2f}, {l_max:.2f}]")
 
-                    # Force a small loss to try to keep training if it's just one bad batch
-                    loss = torch.tensor(0.1, device=self.device, requires_grad=True)
+                    if has_inf:
+                        raise ValueError("Training stopped: Model parameters have diverged (NaN/Inf).")
+
+                    print("[WARN] Skipping step due to NaN loss to prevent divergence.")
+                    continue
 
                 loss = loss / self.config.gradient_accumulation_steps
                 loss.backward()
