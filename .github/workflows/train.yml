@@ -23,12 +23,13 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install torch transformers accelerate datasets pyyaml huggingface_hub
+          pip install torch transformers accelerate datasets pyyaml huggingface_hub[cli,torch] hf_transfer
           pip install -e .
 
       - name: Download model from HF
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_HUB_ENABLE_HF_TRANSFER: 1
         timeout-minutes: 15
         continue-on-error: true
         run: |
@@ -105,6 +106,7 @@ jobs:
       - name: Train FinAI on FineWeb-Edu Slice
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_HUB_ENABLE_HF_TRANSFER: 1
         timeout-minutes: 25
         run: |
           echo "=========================================="
@@ -125,8 +127,10 @@ jobs:
           fi
           
           # Check dataset state
-          if [ -f "checkpoints/dataset_state.json" ]; then
-            echo "Dataset state exists:"
+          if [ -f "dataset_state.json" ]; then
+            echo "Dataset state exists (restoring to checkpoints/):"
+            mkdir -p checkpoints
+            cp dataset_state.json checkpoints/dataset_state.json
             cat checkpoints/dataset_state.json
             echo ""
           else

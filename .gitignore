@@ -50,27 +50,17 @@ logs/
 .comet/
 
 # Model files (stored on Hugging Face, not GitHub)
-# Keep checkpoint-*.pt files for continuous training state
-checkpoints/model.pt
-checkpoints/*.pth
-checkpoints/*.bin
-checkpoints/*.safetensors
-checkpoints/model/
-checkpoints/random_model/
+checkpoints/
+!checkpoints/dataset_state.json
 *.pt
 *.pth
 *.bin
 *.safetensors
+*.onnx
 
 # Legacy / artifacts
 legacy/downloaded_model/
 artifacts/
-
-# Keep version.json (small metadata file)
-!checkpoints/version.json
-
-# Local training state
-checkpoints/dataset_state.json
 
 # Datasets
 datasets/
@@ -78,10 +68,6 @@ datasets/
 
 # Training outputs
 training_output.txt
-
-# Local smoke-test outputs
-checkpoints_smoketest*/
-checkpoints_smoketest2/
 
 # Misc
 *.tmp
