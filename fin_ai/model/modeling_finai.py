@@ -377,6 +377,10 @@ class FinAIPreTrainedModel(PreTrainedModel):
             if module.padding_idx is not None:
                 module.weight.data[module.padding_idx].zero_()
 
+    def _set_gradient_checkpointing(self, module, value=False):
+        if isinstance(module, FinAIModel):
+            module.gradient_checkpointing = value
+
 
 class FinAIModel(nn.Module):
     def __init__(self, config: FinAIConfig):
@@ -387,6 +391,7 @@ class FinAIModel(nn.Module):
             [FinAIBlock(config, i) for i in range(config.num_hidden_layers)]
         )
         self.norm = FinAIRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
+        self.gradient_checkpointing = False
 
     def forward(self, input_ids, attention_mask=None, position_ids=None):
         x = self.embed_tokens(input_ids)
