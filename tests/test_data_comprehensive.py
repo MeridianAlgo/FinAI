@@ -142,6 +142,7 @@ class TestDatasetLoading:
     def test_load_datasets_from_config(self, tmp_path):
         """Test loading datasets from YAML config"""
         import yaml
+        from unittest.mock import patch, MagicMock
 
         config_path = tmp_path / "datasets.yaml"
         config_data = {
@@ -156,22 +157,37 @@ class TestDatasetLoading:
         with open(config_path, "w") as f:
             yaml.dump(config_data, f)
 
-        tokenizer = AutoTokenizer.from_pretrained("gpt2")
-        if tokenizer.pad_token is None:
-            tokenizer.pad_token = tokenizer.eos_token
+        # Mock the dataset and tokenizer to avoid network calls
+        mock_dataset = [
+            {"text": "sample text 1"},
+            {"text": "sample text 2"}
+        ]
+        
+        mock_tokenizer = MagicMock()
+        mock_tokenizer.pad_token = None
+        mock_tokenizer.eos_token = "[EOS]"
+        mock_tokenizer.encode.return_value = [1, 2, 3]
+        mock_tokenizer.pad_token_id = 0
+        mock_tokenizer.eos_token_id = 1
 
-        try:
-            dataset, offset = load_datasets_from_config(
-                str(config_path),
-                tokenizer=tokenizer,
-                max_seq_len=64,
-                max_samples=10,
-            )
-            assert dataset is not None
-            assert offset >= 0
-        except Exception:
-            # Dataset might not be available in test environment
-            pass
+        with patch("fin_ai.data.dataset.load_dataset") as mock_load_dataset, \
+             patch("transformers.AutoTokenizer.from_pretrained", return_value=mock_tokenizer):
+            
+            # Configure mock dataset
+            mock_load_dataset.return_value = mock_dataset
+
+            try:
+                dataset, offset = load_datasets_from_config(
+                    str(config_path),
+                    tokenizer=mock_tokenizer,
+                    max_seq_len=64,
+                    max_samples=10,
+                )
+                assert dataset is not None
+                assert offset >= 0
+                assert len(dataset) > 0
+            except Exception as e:
+                pytest.fail(f"Test failed with error: {e}")
 
     def test_tokenizer_integration(self):
         """Test tokenizer integration with dataset"""
