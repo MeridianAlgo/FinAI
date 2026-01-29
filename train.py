@@ -78,6 +78,44 @@ def main():
         model = FinAIForCausalLM(config)
 
     print(f"Model parameters: {model.num_parameters():,}")
+    
+    # Detailed Model Diagnostics
+    print("========================================")
+    print("Model Diagnostics")
+    print("========================================")
+    
+    # 1. Parameter Breakdown
+    embed_params = sum(p.numel() for p in model.model.embed_tokens.parameters())
+    lm_head_params = sum(p.numel() for p in model.lm_head.parameters())
+    layer_params = sum(p.numel() for p in model.model.layers.parameters())
+    
+    print(f"  - Embeddings: {embed_params:,}")
+    print(f"  - Layers:     {layer_params:,}")
+    print(f"  - LM Head:    {lm_head_params:,}")
+    
+    # 2. Weight Tying Check
+    is_tied = model.lm_head.weight is model.model.embed_tokens.weight
+    print(f"  - Weight Tying: {'[OK] Tied' if is_tied else '[WARN] Not Tied'}")
+    
+    # 3. Health Check (NaN/Inf)
+    print("  - Checking weights for NaNs/Infs...")
+    has_issue = False
+    for name, param in model.named_parameters():
+        if torch.isnan(param).any():
+            print(f"    [FAIL] NaN found in {name}")
+            has_issue = True
+        if torch.isinf(param).any():
+            print(f"    [FAIL] Inf found in {name}")
+            has_issue = True
+    
+    if not has_issue:
+        print("    [OK] Weights are healthy (no NaN/Inf)")
+    else:
+        print("    [CRITICAL] Model initialized with bad weights!")
+        if not os.environ.get("GITHUB_ACTIONS"):
+            input("Press Enter to continue anyway or Ctrl+C to stop...")
+    
+    print("========================================")
     print("")
 
     # Initialize Dataset Cycler to track offsets
