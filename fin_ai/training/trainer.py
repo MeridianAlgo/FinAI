@@ -2,6 +2,7 @@
 
 import json
 import logging
+import math
 import os
 from dataclasses import dataclass
 
@@ -191,6 +192,7 @@ class FinAITrainer:
         train_iter = iter(self.train_dataloader)
 
         import time
+
         start_time = time.time()
 
         # max_steps refers to optimizer steps (after gradient accumulation)
@@ -214,10 +216,12 @@ class FinAITrainer:
             # DEBUG: Check input IDs and mask
             if step % 100 == 0:
                 with torch.no_grad():
-                    input_max = batch['input_ids'].max().item()
-                    input_min = batch['input_ids'].min().item()
+                    input_max = batch["input_ids"].max().item()
+                    input_min = batch["input_ids"].min().item()
                     if input_max >= self.model.config.vocab_size or input_min < 0:
-                        print(f"[ERROR] input_ids out of range: min={input_min}, max={input_max}")
+                        print(
+                            f"[ERROR] input_ids out of range: min={input_min}, max={input_max}"
+                        )
 
             outputs = self.model(**batch)
             loss = outputs.loss
@@ -233,10 +237,10 @@ class FinAITrainer:
                             p_min = param.min().item()
                             if math.isnan(p_max) or math.isnan(p_min):
                                 print(f"  Parameter {name} has NaNs!")
-                
+
                 # Try to recover by skipping or zeroing
                 loss = torch.tensor(0.0, device=self.device, requires_grad=True)
-            
+
             loss = loss / self.config.gradient_accumulation_steps
             loss.backward()
 
@@ -248,7 +252,7 @@ class FinAITrainer:
                 grad_norm = torch.nn.utils.clip_grad_norm_(
                     self.model.parameters(), self.config.max_grad_norm
                 )
-                
+
                 # DEBUG: Log grad norm if extremely high
                 if grad_norm > 10.0:
                     print(f"\n[WARN] High grad_norm: {grad_norm:.4f}")
@@ -260,6 +264,7 @@ class FinAITrainer:
 
                 # Live tracking per optimizer step
                 import time
+
                 timestamp = time.strftime("%H:%M:%S")
                 print(
                     f"[{timestamp}] Step {self.global_step}/{self.config.max_steps} | Loss: {current_loss:.4f} | Grad: {grad_norm:.2f} | LR: {self.scheduler.get_last_lr()[0]:.2e} | {(self.global_step/self.config.max_steps)*100:.1f}%",
@@ -285,6 +290,7 @@ class FinAITrainer:
                 acc_step = (step % self.config.gradient_accumulation_steps) + 1
                 if acc_step % 4 == 0 or acc_step == 1:
                     import time
+
                     timestamp = time.strftime("%H:%M:%S")
                     print(
                         f"[{timestamp}]   Forward {acc_step}/{self.config.gradient_accumulation_steps} | Loss: {current_loss:.4f}",

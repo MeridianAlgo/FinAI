@@ -158,7 +158,7 @@ class Mamba2Block(nn.Module):
 
         x_db = self.x_proj(x_inner)
         dt, B, C = torch.split(x_db, [1, self.d_state // 2, self.d_state // 2], dim=-1)
-        dt = F.softplus(self.dt_proj(dt) + 1e-4) # Stability epsilon
+        dt = F.softplus(self.dt_proj(dt) + 1e-4)  # Stability epsilon
 
         # Apply skipping: only update where mask is 1
         y = x_inner * torch.tanh(dt) * mask
@@ -285,29 +285,33 @@ class DeepSeekMoE(nn.Module):
         top_weights = top_weights / (top_weights.sum(dim=-1, keepdim=True) + 1e-6)
 
         routed_out = torch.zeros_like(x_flat)
-        
+
         # Optimized expert processing: group by expert
         # This is faster than iterating through all tokens
         for i in range(self.num_experts):
             # mask: which tokens assigned to this expert
             # top_indices is [batch*seq, top_k]
             # matches is [N, top_k] where N is tokens assigned to expert i
-            expert_mask = (top_indices == i)
+            expert_mask = top_indices == i
             token_indices = expert_mask.any(dim=-1).nonzero(as_tuple=True)[0]
-            
+
             if token_indices.numel() > 0:
                 expert_input = x_flat[token_indices]
                 expert_output = self.experts[i](expert_input)
-                
+
                 # Get weights for this expert for these specific tokens
                 # We need to find where in top_indices (which column) expert i was
                 # This is a bit tricky but essential for correctness
                 # weights_mask is [N, top_k]
-                weights_mask = (top_indices[token_indices] == i)
+                weights_mask = top_indices[token_indices] == i
                 # selected_weights is [N]
-                selected_weights = (top_weights[token_indices] * weights_mask.float()).sum(dim=-1)
-                
-                routed_out[token_indices] += expert_output * selected_weights.unsqueeze(-1)
+                selected_weights = (
+                    top_weights[token_indices] * weights_mask.float()
+                ).sum(dim=-1)
+
+                routed_out[token_indices] += expert_output * selected_weights.unsqueeze(
+                    -1
+                )
 
         # Combine
         return (shared_out + routed_out).view(bsz, seq_len, h)
