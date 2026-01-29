@@ -37,7 +37,8 @@ def create_700m_model():
         num_experts_per_tok=2,
         moe_intermediate_size=2048,
         mla_latent_rank=64,
-        max_position_embeddings=4096
+        max_position_embeddings=4096,
+        tie_word_embeddings=True
     )
     return FinAIForCausalLM(config)
 

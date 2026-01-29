@@ -95,6 +95,11 @@ def main():
     
     # 2. Weight Tying Check
     is_tied = model.lm_head.weight is model.model.embed_tokens.weight
+    if not is_tied and config.tie_word_embeddings:
+        print("  [FIX] Manually tying weights as they were divergent...")
+        model.tie_weights()
+        is_tied = model.lm_head.weight is model.model.embed_tokens.weight
+        
     print(f"  - Weight Tying: {'[OK] Tied' if is_tied else '[WARN] Not Tied'}")
     
     # 3. Health Check (NaN/Inf)

@@ -437,6 +437,11 @@ class FinAIForCausalLM(FinAIPreTrainedModel, GenerationMixin):
     def set_output_embeddings(self, value):
         self.lm_head = value
 
+    def tie_weights(self):
+        """Standard HF weight tying"""
+        if self.config.tie_word_embeddings:
+            self.lm_head.weight = self.model.embed_tokens.weight
+
     def forward(
         self, input_ids, labels=None, attention_mask=None, position_ids=None, **kwargs
     ):
