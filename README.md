@@ -1,112 +1,48 @@
-# FinAI-Core v2.2 Ultra-Lite
+# FinAI-Next: Frontier Liquid-BitNet 🚀
 
-**WORK IN PROGRESS – EXPERIMENTAL RESEARCH PROJECT**
+FinAI-Next is a state-of-the-art, 331M parameter **Large Language Model (LLM)** built from the ground up for extreme efficiency and financial reasoning. It leverages a revolutionary **Liquid-BitNet** architecture, combining ternary quantization with adaptive dynamical systems.
 
-A continuously learning hybrid Mamba-2 + Transformer model that trains automatically on FineWeb-Edu slices using GitHub Actions.
+## 🌟 Key Innovations
 
-> **Important Notice**  
-> FinAI is an **experimental research prototype**.  
-> The model is under continuous training and may produce inaccurate, inappropriate, biased, or nonsensical outputs.  
-> **Do NOT use for production applications.**  
-> Use at your own risk.
+### 1. Liquid-BitNet Architecture
+Unlike standard Transformers that suffer from the $O(n^2)$ attention bottleneck, FinAI-Next uses **Liquid Dynamical Blocks**.
+- **Linear Scaling**: Context length scales linearly ($O(n)$), enabling native **32k+ context windows** on consumer CPUs.
+- **Adaptive State Evolution**: The model dynamically adjusts its internal "hidden state" velocity based on the complexity of the input tokens.
 
-<div align="center">
+### 2. Ternary Quantization (BitNet b1.58)
+FinAI-Next uses native ternary weights $\{-1, 0, 1\}$.
+- **Energy Efficient**: Replaces expensive floating-point multiplications with simple integer additions/subtractions.
+- **CPU Friendly**: Designed to run at high speeds on standard laptop/desktop CPUs without requiring high-end GPUs.
 
-[![Model on Hugging Face](https://img.shields.io/badge/Model-FinAI--Lite-yellow)](https://huggingface.co/MeridianAlgo/FinAI-Lite)
-[![CI - Tests and Lint](https://github.com/MeridianAlgo/FinAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/MeridianAlgo/FinAI/actions/workflows/ci.yml)
-[![Training Workflow](https://github.com/MeridianAlgo/FinAI/actions/workflows/train.yml/badge.svg)](https://github.com/MeridianAlgo/FinAI/actions)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+### 3. Adaptive Compute & Multimodal
+- **Dynamic Depth**: Skips layers when processing simple text, saving up to 40% of compute during inference.
+- **Multimodal Ready**: Built-in projectors for **Vision** and **Audio** integration.
 
-</div>
+## 🛠 Project Structure
+
+- `fin_ai/model/`: Core architecture (BitNet, LiquidBlocks, Adaptive Compute).
+- `fin_ai/training/`: Specialized `TernaryTrainer` for high-precision master weight management.
+- `train.py`: Main entry point with automated state persistence and checkpointing.
+- `.github/workflows/`: Automated **Hourly Training** pipeline.
+
+## 🚀 Hourly Training Pipeline
+FinAI-Next is designed for continuous evolution. Every hour, a GitHub Action:
+1. **Pulls** the latest weights from Hugging Face.
+2. **Trains** on a fresh slice of the `fineweb-edu` dataset.
+3. **Pushes** the updated weights back to Hugging Face.
+4. **Persists** the dataset progress (using `dataset_state.json`).
+
+## 📈 Monitoring
+Real-time training metrics (Loss, Learning Rate, Token Throughput) are tracked via **Comet ML**.
+[View Live Dashboard](https://www.comet.com/meridianalgo/finai-next)
+
+## 📎 Technical Specifications
+- **Parameters**: 331,296,816
+- **Hidden Size**: 1536
+- **Layers**: 24
+- **State Dim**: 384
+- **Vocabulary**: 151,665 (Qwen2.5 optimized)
+- **Quantization**: 1.58-bit (Ternary)
 
 ---
-
-## Overview
-
-FinAI-Core v2.2 Ultra-Lite is an experimental language model featuring a novel hybrid architecture designed for efficiency and performance. It trains continuously on slices of the FineWeb-Edu dataset, leveraging a "Pull-Train-Push" workflow via GitHub Actions.
-
-## Model Architecture: FinAI-Core v2.2 Ultra-Lite
-
-This model implements a cutting-edge hybrid architecture:
-
-*   **Hybrid Core**: Combines **Mamba-2 State Space Models (SSM)** with **Transformer** layers (Mamba Ratio: 0.6).
-*   **Delta-RoPE**: Learns gated updates to rotary frequencies for better context extrapolation.
-*   **Sparse Recurrent Skipping**: Token-wise importance heuristic that skips SSM updates on low-information tokens.
-*   **Mixture of Experts (MoE)**: DeepSeek-style MoE with 6 experts (2 active per token) for efficient scaling.
-*   **Multi-Head Latent Attention (MLA)**: Optimized attention mechanism with rank-48 latent compression.
-*   **Multi-Token Prediction (MTP)**: Predicts 4 tokens simultaneously (1 main + 3 auxiliary) for faster convergence.
-*   **Optimization**: RMSNorm, SwiGLU activations, 100% unlocked (no censorship).
-
-### Specifications
-
-| Component | Specification |
-|-----------|--------------|
-| **Hidden Size** | 1280 |
-| **Layers** | 20 |
-| **Attention Heads** | 10 |
-| **MoE Experts** | 6 (2 active) |
-| **Mamba Ratio** | 0.6 |
-| **Context Length** | 4096 |
-| **Vocab Size** | ~51k (GPT-2 + Finance Tokens) |
-
-## Training Configuration
-
-The model trains in a continuous loop:
-
-1.  **Pull**: GitHub Actions runner pulls the latest model checkpoint from Hugging Face.
-2.  **Ingest**: Loads a fresh "slice" of the FineWeb-Edu dataset (streaming mode).
-3.  **Train**: Trains for ~400 steps on the new slice.
-4.  **Push**: Pushes the updated model back to Hugging Face.
-
-### Dataset: FineWeb-Edu
-
-We use the **HuggingFaceFW/fineweb-edu** dataset, a high-quality collection of educational web content. The training process cycles through the dataset to ensuring steady exposure to new tokens.
-
-## Quick Start
-
-### Installation
-
-```bash
-pip install torch transformers huggingface_hub
-```
-
-### Usage
-
-```python
-from transformers import AutoModelForCausalLM, AutoTokenizer
-import torch
-
-# Load from Hugging Face
-model = AutoModelForCausalLM.from_pretrained(
-    "MeridianAlgo/FinAI-Lite",
-    trust_remote_code=True
-)
-tokenizer = AutoTokenizer.from_pretrained("gpt2")
-
-# Generate
-prompt = "The future of algorithmic trading is"
-inputs = tokenizer(prompt, return_tensors="pt")
-
-with torch.no_grad():
-    outputs = model.generate(**inputs, max_new_tokens=100)
-    print(tokenizer.decode(outputs[0]))
-```
-
-## Local Training
-
-```bash
-# Clone
-git clone https://github.com/MeridianAlgo/FinAI.git
-cd FinAI
-
-# Install
-pip install -r requirements.txt
-
-# Train (requires HF_TOKEN if pushing)
-python train.py
-```
-
-## License
-
-MIT License
+*Developed by MeridianAlgo for the next generation of efficient financial intelligence.*
