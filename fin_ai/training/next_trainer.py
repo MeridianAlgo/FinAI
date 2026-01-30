@@ -1,5 +1,6 @@
 """Specialized Ternary Trainer with Real-Time Tracking"""
 
+from comet_ml import Experiment
 import os
 import torch
 import math
@@ -7,7 +8,6 @@ import json
 import logging
 from dataclasses import dataclass
 from tqdm import tqdm
-from comet_ml import Experiment
 from dotenv import load_dotenv
 
 load_dotenv()
