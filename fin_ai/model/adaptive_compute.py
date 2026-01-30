@@ -1,4 +1,7 @@
-"""Adaptive Compute"""
+"""
+Adaptive Compute & Multimodal Projectors
+Provides dynamic layer-skipping for efficiency and unified feature mapping for vision/audio.
+"""
 
 import torch
 import torch.nn as nn
@@ -6,6 +9,10 @@ from .bitnet import BitLinear, BitRMSNorm
 
 
 class AdaptiveComputeWrapper(nn.Module):
+    """
+    Implements Dynamic Depth by calculating token-wise confidence.
+    Tokens with high confidence (above threshold) can trigger a 'skip' of the block.
+    """
     def __init__(self, config, layer_idx):
         super().__init__()
         self.threshold = config.dynamic_depth_threshold
@@ -13,12 +20,17 @@ class AdaptiveComputeWrapper(nn.Module):
         self.layer_idx = layer_idx
 
     def forward(self, x):
+        # Calculate mean confidence for the current batch/sequence chunk
         confidence = torch.sigmoid(self.gate(x)).mean()
         should_skip = confidence > self.threshold
         return x, should_skip
 
 
 class MultimodalProjector(nn.Module):
+    """
+    Unified projection interface for integrating non-text modalities.
+    Maps high-dimensional features (e.g., CLIP, AudioMAE) into the LLM latent space.
+    """
     def __init__(self, config, input_dim, modal_name="vision"):
         super().__init__()
         self.name = modal_name

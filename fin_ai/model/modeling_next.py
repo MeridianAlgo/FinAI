@@ -95,7 +95,6 @@ class FinAINextForCausalLM(FinAINextPreTrainedModel, GenerationMixin):
     FinAI-Next variant with a Causal LM head for text generation.
     Supports tied word embeddings and standard cross-entropy loss.
     """
-    _tied_weights_keys = ["lm_head.weight"]
 
     def __init__(self, config):
         super().__init__(config)
