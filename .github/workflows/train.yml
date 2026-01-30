@@ -1,18 +1,21 @@
-name: FinAI Continual Training
+name: Hourly FinAI Training
 
 on:
   schedule:
-    - cron: '0 * * * *' # Every hour
-  workflow_dispatch:
+    - cron: '0 * * * *' # Hourly
+  workflow_dispatch: # Manual trigger
 
 jobs:
   train:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    
     steps:
-      - name: Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -20,145 +23,56 @@ jobs:
           python-version: '3.10'
           cache: 'pip'
 
-      - name: Install dependencies
+      - name: Install Dependencies
         run: |
-          pip install torch transformers accelerate datasets pyyaml huggingface_hub[cli,torch] hf_transfer bitsandbytes
-          pip install -e .
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-      - name: Download model from HF
+      - name: Download Model from HF (Optional)
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HF_HUB_ENABLE_HF_TRANSFER: 1
-        timeout-minutes: 15
-        continue-on-error: true
         run: |
-          echo "=========================================="
-          echo "Starting model download from HuggingFace"
-          echo "=========================================="
-          echo "Timestamp: $(date)"
-          echo "Repo: MeridianAlgo/FinAI-Lite"
-          echo ""
-          
           python -c "
-          from huggingface_hub import snapshot_download, list_repo_files
+          from huggingface_hub import HfApi, snapshot_download
           import os
-          import time
-          
-          token = os.environ.get('HF_TOKEN')
           repo_id = 'MeridianAlgo/FinAI-Lite'
-          
-          print(f'Token available: {bool(token)}')
-          print(f'Token length: {len(token) if token else 0}')
-          print('')
-          
           try:
-              # First, list files to see what's available
-              print('Listing files in repository...')
-              files = list_repo_files(repo_id=repo_id, token=token)
-              print(f'Found {len(files)} files:')
-              for f in files[:10]:  # Show first 10
-                  print(f'  - {f}')
-              if len(files) > 10:
-                  print(f'  ... and {len(files) - 10} more files')
-              print('')
-              
-              # Download with progress
-              print('Starting download...')
-              start_time = time.time()
-              
-              snapshot_download(
-                  repo_id=repo_id,
-                  local_dir='checkpoints/model',
-                  token=token,
-                  max_workers=8,
-                  resume_download=True,
-                  local_dir_use_symlinks=False
-              )
-              
-              elapsed = time.time() - start_time
-              print(f'')
-              print(f'✓ Model downloaded successfully in {elapsed:.1f} seconds')
-              
-              # Verify download
-              import os
-              model_files = os.listdir('checkpoints/model')
-              print(f'Downloaded files: {len(model_files)}')
-              for f in sorted(model_files):
-                  size = os.path.getsize(f'checkpoints/model/{f}')
-                  print(f'  - {f}: {size / 1024 / 1024:.1f} MB')
-              
+              snapshot_download(repo_id=repo_id, local_dir='./checkpoints_next/model', token=os.getenv('HF_TOKEN'))
+              print('Model downloaded successfully')
           except Exception as e:
-              print(f'')
-              print(f'✗ Download failed: {e}')
-              print(f'Error type: {type(e).__name__}')
-              import traceback
-              traceback.print_exc()
-              print('')
-              print('Will initialize new model during training')
-              exit(0)  # Don't fail the workflow
+              print(f'No model found or error: {e}')
           "
-          
-          echo ""
-          echo "Download step completed at $(date)"
-          echo "=========================================="
 
-      - name: Train FinAI on FineWeb-Edu Slice
+      - name: Run Training
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HF_HUB_ENABLE_HF_TRANSFER: 1
+          COMET_API_KEY: ${{ secrets.COMET_API_KEY }}
+          MAX_STEPS: 100 # Adjust steps for hourly CPU limit (~15-30 mins)
+          PYTHONPATH: .
         run: |
-          echo "=========================================="
-          echo "Starting Training"
-          echo "=========================================="
-          echo "Timestamp: $(date)"
-          echo ""
-          
-          # Check if model exists
-          if [ -d "checkpoints/model" ]; then
-            echo "Model directory exists"
-            echo "Files in checkpoints/model:"
-            ls -lh checkpoints/model/ | head -20
-            echo ""
-          else
-            echo "No model directory found - will initialize new model"
-            echo ""
-          fi
-          
-          # Check dataset state
-          if [ -f "dataset_state.json" ]; then
-            echo "Dataset state exists (restoring to checkpoints/):"
-            mkdir -p checkpoints
-            cp dataset_state.json checkpoints/dataset_state.json
-            cat checkpoints/dataset_state.json
-            echo ""
-          else
-            echo "No dataset state found - starting from beginning"
-            echo ""
-          fi
-          
-          echo "Starting train.py..."
-          echo "=========================================="
-          echo ""
-          
-          # Run training with unbuffered output for live tracking
-          python -u train.py
-          
-          echo ""
-          echo "=========================================="
-          echo "Training completed at $(date)"
-          echo "=========================================="
+          python train.py
 
-      - name: Commit dataset state
+      - name: Upload Model to HF
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          git config user.name "GitHub Action"
-          git config user.email "action@github.com"
-          
-          # Move dataset_state.json from checkpoints to root for tracking
-          if [ -f "checkpoints/dataset_state.json" ]; then
-            cp checkpoints/dataset_state.json dataset_state.json
-            git add dataset_state.json
-            if ! git diff --quiet --cached; then
-              git commit -m "Update dataset state after training [skip ci]"
-              git push
-            fi
-          fi
+          python -c "
+          from huggingface_hub import HfApi
+          import os
+          api = HfApi()
+          repo_id = 'MeridianAlgo/FinAI-Lite'
+          api.upload_folder(
+              folder_path='./checkpoints_next/model',
+              repo_id=repo_id,
+              commit_message='Hourly training update',
+              token=os.getenv('HF_TOKEN')
+          )
+          "
+
+      - name: Commit and Push State
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add dataset_state.json
+          git commit -m "Update dataset state [skip ci]" || echo "No changes to commit"
+          git push origin main

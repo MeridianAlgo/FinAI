@@ -1,0 +1,19 @@
+# Hugging Face Datasets Configuration
+# Continuous training on FineWeb-Edu only
+# High-quality educational content for consistent training
+
+datasets:
+  # FineWeb-Edu - High quality educational web content
+  - name: "HuggingFaceFW/fineweb-edu"
+    subset: "sample-10BT"
+    split: "train"
+    text_column: "text"
+    streaming: true
+    max_samples: null  # No limit, continuous training
+
+tokenizer:
+  pretrained: "gpt2"
+
+preprocessing:
+  concat_texts: true
+  min_length: 20

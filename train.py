@@ -1,259 +1,121 @@
-#!/usr/bin/env python3
-"""
-FinAI-Core v2.2 Ultra-Lite Training Script
-Optimized for Continual Learning and CPU Performance
-"""
+"""FinAI-Next Training Script (Liquid-BitNet)"""
 
-import multiprocessing
 import os
-
 import torch
 import yaml
 from transformers import AutoTokenizer
+from datasets import load_dataset
+from fin_ai.model.configuration_next import FinAINextConfig
+from fin_ai.model.modeling_next import FinAINextForCausalLM
+from fin_ai.training.next_trainer import TernaryTrainer, NextTrainingConfig
 
-from fin_ai.data.dataset import create_dataloader, load_datasets_from_config
-from fin_ai.model.configuration_finai import FinAIConfig
-from fin_ai.model.modeling_finai import FinAIForCausalLM
-from fin_ai.training.trainer import DatasetCycler, FinAITrainer, TrainingConfig
+
+class CustomIterableDataset(torch.utils.data.IterableDataset):
+    def __init__(self, dataloader_gen):
+        self.dataloader_gen = dataloader_gen
+    def __iter__(self):
+        return self.dataloader_gen()
+
+import json
+from huggingface_hub import login
+
+def create_dataloader(dataset_name, tokenizer, batch_size=4, block_size=1024, skip_items=0):
+    print(f"Loading dataset: {dataset_name} (skipping {skip_items} items)...")
+    dataset = load_dataset(dataset_name, split="train", streaming=True)
+    
+    def gen():
+        for i, item in enumerate(dataset):
+            if i < skip_items:
+                continue
+            tokens = tokenizer(item["text"], truncation=True, max_length=block_size, padding="max_length")
+            yield {
+                "input_ids": torch.tensor(tokens["input_ids"]),
+                "labels": torch.tensor(tokens["input_ids"]),
+                "processed_idx": i
+            }
+
+    return torch.utils.data.DataLoader(
+        CustomIterableDataset(gen),
+        batch_size=batch_size
+    )
 
 
 def main():
-    # CPU Optimization
-    num_cores = multiprocessing.cpu_count()
-    torch.set_num_threads(num_cores)
-    print("========================================")
-    print("FinAI-Core v2.2 Training")
-    print("========================================")
-    print(f"Timestamp: {__import__('datetime').datetime.now()}")
-    print(f"CPU cores: {num_cores}")
-    print(f"PyTorch version: {torch.__version__}")
-    print(f"CUDA available: {torch.cuda.is_available()}")
-    print("")
+    print("Initializing FinAI-Next (Liquid-BitNet) Overhaul...")
+    
+    # Path settings
+    model_path = "./checkpoints_next/model"
+    state_path = "dataset_state.json"
+    
+    # 1. Load Dataset State
+    processed_items = 0
+    if os.path.exists(state_path):
+        with open(state_path, "r") as f:
+            state = json.load(f)
+            processed_items = state.get("processed_items", 0)
+        print(f"Resuming from dataset index: {processed_items}")
 
-    # Load configuration
-    print("Loading configuration...")
-    train_config = TrainingConfig.from_yaml("config/model_config.yaml")
-    with open("config/model_config.yaml", "r") as f:
-        yaml_config = yaml.safe_load(f)
-    config = FinAIConfig(**yaml_config.get("model", {}))
-    print("[OK] Config loaded")
-    print(f"  - Batch size: {train_config.batch_size}")
-    print(f"  - Max steps: {train_config.max_steps}")
-    print(f"  - Learning rate: {train_config.learning_rate}")
-    print("")
-
-    # Initialize Tokenizer (gpt2 base + finance tokens)
-    print("Initializing tokenizer...")
-    tokenizer = AutoTokenizer.from_pretrained("gpt2")
-    # Add special finance tokens
-    special_tokens = ["<TICKER>", "<ACCOUNTING>", "<SEC_FILING>", "<ARXIV_FIN>"]
-    tokenizer.add_special_tokens({"additional_special_tokens": special_tokens})
-    config.vocab_size = len(tokenizer)
-    print(f"[OK] Tokenizer initialized (vocab size: {config.vocab_size})")
-    print("")
-
-    # Initialize Model
-    model_path = "checkpoints/model"
-    print(f"Checking for existing model at {model_path}...")
-    if os.path.exists(model_path) and len(os.listdir(model_path)) > 0:
-        print("[OK] Found existing model, attempting to load...")
-        print(f"  Files in {model_path}:")
-        for f in os.listdir(model_path)[:10]:
-            size = os.path.getsize(os.path.join(model_path, f)) / 1024 / 1024
-            print(f"    - {f}: {size:.1f} MB")
-        try:
-            import time
-
-            start = time.time()
-            model = FinAIForCausalLM.from_pretrained(model_path)
-            elapsed = time.time() - start
-            print(f"[OK] Model loaded successfully in {elapsed:.1f}s")
-        except Exception as e:
-            print(f"[FAIL] Failed to load model: {e}")
-            print(f"  Error type: {type(e).__name__}")
-            print("Initializing new model from scratch.")
-            model = FinAIForCausalLM(config)
+    # 2. Configuration
+    config = FinAINextConfig(
+        vocab_size=151665,
+        hidden_size=1536,
+        num_layers=24,
+        liquid_state_dim=384,
+        gradient_checkpointing=True
+    )
+    
+    # 3. Model Initialization or Loading
+    if os.path.exists(os.path.join(model_path, "config.json")):
+        print(f"Loading existing model from {model_path}...")
+        model = FinAINextForCausalLM.from_pretrained(model_path)
     else:
-        print("[FAIL] No local model found. Initializing new model from scratch.")
-        model = FinAIForCausalLM(config)
-
-    print(f"Model parameters: {model.num_parameters():,}")
+        print("Initializing new model from scratch.")
+        model = FinAINextForCausalLM(config)
     
-    # Detailed Model Diagnostics
-    print("========================================")
-    print("Model Diagnostics")
-    print("========================================")
+    print(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
     
-    # 1. Parameter Breakdown
-    embed_params = sum(p.numel() for p in model.model.embed_tokens.parameters())
-    lm_head_params = sum(p.numel() for p in model.lm_head.parameters())
-    layer_params = sum(p.numel() for p in model.model.layers.parameters())
+    # 4. Tokenizer
+    tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-0.5B")
     
-    print(f"  - Embeddings: {embed_params:,}")
-    print(f"  - Layers:     {layer_params:,}")
-    print(f"  - LM Head:    {lm_head_params:,}")
+    # 5. Dataset with Skip
+    dataloader = create_dataloader(
+        "HuggingFaceFW/fineweb-edu",
+        tokenizer,
+        batch_size=2,
+        block_size=128,
+        skip_items=processed_items
+    )
     
-    # 2. Weight Tying Check
-    is_tied = model.lm_head.weight is model.model.embed_tokens.weight
-    if not is_tied and config.tie_word_embeddings:
-        print("  [FIX] Manually tying weights as they were divergent...")
-        model.tie_weights()
-        is_tied = model.lm_head.weight is model.model.embed_tokens.weight
+    # 6. Training Config
+    # If running in GHA, we might want to cap steps (e.g. 100 steps per hour)
+    max_steps = int(os.getenv("MAX_STEPS", "1000"))
+    
+    train_config = NextTrainingConfig(
+        batch_size=2,
+        gradient_accumulation_steps=2,
+        max_steps=max_steps,
+        learning_rate=5e-5,
+        output_dir="./checkpoints_next"
+    )
+    
+    # 7. Training
+    trainer = TernaryTrainer(model, dataloader, train_config)
+    
+    try:
+        trainer.train()
+    except KeyboardInterrupt:
+        print("\nTraining interrupted by user.")
+    finally:
+        # Final Save
+        print("Saving final state and pushing to GitHub/HF logic would go here.")
+        model.save_pretrained(model_path)
         
-    print(f"  - Weight Tying: {'[OK] Tied' if is_tied else '[WARN] Not Tied'}")
-    
-    # 3. Health Check (NaN/Inf)
-    print("  - Checking weights for NaNs/Infs...")
-    has_issue = False
-    for name, param in model.named_parameters():
-        if torch.isnan(param).any():
-            print(f"    [FAIL] NaN found in {name}")
-            has_issue = True
-        if torch.isinf(param).any():
-            print(f"    [FAIL] Inf found in {name}")
-            has_issue = True
-    
-    if not has_issue:
-        print("    [OK] Weights are healthy (no NaN/Inf)")
-    else:
-        print("    [CRITICAL] Model initialized with bad weights!")
-        if not os.environ.get("GITHUB_ACTIONS"):
-            input("Press Enter to continue anyway or Ctrl+C to stop...")
-    
-    print("========================================")
-    print("")
-
-    # Initialize Dataset Cycler to track offsets
-    print("Initializing dataset cycler...")
-    cycler = DatasetCycler("config/datasets.yaml")
-    current_offset = cycler.get_current_offset()
-    print("[OK] Dataset cycler initialized")
-    print(f"  - Current dataset: {cycler.current_dataset_name}")
-    print(f"  - Current offset: {current_offset}")
-    print("")
-
-    # Load dataset with current offset
-    print(f"Loading dataset (max 1000 samples from offset {current_offset})...")
-    import time
-
-    start = time.time()
-    dataset, next_offset = load_datasets_from_config(
-        "config/datasets.yaml",
-        tokenizer=tokenizer,
-        max_seq_len=512,
-        max_samples=1000,  # Reduced from 5000 for faster CI runs
-        offset=current_offset,
-    )
-    elapsed = time.time() - start
-    print(f"[OK] Dataset loaded in {elapsed:.1f}s")
-    print(f"  - Samples loaded: {next_offset - current_offset}")
-    print(f"  - New offset: {next_offset}")
-    print("")
-
-    # Update cycler with how many samples we actually skipped/read
-    cycler.increment_offset(next_offset - current_offset)
-
-    dataloader = create_dataloader(dataset, batch_size=train_config.batch_size)
-    print("[OK] Dataloader created")
-    print("")
-
-    print("========================================")
-    print("Starting Training")
-    print("========================================")
-    print(f"Dataset: {cycler.current_dataset_name}")
-    print(f"Offset: {current_offset} -> {next_offset}")
-    print(f"Model: {model.num_parameters():,} parameters")
-    print(f"Steps: {train_config.max_steps}")
-    print(f"Batch size: {train_config.batch_size}")
-    print(f"Gradient accumulation: {train_config.gradient_accumulation_steps}")
-    print("")
-
-    trainer = FinAITrainer(
-        model=model,
-        train_dataloader=dataloader,
-        config=train_config,
-        dataset_cycler=cycler,
-    )
-
-    trainer.train()
-
-    # Save final model
-    print("")
-    print(f"Saving model to {model_path}...")
-    os.makedirs(model_path, exist_ok=True)
-    start = time.time()
-    model.save_pretrained(model_path, safe_serialization=False)
-    tokenizer.save_pretrained(model_path)
-    elapsed = time.time() - start
-    print(f"[OK] Model saved in {elapsed:.1f}s")
-    print("")
-
-    # Push to Hugging Face if HF_TOKEN is available
-    hf_token = trainer._get_hf_token()
-    if hf_token and train_config.hf_repo_id:
-        from huggingface_hub import HfApi, create_repo
-
-        try:
-            print("========================================")
-            print("Pushing to Hugging Face")
-            print("========================================")
-            print(f"Repository: {train_config.hf_repo_id}")
-            print("")
-
-            # Create repo if it doesn't exist
-            print("Creating/verifying repository...")
-            create_repo(
-                repo_id=train_config.hf_repo_id,
-                token=hf_token,
-                private=True,
-                exist_ok=True,
-            )
-            print("[OK] Repository ready")
-            print("")
-
-            # Use HfApi for more efficient uploads
-            api = HfApi(token=hf_token)
-
-            # Get model size
-            total_size = sum(
-                os.path.getsize(os.path.join(model_path, f))
-                for f in os.listdir(model_path)
-                if os.path.isfile(os.path.join(model_path, f))
-            )
-            print(f"Uploading {total_size / 1024 / 1024 / 1024:.2f} GB...")
-            print("This may take several minutes...")
-            print("")
-
-            # Upload folder with resume capability
-            start = time.time()
-            api.upload_folder(
-                folder_path=model_path,
-                repo_id=train_config.hf_repo_id,
-                commit_message=f"Train cycle complete - offset {next_offset}",
-            )
-            elapsed = time.time() - start
-
-            print("")
-            print(f"[OK] Push to Hugging Face successful in {elapsed:.1f}s")
-            print(
-                f"[OK] Model available at: https://huggingface.co/{train_config.hf_repo_id}"
-            )
-        except Exception as e:
-            print("")
-            print(f"[FAIL] Failed to push to Hugging Face: {e}")
-            print(f"Error type: {type(e).__name__}")
-            import traceback
-
-            traceback.print_exc()
-            print("Model saved locally, will retry on next run")
-    else:
-        print("[WARN] No HF_TOKEN or repo_id configured, skipping push")
-
-    print("")
-    print("========================================")
-    print("Training Complete!")
-    print("========================================")
-    print(f"Timestamp: {__import__('datetime').datetime.now()}")
+        # Save dataset state (use the trainer's global step to estimate or pass back from gen)
+        # For simple tracking, we'll update based on steps * batch * accumulation
+        new_processed = processed_items + (trainer.global_step * train_config.batch_size * train_config.gradient_accumulation_steps)
+        with open(state_path, "w") as f:
+            json.dump({"processed_items": new_processed}, f)
+        print(f"Final state saved. Total processed: {new_processed}")
 
 
 if __name__ == "__main__":

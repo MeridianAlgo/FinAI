@@ -1,13 +1,10 @@
-# Environment
-.env
-
-# Large model files (uploaded to HF)
-checkpoints_next/
-checkpoints/
-
-# System
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
 build/
 develop-eggs/
 dist/
