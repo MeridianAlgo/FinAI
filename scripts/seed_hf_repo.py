@@ -28,9 +28,14 @@ def push():
     # 3. Save locally
     print(f"Saving to {model_path}...")
     os.makedirs(model_path, exist_ok=True)
-    model.save_pretrained(model_path)
+    model.save_pretrained(model_path, safe_serialization=True)
     
-    # 4. Push to HF
+    # 4. Copy Model Card
+    print("Adding Model Card...")
+    import shutil
+    shutil.copy("MODEL_CARD.md", os.path.join(model_path, "README.md"))
+
+    # 5. Push to HF
     print(f"Pushing to HF: {repo_id}...")
     hf_token = os.getenv("HF_TOKEN")
     if not hf_token:

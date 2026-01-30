@@ -108,7 +108,7 @@ def main():
     finally:
         # Final Save
         print("Saving final state to local storage...")
-        model.save_pretrained(model_path, safe_serialization=False)
+        model.save_pretrained(model_path, safe_serialization=True)
         
         # Save dataset state (use the trainer's global step to estimate or pass back from gen)
         # For simple tracking, we'll update based on steps * batch * accumulation

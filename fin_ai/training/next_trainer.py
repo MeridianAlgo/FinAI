@@ -124,5 +124,5 @@ class TernaryTrainer:
     def save_checkpoint(self):
         os.makedirs(self.config.output_dir, exist_ok=True)
         save_path = os.path.join(self.config.output_dir, f"step-{self.global_step}")
-        self.model.save_pretrained(save_path, safe_serialization=False)
+        self.model.save_pretrained(save_path, safe_serialization=True)
         print(f"\n[INFO] Saved ternary checkpoint to {save_path}")
