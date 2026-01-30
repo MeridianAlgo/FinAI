@@ -29,9 +29,9 @@ class FinAINextPreTrainedModel(PreTrainedModel):
         elif isinstance(module, nn.Embedding):
             module.weight.data.normal_(mean=0.0, std=self.config.initializer_range)
 
-    def gradient_checkpointing_enable(self, gradient_checkpointing_kwargs=None):
-        super().gradient_checkpointing_enable(gradient_checkpointing_kwargs)
-        self.model.gradient_checkpointing = True
+    def _set_gradient_checkpointing(self, module, value=False):
+        if hasattr(module, "gradient_checkpointing"):
+            module.gradient_checkpointing = value
 
 
 class FinAINextModel(FinAINextPreTrainedModel):
