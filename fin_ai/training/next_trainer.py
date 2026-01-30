@@ -85,6 +85,12 @@ class TernaryTrainer:
             outputs = self.model(**batch)
             loss = outputs.loss / self.config.gradient_accumulation_steps
             
+            # Check for NaN loss
+            if torch.isnan(loss):
+                print(f"\n[WARN] NaN loss detected at step {self.global_step + 1}, skipping batch...")
+                self.optimizer.zero_grad()
+                continue
+
             # Backward pass
             loss.backward()
             

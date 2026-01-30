@@ -102,10 +102,7 @@ class FinAINextForCausalLM(FinAINextPreTrainedModel, GenerationMixin):
         self.model = FinAINextModel(config)
         self.lm_head = BitLinear(config.hidden_size, config.vocab_size, bias=False)
         
-        # Native weight tying for better parameter efficiency
-        if config.tie_word_embeddings:
-            self.tie_weights()
-            
+        # Initialize weights and apply final processing (including weight tying)
         self.post_init()
 
     def get_input_embeddings(self): return self.model.embed_tokens

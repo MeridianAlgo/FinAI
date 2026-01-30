@@ -6,7 +6,8 @@ import torch.nn.functional as F
 
 
 def activation_quant(x):
-    scale = 127.0 / x.abs().max().clamp(min=1e-5)
+    # Per-token quantization for better stability and handling of outliers
+    scale = 127.0 / x.abs().max(dim=-1, keepdim=True).values.clamp(min=1e-5)
     return (x * scale).round().clamp(-128, 127) / scale
 
 
