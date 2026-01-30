@@ -1,78 +1,27 @@
 # Environment
 .env
 
-# Large model files (uploaded to HF)
+# Model Checkpoints (Big files, uploaded to Hugging Face)
 checkpoints_next/
 checkpoints/
+legacy/
 
-# System
+# Python System
 __pycache__/
 *.pyc
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Environments
-.env
-.venv
+*.pyo
+*.pyd
+*.so
+.Python
 env/
 venv/
-ENV/
+.venv/
 
-# IDE/editor
-.vscode/
-.idea/
-*.code-workspace
-*.swp
-*.swo
-~$*
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Notebooks
-.ipynb_checkpoints/
-*.ipynb
-
-# Logs
-*.log
-logs/
-.comet/
-
-# Model files (stored on Hugging Face, not GitHub)
-checkpoints/
-!checkpoints/dataset_state.json
-*.pt
-*.pth
-*.bin
-*.safetensors
-*.onnx
-
-# Legacy / artifacts
-legacy/downloaded_model/
-artifacts/
-
-# Datasets
+# Datasets & Temporary files
 datasets/
-*.csv
-
-# Training outputs
-training_output.txt
-
-# Misc
 *.tmp
 *.temp
-/node_modules
+training_output.txt
+
+# Dataset State (CRITICAL: DO NOT IGNORE - needed for GitHub Actions persistence)
+# dataset_state.json should be tracked by git
