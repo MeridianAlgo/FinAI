@@ -107,8 +107,8 @@ def main():
         print("\nTraining interrupted by user.")
     finally:
         # Final Save
-        print("Saving final state and pushing to GitHub/HF logic would go here.")
-        model.save_pretrained(model_path)
+        print("Saving final state to local storage...")
+        model.save_pretrained(model_path, safe_serialization=False)
         
         # Save dataset state (use the trainer's global step to estimate or pass back from gen)
         # For simple tracking, we'll update based on steps * batch * accumulation
