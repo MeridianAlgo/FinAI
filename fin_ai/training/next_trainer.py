@@ -3,8 +3,6 @@
 from comet_ml import Experiment
 import os
 import torch
-import math
-import json
 import logging
 from dataclasses import dataclass
 from tqdm import tqdm
@@ -12,6 +10,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class NextTrainingConfig:
@@ -26,25 +25,27 @@ class NextTrainingConfig:
     save_steps: int = 1000
     log_steps: int = 1
 
+
 class TernaryTrainer:
     def __init__(self, model, train_dataloader, config=None):
         self.model = model
         self.train_dataloader = train_dataloader
         self.config = config or NextTrainingConfig()
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device(
+            "cuda" if torch.cuda.is_available() else "cpu")
         self.model.to(self.device)
-        
+
         self.optimizer = torch.optim.AdamW(
             self.model.parameters(),
             lr=self.config.learning_rate,
             weight_decay=self.config.weight_decay
         )
-        
+
         self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-            self.optimizer, 
+            self.optimizer,
             T_max=self.config.max_steps
         )
-        
+
         # Real-time Tracking
         self.experiment = None
         if os.getenv("COMET_API_KEY"):
@@ -58,19 +59,23 @@ class TernaryTrainer:
                 print("[INFO] Comet ML initialized for real-time tracking.")
             except Exception as e:
                 print(f"[WARN] Failed to initialize Comet ML: {e}")
-        
+
         self.global_step = 0
 
     def train(self):
         self.model.train()
         train_iter = iter(self.train_dataloader)
-        print(f"Starting Ternary Training for {self.config.max_steps} steps...")
+        print(
+            f"Starting Ternary Training for {
+                self.config.max_steps} steps...")
         print(f"Device: {self.device}")
-        
+
         import gc
         progress_bar = tqdm(total=self.config.max_steps, desc="Training")
 
-        for step in range(self.config.max_steps * self.config.gradient_accumulation_steps):
+        for step in range(
+                self.config.max_steps *
+                self.config.gradient_accumulation_steps):
             try:
                 batch = next(train_iter)
             except StopIteration:
@@ -78,46 +83,64 @@ class TernaryTrainer:
                 batch = next(train_iter)
 
             # Extract metadata and move tensors to device
-            processed_idx = batch.pop("processed_idx", None)
-            batch = {k: v.to(self.device) if isinstance(v, torch.Tensor) else v for k, v in batch.items()}
-            
+            batch.pop("processed_idx", None)  # Remove metadata
+            batch = {
+                k: v.to(
+                    self.device) if isinstance(
+                    v,
+                    torch.Tensor) else v for k,
+                v in batch.items()}
+
             # Forward pass
             outputs = self.model(**batch)
             loss = outputs.loss / self.config.gradient_accumulation_steps
-            
+
             # Check for NaN loss
             if torch.isnan(loss):
-                print(f"\n[WARN] NaN loss detected at step {self.global_step + 1}, skipping batch...")
+                print(
+                    f"\n[WARN] NaN loss detected at step {
+                        self.global_step +
+                        1}, skipping batch...")
                 self.optimizer.zero_grad()
                 continue
 
             # Backward pass
             loss.backward()
-            
+
             # Show micro-progress
-            accumulation_idx = (step % self.config.gradient_accumulation_steps) + 1
-            progress_bar.set_description(f"Batch {accumulation_idx}/{self.config.gradient_accumulation_steps}")
+            accumulation_idx = (step %
+                                self.config.gradient_accumulation_steps) + 1
+            progress_bar.set_description(
+                f"Batch {accumulation_idx}/{self.config.gradient_accumulation_steps}")
             if accumulation_idx == 1:
-                print(f"\n[WORK] Starting optimization step {self.global_step + 1}...")
-            print(f"  > Processing batch {accumulation_idx}/{self.config.gradient_accumulation_steps}...", end="\r")
+                print(
+                    f"\n[WORK] Starting optimization step {
+                        self.global_step + 1}...")
+            print(
+                f"  > Processing batch {accumulation_idx}/{
+                    self.config.gradient_accumulation_steps}...",
+                end="\r")
 
             if (step + 1) % self.config.gradient_accumulation_steps == 0:
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.config.max_grad_norm)
+                torch.nn.utils.clip_grad_norm_(
+                    self.model.parameters(), self.config.max_grad_norm)
                 self.optimizer.step()
                 self.scheduler.step()
                 self.optimizer.zero_grad()
                 self.global_step += 1
-                
+
                 # Tracking
                 actual_loss = loss.item() * self.config.gradient_accumulation_steps
                 lr = self.scheduler.get_last_lr()[0]
-                
+
                 progress_bar.update(1)
-                progress_bar.set_postfix({"loss": f"{actual_loss:.4f}", "lr": f"{lr:.2e}"})
+                progress_bar.set_postfix(
+                    {"loss": f"{actual_loss:.4f}", "lr": f"{lr:.2e}"})
                 progress_bar.set_description("Training")
-                
+
                 if self.experiment:
-                    self.experiment.log_metric("loss", actual_loss, step=self.global_step)
+                    self.experiment.log_metric(
+                        "loss", actual_loss, step=self.global_step)
                     self.experiment.log_metric("lr", lr, step=self.global_step)
 
                 # Cleanup
@@ -129,6 +152,26 @@ class TernaryTrainer:
 
     def save_checkpoint(self):
         os.makedirs(self.config.output_dir, exist_ok=True)
-        save_path = os.path.join(self.config.output_dir, f"step-{self.global_step}")
+        save_path = os.path.join(
+            self.config.output_dir, f"step-{self.global_step}")
+
+        # Fix Windows file locking issue
+        original_device = next(self.model.parameters()).device
+        self.model.cpu()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+        # Delete old checkpoint to release memory-mapped handles
+        import shutil
+        if os.path.exists(save_path):
+            shutil.rmtree(save_path, ignore_errors=True)
+
+        import time
+        time.sleep(1.0)
+
         self.model.save_pretrained(save_path, safe_serialization=True)
+
+        # Move model back to original device
+        self.model.to(original_device)
+
         print(f"\n[INFO] Saved ternary checkpoint to {save_path}")
