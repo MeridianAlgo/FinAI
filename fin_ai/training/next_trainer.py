@@ -77,7 +77,9 @@ class TernaryTrainer:
                 train_iter = iter(self.train_dataloader)
                 batch = next(train_iter)
 
-            batch = {k: v.to(self.device) for k, v in batch.items()}
+            # Extract metadata and move tensors to device
+            processed_idx = batch.pop("processed_idx", None)
+            batch = {k: v.to(self.device) if isinstance(v, torch.Tensor) else v for k, v in batch.items()}
             
             # Forward pass
             outputs = self.model(**batch)
