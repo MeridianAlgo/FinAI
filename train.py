@@ -25,12 +25,14 @@ def create_dataloader(
 ):
     print(f"Loading dataset: {dataset_name} (skipping {skip_items} items)...")
     # Stream and skip efficiently
-    dataset = load_dataset(dataset_name, name="sample-10BT", split="train", streaming=True)
+    dataset = load_dataset("wikitext", "wikitext-103-raw-v1", split="train", streaming=True)
     if skip_items > 0:
         dataset = dataset.skip(skip_items)
 
     def gen():
         for i, item in enumerate(dataset):
+            if not item["text"].strip():
+                continue
             tokens = tokenizer(
                 item["text"],
                 truncation=True,
