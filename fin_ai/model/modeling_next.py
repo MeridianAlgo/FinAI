@@ -5,11 +5,12 @@ Assembles BitNet ternary layers and Liquid Dynamical Systems into a high-perform
 
 import torch
 import torch.nn as nn
-from transformers import PreTrainedModel, GenerationMixin
-from .configuration_next import FinAINextConfig
-from .bitnet import BitLinear, BitRMSNorm
-from .liquid_blocks import LiquidBlock
+from transformers import GenerationMixin, PreTrainedModel
+
 from .adaptive_compute import AdaptiveComputeWrapper, MultimodalProjector
+from .bitnet import BitLinear, BitRMSNorm
+from .configuration_next import FinAINextConfig
+from .liquid_blocks import LiquidBlock
 
 
 class FinAINextPreTrainedModel(PreTrainedModel):
@@ -17,19 +18,18 @@ class FinAINextPreTrainedModel(PreTrainedModel):
     Base class for FinAI-Next models. Handles weight initialization and
     standard Transformers library hooks.
     """
+
     config_class = FinAINextConfig
     base_model_prefix = "model"
     supports_gradient_checkpointing = True
 
     def _init_weights(self, module):
         if isinstance(module, (nn.Linear, BitLinear)):
-            module.weight.data.normal_(
-                mean=0.0, std=self.config.initializer_range)
+            module.weight.data.normal_(mean=0.0, std=self.config.initializer_range)
             if module.bias is not None:
                 module.bias.data.zero_()
         elif isinstance(module, nn.Embedding):
-            module.weight.data.normal_(
-                mean=0.0, std=self.config.initializer_range)
+            module.weight.data.normal_(mean=0.0, std=self.config.initializer_range)
 
     def _set_gradient_checkpointing(self, module, value=False):
         if hasattr(module, "gradient_checkpointing"):
@@ -47,17 +47,18 @@ class FinAINextModel(FinAINextPreTrainedModel):
         self.padding_idx = config.pad_token_id
         self.vocab_size = config.vocab_size
         self.embed_tokens = nn.Embedding(
-            config.vocab_size,
-            config.hidden_size,
-            self.padding_idx)
+            config.vocab_size, config.hidden_size, self.padding_idx
+        )
 
         # Sequence modeling stack
-        self.layers = nn.ModuleList([LiquidBlock(config)
-                                    for _ in range(config.num_layers)])
+        self.layers = nn.ModuleList(
+            [LiquidBlock(config) for _ in range(config.num_layers)]
+        )
 
         # Adaptive compute wrappers for dynamic depth
         self.adaptive_wrappers = nn.ModuleList(
-            [AdaptiveComputeWrapper(config, i) for i in range(config.num_layers)])
+            [AdaptiveComputeWrapper(config, i) for i in range(config.num_layers)]
+        )
 
         self.norm = BitRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
 
@@ -70,24 +71,23 @@ class FinAINextModel(FinAINextPreTrainedModel):
         self.post_init()
 
     def forward(
-            self,
-            input_ids,
-            labels=None,
-            vision_features=None,
-            audio_features=None,
-            **kwargs):
+        self,
+        input_ids,
+        labels=None,
+        vision_features=None,
+        audio_features=None,
+        **kwargs
+    ):
         hidden_states = self.embed_tokens(input_ids)
 
         # Multimodal Fusion
         if vision_features is not None and hasattr(self, "vision_projector"):
             v_proj = self.vision_projector(vision_features)
-            hidden_states = hidden_states + \
-                v_proj[:, :hidden_states.size(1), :]
+            hidden_states = hidden_states + v_proj[:, : hidden_states.size(1), :]
 
         if audio_features is not None and hasattr(self, "audio_projector"):
             a_proj = self.audio_projector(audio_features)
-            hidden_states = hidden_states + \
-                a_proj[:, :hidden_states.size(1), :]
+            hidden_states = hidden_states + a_proj[:, : hidden_states.size(1), :]
 
         liquid_state = None
 
@@ -97,8 +97,7 @@ class FinAINextModel(FinAINextPreTrainedModel):
             hidden_states, liquid_state = layer(hidden_states, liquid_state)
 
             # Adaptive Compute Exit Check
-            hidden_states, should_skip = self.adaptive_wrappers[i](
-                hidden_states)
+            hidden_states, should_skip = self.adaptive_wrappers[i](hidden_states)
             if should_skip and i > self.config.num_layers // 2:
                 # Early exit only allowed in the second half of the network
                 break
@@ -116,19 +115,23 @@ class FinAINextForCausalLM(FinAINextPreTrainedModel, GenerationMixin):
     def __init__(self, config):
         super().__init__(config)
         self.model = FinAINextModel(config)
-        self.lm_head = BitLinear(
-            config.hidden_size,
-            config.vocab_size,
-            bias=False)
+        self.lm_head = BitLinear(config.hidden_size, config.vocab_size, bias=False)
 
         # Initialize weights and apply final processing (including weight
         # tying)
         self.post_init()
 
-    def get_input_embeddings(self): return self.model.embed_tokens
-    def set_input_embeddings(self, value): self.model.embed_tokens = value
-    def get_output_embeddings(self): return self.lm_head
-    def set_output_embeddings(self, value): self.lm_head = value
+    def get_input_embeddings(self):
+        return self.model.embed_tokens
+
+    def set_input_embeddings(self, value):
+        self.model.embed_tokens = value
+
+    def get_output_embeddings(self):
+        return self.lm_head
+
+    def set_output_embeddings(self, value):
+        self.lm_head = value
 
     def forward(self, input_ids, labels=None, **kwargs):
         hidden_states = self.model(input_ids, **kwargs)
@@ -140,8 +143,7 @@ class FinAINextForCausalLM(FinAINextPreTrainedModel, GenerationMixin):
             shift_logits = logits[..., :-1, :].contiguous()
             shift_labels = labels[..., 1:].contiguous()
             loss = torch.nn.functional.cross_entropy(
-                shift_logits.view(-1, self.config.vocab_size),
-                shift_labels.view(-1)
+                shift_logits.view(-1, self.config.vocab_size), shift_labels.view(-1)
             )
 
         return type("CausalLMOutput", (), {"loss": loss, "logits": logits})

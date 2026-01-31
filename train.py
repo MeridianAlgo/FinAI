@@ -2,12 +2,14 @@
 
 import json
 import os
+
 import torch
-from transformers import AutoTokenizer
 from datasets import load_dataset
+from transformers import AutoTokenizer
+
 from fin_ai.model.configuration_next import FinAINextConfig
 from fin_ai.model.modeling_next import FinAINextForCausalLM
-from fin_ai.training.next_trainer import TernaryTrainer, NextTrainingConfig
+from fin_ai.training.next_trainer import NextTrainingConfig, TernaryTrainer
 
 
 class CustomIterableDataset(torch.utils.data.IterableDataset):
@@ -19,11 +21,8 @@ class CustomIterableDataset(torch.utils.data.IterableDataset):
 
 
 def create_dataloader(
-        dataset_name,
-        tokenizer,
-        batch_size=4,
-        block_size=1024,
-        skip_items=0):
+    dataset_name, tokenizer, batch_size=4, block_size=1024, skip_items=0
+):
     print(f"Loading dataset: {dataset_name} (skipping {skip_items} items)...")
     dataset = load_dataset(dataset_name, split="train", streaming=True)
 
@@ -35,16 +34,16 @@ def create_dataloader(
                 item["text"],
                 truncation=True,
                 max_length=block_size,
-                padding="max_length")
+                padding="max_length",
+            )
             yield {
                 "input_ids": torch.tensor(tokens["input_ids"]),
                 "labels": torch.tensor(tokens["input_ids"]),
-                "processed_idx": i
+                "processed_idx": i,
             }
 
     return torch.utils.data.DataLoader(
-        CustomIterableDataset(gen),
-        batch_size=batch_size
+        CustomIterableDataset(gen), batch_size=batch_size
     )
 
 
@@ -69,7 +68,7 @@ def main():
         hidden_size=1536,
         num_layers=24,
         liquid_state_dim=384,
-        gradient_checkpointing=True
+        gradient_checkpointing=True,
     )
 
     # 3. Model Initialization or Loading
@@ -91,7 +90,7 @@ def main():
         tokenizer,
         batch_size=2,
         block_size=128,
-        skip_items=processed_items
+        skip_items=processed_items,
     )
 
     # 6. Training Config
@@ -103,7 +102,7 @@ def main():
         gradient_accumulation_steps=2,
         max_steps=max_steps,
         learning_rate=5e-5,
-        output_dir="./checkpoints_next"
+        output_dir="./checkpoints_next",
     )
 
     # 7. Training
@@ -124,10 +123,12 @@ def main():
 
         # Delete old checkpoint files to release memory-mapped handles
         import shutil
+
         if os.path.exists(model_path):
             print(f"Removing old checkpoint at {model_path}...")
             shutil.rmtree(model_path, ignore_errors=True)
             import time
+
             time.sleep(1.0)  # Give Windows time to release handles
 
         model.save_pretrained(model_path, safe_serialization=True)
@@ -135,8 +136,11 @@ def main():
         # Save dataset state (use the trainer's global step to estimate or pass back from gen)
         # For simple tracking, we'll update based on steps * batch *
         # accumulation
-        new_processed = processed_items + \
-            (trainer.global_step * train_config.batch_size * train_config.gradient_accumulation_steps)
+        new_processed = processed_items + (
+            trainer.global_step
+            * train_config.batch_size
+            * train_config.gradient_accumulation_steps
+        )
         with open(state_path, "w") as f:
             json.dump({"processed_items": new_processed}, f)
         print(f"Final state saved. Total processed: {new_processed}")

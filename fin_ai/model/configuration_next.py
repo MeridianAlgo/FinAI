@@ -9,8 +9,8 @@ class FinAINextConfig(PretrainedConfig):
     def __init__(
         self,
         vocab_size=151665,
-        hidden_size=1536,   # Elite-Consumer sweet spot
-        num_layers=48,      # Balanced depth
+        hidden_size=1536,  # Elite-Consumer sweet spot
+        num_layers=48,  # Balanced depth
         max_position_embeddings=32768,
         hidden_act="silu",
         initializer_range=0.02,

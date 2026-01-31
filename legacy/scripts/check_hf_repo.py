@@ -1,6 +1,8 @@
 
-from huggingface_hub import HfApi
 import os
+
+from huggingface_hub import HfApi
+
 
 def check_hf():
     token = os.environ.get("HF_TOKEN")

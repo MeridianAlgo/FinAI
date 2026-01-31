@@ -1,12 +1,13 @@
 """Specialized Ternary Trainer with Real-Time Tracking"""
 
-from comet_ml import Experiment
-import os
-import torch
 import logging
+import os
 from dataclasses import dataclass
-from tqdm import tqdm
+
+import torch
+from comet_ml import Experiment
 from dotenv import load_dotenv
+from tqdm import tqdm
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -31,19 +32,17 @@ class TernaryTrainer:
         self.model = model
         self.train_dataloader = train_dataloader
         self.config = config or NextTrainingConfig()
-        self.device = torch.device(
-            "cuda" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model.to(self.device)
 
         self.optimizer = torch.optim.AdamW(
             self.model.parameters(),
             lr=self.config.learning_rate,
-            weight_decay=self.config.weight_decay
+            weight_decay=self.config.weight_decay,
         )
 
         self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-            self.optimizer,
-            T_max=self.config.max_steps
+            self.optimizer, T_max=self.config.max_steps
         )
 
         # Real-time Tracking
@@ -53,7 +52,7 @@ class TernaryTrainer:
                 self.experiment = Experiment(
                     api_key=os.getenv("COMET_API_KEY"),
                     project_name="finai-next",
-                    workspace="meridianalgo"
+                    workspace="meridianalgo",
                 )
                 self.experiment.log_parameters(self.config.__dict__)
                 print("[INFO] Comet ML initialized for real-time tracking.")
@@ -65,17 +64,16 @@ class TernaryTrainer:
     def train(self):
         self.model.train()
         train_iter = iter(self.train_dataloader)
-        print(
-            f"Starting Ternary Training for {
-                self.config.max_steps} steps...")
+        print(f"Starting Ternary Training for {self.config.max_steps} steps...")
         print(f"Device: {self.device}")
 
         import gc
+
         progress_bar = tqdm(total=self.config.max_steps, desc="Training")
 
         for step in range(
-                self.config.max_steps *
-                self.config.gradient_accumulation_steps):
+            self.config.max_steps * self.config.gradient_accumulation_steps
+        ):
             try:
                 batch = next(train_iter)
             except StopIteration:
@@ -85,11 +83,9 @@ class TernaryTrainer:
             # Extract metadata and move tensors to device
             batch.pop("processed_idx", None)  # Remove metadata
             batch = {
-                k: v.to(
-                    self.device) if isinstance(
-                    v,
-                    torch.Tensor) else v for k,
-                v in batch.items()}
+                k: v.to(self.device) if isinstance(v, torch.Tensor) else v
+                for k, v in batch.items()
+            }
 
             # Forward pass
             outputs = self.model(**batch)
@@ -100,7 +96,8 @@ class TernaryTrainer:
                 print(
                     f"\n[WARN] NaN loss detected at step {
                         self.global_step +
-                        1}, skipping batch...")
+                        1}, skipping batch..."
+                )
                 self.optimizer.zero_grad()
                 continue
 
@@ -108,22 +105,25 @@ class TernaryTrainer:
             loss.backward()
 
             # Show micro-progress
-            accumulation_idx = (step %
-                                self.config.gradient_accumulation_steps) + 1
+            accumulation_idx = (step % self.config.gradient_accumulation_steps) + 1
             progress_bar.set_description(
-                f"Batch {accumulation_idx}/{self.config.gradient_accumulation_steps}")
+                f"Batch {accumulation_idx}/{self.config.gradient_accumulation_steps}"
+            )
             if accumulation_idx == 1:
                 print(
                     f"\n[WORK] Starting optimization step {
-                        self.global_step + 1}...")
+                        self.global_step + 1}..."
+                )
             print(
                 f"  > Processing batch {accumulation_idx}/{
                     self.config.gradient_accumulation_steps}...",
-                end="\r")
+                end="\r",
+            )
 
             if (step + 1) % self.config.gradient_accumulation_steps == 0:
                 torch.nn.utils.clip_grad_norm_(
-                    self.model.parameters(), self.config.max_grad_norm)
+                    self.model.parameters(), self.config.max_grad_norm
+                )
                 self.optimizer.step()
                 self.scheduler.step()
                 self.optimizer.zero_grad()
@@ -135,12 +135,14 @@ class TernaryTrainer:
 
                 progress_bar.update(1)
                 progress_bar.set_postfix(
-                    {"loss": f"{actual_loss:.4f}", "lr": f"{lr:.2e}"})
+                    {"loss": f"{actual_loss:.4f}", "lr": f"{lr:.2e}"}
+                )
                 progress_bar.set_description("Training")
 
                 if self.experiment:
                     self.experiment.log_metric(
-                        "loss", actual_loss, step=self.global_step)
+                        "loss", actual_loss, step=self.global_step
+                    )
                     self.experiment.log_metric("lr", lr, step=self.global_step)
 
                 # Cleanup
@@ -152,8 +154,7 @@ class TernaryTrainer:
 
     def save_checkpoint(self):
         os.makedirs(self.config.output_dir, exist_ok=True)
-        save_path = os.path.join(
-            self.config.output_dir, f"step-{self.global_step}")
+        save_path = os.path.join(self.config.output_dir, f"step-{self.global_step}")
 
         # Fix Windows file locking issue
         original_device = next(self.model.parameters()).device
@@ -163,10 +164,12 @@ class TernaryTrainer:
 
         # Delete old checkpoint to release memory-mapped handles
         import shutil
+
         if os.path.exists(save_path):
             shutil.rmtree(save_path, ignore_errors=True)
 
         import time
+
         time.sleep(1.0)
 
         self.model.save_pretrained(save_path, safe_serialization=True)

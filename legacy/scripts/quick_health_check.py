@@ -1,8 +1,11 @@
 
-import torch
 import os
-from fin_ai.model.modeling_finai import FinAIForCausalLM
+
+import torch
+
 from fin_ai.model.configuration_finai import FinAIConfig
+from fin_ai.model.modeling_finai import FinAIForCausalLM
+
 
 def check_nan(path):
     print(f"Checking model at {path}...")

@@ -5,7 +5,8 @@ Comprehensive tests for data loading and dataset handling
 import pytest
 import torch
 
-from fin_ai.data import FinAIDataset, create_dataloader, load_datasets_from_config
+from fin_ai.data import (FinAIDataset, create_dataloader,
+                         load_datasets_from_config)
 
 
 @pytest.mark.unit

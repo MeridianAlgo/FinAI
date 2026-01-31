@@ -5,6 +5,7 @@ Provides dynamic layer-skipping for efficiency and unified feature mapping for v
 
 import torch
 import torch.nn as nn
+
 from .bitnet import BitLinear, BitRMSNorm
 
 
@@ -13,6 +14,7 @@ class AdaptiveComputeWrapper(nn.Module):
     Implements Dynamic Depth by calculating token-wise confidence.
     Tokens with high confidence (above threshold) can trigger a 'skip' of the block.
     """
+
     def __init__(self, config, layer_idx):
         super().__init__()
         self.threshold = config.dynamic_depth_threshold
@@ -31,6 +33,7 @@ class MultimodalProjector(nn.Module):
     Unified projection interface for integrating non-text modalities.
     Maps high-dimensional features (e.g., CLIP, AudioMAE) into the LLM latent space.
     """
+
     def __init__(self, config, input_dim, modal_name="vision"):
         super().__init__()
         self.name = modal_name
@@ -38,7 +41,7 @@ class MultimodalProjector(nn.Module):
             BitLinear(input_dim, config.hidden_size),
             BitRMSNorm(config.hidden_size),
             nn.SiLU(),
-            BitLinear(config.hidden_size, config.hidden_size)
+            BitLinear(config.hidden_size, config.hidden_size),
         )
 
     def forward(self, x):

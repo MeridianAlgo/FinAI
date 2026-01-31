@@ -1,7 +1,9 @@
 
 import torch
-from fin_ai.model.modeling_finai import FinAIForCausalLM
+
 from fin_ai.model.configuration_finai import FinAIConfig
+from fin_ai.model.modeling_finai import FinAIForCausalLM
+
 
 def count_detailed():
     config = FinAIConfig(
