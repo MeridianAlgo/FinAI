@@ -145,7 +145,23 @@ def main():
     print(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
 
     # 4. Tokenizer
-    tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-0.5B")
+    import time
+
+    max_retries = 3
+    tokenizer = None
+    for attempt in range(max_retries):
+        try:
+            tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-0.5B")
+            break
+        except Exception as e:
+            if attempt < max_retries - 1:
+                print(
+                    f"Error loading tokenizer (attempt {attempt + 1}): {e}. Retrying in 10s..."
+                )
+                time.sleep(10)
+            else:
+                raise e
+
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token_id = tokenizer.eos_token_id
 
