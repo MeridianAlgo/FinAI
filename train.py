@@ -20,80 +20,65 @@ class CustomIterableDataset(torch.utils.data.IterableDataset):
         return self.dataloader_gen()
 
 
-def create_dataloader(tokenizer, batch_size=4, block_size=1024, skip_items=0):
-    print(f"Initializing Rotational DataLoader (skipping {skip_items} items)...")
+def create_dataloader(
+    tokenizer,
+    batch_size=4,
+    block_size=1024,
+    skip_items=0,
+    max_bytes_per_slice=30 * 1024 * 1024,
+):
+    print(
+        f"Initializing Sliced DataLoader (skipping {skip_items} items, max_bytes={max_bytes_per_slice}...)"
+    )
 
-    # Dataset Registry for "Best Model" training
-    # Mixing Encyclopedia, Web Edu, and Instruction/Chat data
-    dataset_configs = [
-        ("wikitext", "wikitext-103-raw-v1", "train", "text"),
-        ("HuggingFaceFW/fineweb-edu", "default", "train", "text"),
-        ("mlabonne/guanaco-llama2-1k", "default", "train", "text"),
-    ]
+    # Use only FineWeb-Edu as requested
+    dataset_name = "HuggingFaceFW/fineweb-edu"
+    print(f"  - Loading {dataset_name}...")
+    dataset = load_dataset(dataset_name, "default", split="train", streaming=True)
 
-    iterators = []
-    for path, name, split, text_col in dataset_configs:
-        try:
-            print(f"  - Loading {path}/{name}...")
-            # Use distinct buffer sizes to avoid synchronization artifacts
-            ds = load_dataset(path, name, split=split, streaming=True)
-            if skip_items > 0:
-                ds = ds.skip(skip_items // len(dataset_configs))
-            iterators.append((iter(ds), text_col))
-        except Exception as e:
-            print(f"  [WARN] Failed to load {path}: {e}")
+    if skip_items > 0:
+        dataset = dataset.skip(skip_items)
 
     def gen():
-        # Round-robin rotation strategy
-        cycle_idx = 0
+        total_bytes_yielded = 0
         local_processed = 0
 
-        while True:
-            # Get next iterator config
-            iterator, text_col = iterators[cycle_idx % len(iterators)]
+        for item in dataset:
+            text = item.get("text", "")
+            if not isinstance(text, str) or not text.strip():
+                continue
 
-            try:
-                item = next(iterator)
-                cycle_idx += 1
-
-                text = item.get(text_col, "")
-                # Handle inconsistent column names or empty text
-                if not isinstance(text, str) or not text.strip():
-                    continue
-
-                tokens = tokenizer(
-                    text,
-                    truncation=True,
-                    max_length=block_size,
-                    padding="max_length",
-                )
-
-                input_ids = torch.tensor(tokens["input_ids"])
-                labels = input_ids.clone()
-
-                # Mask padding
-                pad_token_id = tokenizer.pad_token_id
-                if pad_token_id is not None:
-                    labels[input_ids == pad_token_id] = -100
-
-                yield {
-                    "input_ids": input_ids,
-                    "labels": labels,
-                    "processed_idx": skip_items + local_processed,
-                }
-                local_processed += 1
-
-            except StopIteration:
-                # If a stream ends, warn and remove or restart?
-                # For now, restarting is safer for infinite training.
+            # Check slice limit
+            text_bytes = len(text.encode("utf-8"))
+            if total_bytes_yielded + text_bytes > max_bytes_per_slice:
                 print(
-                    f"\n[INFO] Dataset {cycle_idx % len(iterators)} exhausted. cycling..."
+                    f"[INFO] 30MB slice limit reached ({total_bytes_yielded / 1024 / 1024:.2f} MB). Ending epoch."
                 )
-                # In a real infinite stream we shouldn't hit this often for web data.
-                pass
-            except Exception as e:
-                print(f"[WARN] Data processing error: {e}")
-                cycle_idx += 1
+                return
+
+            tokens = tokenizer(
+                text,
+                truncation=True,
+                max_length=block_size,
+                padding="max_length",
+            )
+
+            input_ids = torch.tensor(tokens["input_ids"])
+            labels = input_ids.clone()
+
+            # Mask padding
+            pad_token_id = tokenizer.pad_token_id
+            if pad_token_id is not None:
+                labels[input_ids == pad_token_id] = -100
+
+            yield {
+                "input_ids": input_ids,
+                "labels": labels,
+                "processed_idx": skip_items + local_processed,
+            }
+
+            total_bytes_yielded += text_bytes
+            local_processed += 1
 
     return torch.utils.data.DataLoader(
         CustomIterableDataset(gen), batch_size=batch_size

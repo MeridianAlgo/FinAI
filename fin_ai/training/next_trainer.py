@@ -77,8 +77,10 @@ class TernaryTrainer:
             try:
                 batch = next(train_iter)
             except StopIteration:
-                train_iter = iter(self.train_dataloader)
-                batch = next(train_iter)
+                print(
+                    f"[INFO] Dataset exhausted or slice limit reached at step {step}. Stopping training."
+                )
+                break
 
             # Extract metadata and move tensors to device
             batch.pop("processed_idx", None)  # Remove metadata
