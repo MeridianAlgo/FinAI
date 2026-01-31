@@ -108,9 +108,7 @@ class TernaryTrainer:
                 f"Batch {accumulation_idx}/{self.config.gradient_accumulation_steps}"
             )
             if accumulation_idx == 1:
-                print(
-                    f"\n[WORK] Starting optimization step {self.global_step + 1}..."
-                )
+                print(f"\n[WORK] Starting optimization step {self.global_step + 1}...")
             print(
                 f"  > Processing batch {accumulation_idx}/{self.config.gradient_accumulation_steps}...",
                 end="\r",

@@ -33,6 +33,7 @@ class FinAINextConfig(PretrainedConfig):
         self.vocab_size = vocab_size
         self.hidden_size = hidden_size
         self.num_layers = num_layers
+        self.num_hidden_layers = num_layers  # Alias for HF compatibility
         self.max_position_embeddings = max_position_embeddings
         self.hidden_act = hidden_act
         self.initializer_range = initializer_range

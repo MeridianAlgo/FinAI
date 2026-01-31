@@ -6,6 +6,7 @@ Assembles BitNet ternary layers and Liquid Dynamical Systems into a high-perform
 import torch
 import torch.nn as nn
 from transformers import GenerationMixin, PreTrainedModel
+from transformers.modeling_outputs import CausalLMOutputWithPast
 
 from .adaptive_compute import AdaptiveComputeWrapper, MultimodalProjector
 from .bitnet import BitLinear, BitRMSNorm
@@ -30,8 +31,6 @@ class FinAINextPreTrainedModel(PreTrainedModel):
                 module.bias.data.zero_()
         elif isinstance(module, nn.Embedding):
             module.weight.data.normal_(mean=0.0, std=self.config.initializer_range)
-
-
 
 
 class FinAINextModel(FinAINextPreTrainedModel):
@@ -144,4 +143,7 @@ class FinAINextForCausalLM(FinAINextPreTrainedModel, GenerationMixin):
                 shift_logits.view(-1, self.config.vocab_size), shift_labels.view(-1)
             )
 
-        return type("CausalLMOutput", (), {"loss": loss, "logits": logits})
+        return CausalLMOutputWithPast(
+            loss=loss,
+            logits=logits,
+        )

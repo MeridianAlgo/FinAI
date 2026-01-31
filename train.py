@@ -20,30 +20,80 @@ class CustomIterableDataset(torch.utils.data.IterableDataset):
         return self.dataloader_gen()
 
 
-def create_dataloader(
-    dataset_name, tokenizer, batch_size=4, block_size=1024, skip_items=0
-):
-    print(f"Loading dataset: {dataset_name} (skipping {skip_items} items)...")
-    # Stream and skip efficiently
-    dataset = load_dataset("wikitext", "wikitext-103-raw-v1", split="train", streaming=True)
-    if skip_items > 0:
-        dataset = dataset.skip(skip_items)
+def create_dataloader(tokenizer, batch_size=4, block_size=1024, skip_items=0):
+    print(f"Initializing Rotational DataLoader (skipping {skip_items} items)...")
+
+    # Dataset Registry for "Best Model" training
+    # Mixing Encyclopedia, Web Edu, and Instruction/Chat data
+    dataset_configs = [
+        ("wikitext", "wikitext-103-raw-v1", "train", "text"),
+        ("HuggingFaceFW/fineweb-edu", "default", "train", "text"),
+        ("mlabonne/guanaco-llama2-1k", "default", "train", "text"),
+    ]
+
+    iterators = []
+    for path, name, split, text_col in dataset_configs:
+        try:
+            print(f"  - Loading {path}/{name}...")
+            # Use distinct buffer sizes to avoid synchronization artifacts
+            ds = load_dataset(path, name, split=split, streaming=True)
+            if skip_items > 0:
+                ds = ds.skip(skip_items // len(dataset_configs))
+            iterators.append((iter(ds), text_col))
+        except Exception as e:
+            print(f"  [WARN] Failed to load {path}: {e}")
 
     def gen():
-        for i, item in enumerate(dataset):
-            if not item["text"].strip():
-                continue
-            tokens = tokenizer(
-                item["text"],
-                truncation=True,
-                max_length=block_size,
-                padding="max_length",
-            )
-            yield {
-                "input_ids": torch.tensor(tokens["input_ids"]),
-                "labels": torch.tensor(tokens["input_ids"]),
-                "processed_idx": skip_items + i,
-            }
+        # Round-robin rotation strategy
+        cycle_idx = 0
+        local_processed = 0
+
+        while True:
+            # Get next iterator config
+            iterator, text_col = iterators[cycle_idx % len(iterators)]
+
+            try:
+                item = next(iterator)
+                cycle_idx += 1
+
+                text = item.get(text_col, "")
+                # Handle inconsistent column names or empty text
+                if not isinstance(text, str) or not text.strip():
+                    continue
+
+                tokens = tokenizer(
+                    text,
+                    truncation=True,
+                    max_length=block_size,
+                    padding="max_length",
+                )
+
+                input_ids = torch.tensor(tokens["input_ids"])
+                labels = input_ids.clone()
+
+                # Mask padding
+                pad_token_id = tokenizer.pad_token_id
+                if pad_token_id is not None:
+                    labels[input_ids == pad_token_id] = -100
+
+                yield {
+                    "input_ids": input_ids,
+                    "labels": labels,
+                    "processed_idx": skip_items + local_processed,
+                }
+                local_processed += 1
+
+            except StopIteration:
+                # If a stream ends, warn and remove or restart?
+                # For now, restarting is safer for infinite training.
+                print(
+                    f"\n[INFO] Dataset {cycle_idx % len(iterators)} exhausted. cycling..."
+                )
+                # In a real infinite stream we shouldn't hit this often for web data.
+                pass
+            except Exception as e:
+                print(f"[WARN] Data processing error: {e}")
+                cycle_idx += 1
 
     return torch.utils.data.DataLoader(
         CustomIterableDataset(gen), batch_size=batch_size
@@ -94,10 +144,11 @@ def main():
 
     # 4. Tokenizer
     tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-0.5B")
+    if tokenizer.pad_token_id is None:
+        tokenizer.pad_token_id = tokenizer.eos_token_id
 
-    # 5. Dataset with Skip
+    # 5. Dataset with Skip (Rotational)
     dataloader = create_dataloader(
-        "HuggingFaceFW/fineweb-edu",
         tokenizer,
         batch_size=2,
         block_size=128,
