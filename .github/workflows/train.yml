@@ -75,4 +75,5 @@ jobs:
           git config --local user.name "GitHub Action"
           git add dataset_state.json
           git commit -m "Update dataset state [skip ci]" || echo "No changes to commit"
+          git pull --rebase origin main
           git push origin main
