@@ -47,7 +47,7 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           COMET_API_KEY: ${{ secrets.COMET_API_KEY }}
-          MAX_STEPS: 100 # Adjust steps for hourly CPU limit (~15-30 mins)
+          MAX_STEPS: 1000 # Target ~15-30MB per run (CPU constrained)
           PYTHONPATH: .
         run: |
           python train.py
