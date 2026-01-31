@@ -116,6 +116,7 @@ class FinAINextForCausalLM(FinAINextPreTrainedModel, GenerationMixin):
         super().__init__(config)
         self.model = FinAINextModel(config)
         self.lm_head = BitLinear(config.hidden_size, config.vocab_size, bias=False)
+        self.lm_head.weight = self.model.embed_tokens.weight
 
         # Initialize weights and apply final processing (including weight
         # tying)

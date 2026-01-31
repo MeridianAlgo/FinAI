@@ -28,20 +28,20 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Download Model from HF (Optional)
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: |
-          python -c "
-          from huggingface_hub import HfApi, snapshot_download
-          import os
-          repo_id = 'MeridianAlgo/FinAI-Lite'
-          try:
-              snapshot_download(repo_id=repo_id, local_dir='./checkpoints_next/model', token=os.getenv('HF_TOKEN'))
-              print('Model downloaded successfully')
-          except Exception as e:
-              print(f'No model found or error: {e}')
-          "
+      # - name: Download Model from HF (Optional)
+      #   env:
+      #     HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      #   run: |
+      #     python -c "
+      #     from huggingface_hub import HfApi, snapshot_download
+      #     import os
+      #     repo_id = 'MeridianAlgo/FinAI-Lite'
+      #     try:
+      #         snapshot_download(repo_id=repo_id, local_dir='./checkpoints_next/model', token=os.getenv('HF_TOKEN'))
+      #         print('Model downloaded successfully')
+      #     except Exception as e:
+      #         print(f'No model found or error: {e}')
+      #     "
 
       - name: Run Training
         env:

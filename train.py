@@ -24,12 +24,13 @@ def create_dataloader(
     dataset_name, tokenizer, batch_size=4, block_size=1024, skip_items=0
 ):
     print(f"Loading dataset: {dataset_name} (skipping {skip_items} items)...")
+    # Stream and skip efficiently
     dataset = load_dataset(dataset_name, split="train", streaming=True)
+    if skip_items > 0:
+        dataset = dataset.skip(skip_items)
 
     def gen():
         for i, item in enumerate(dataset):
-            if i < skip_items:
-                continue
             tokens = tokenizer(
                 item["text"],
                 truncation=True,
@@ -39,7 +40,7 @@ def create_dataloader(
             yield {
                 "input_ids": torch.tensor(tokens["input_ids"]),
                 "labels": torch.tensor(tokens["input_ids"]),
-                "processed_idx": i,
+                "processed_idx": skip_items + i,
             }
 
     return torch.utils.data.DataLoader(
@@ -69,12 +70,20 @@ def main():
         num_layers=24,
         liquid_state_dim=384,
         gradient_checkpointing=True,
+        tie_word_embeddings=True,
     )
+    print(f"Configuration: {config}")
 
     # 3. Model Initialization or Loading
     if os.path.exists(os.path.join(model_path, "config.json")):
         print(f"Loading existing model from {model_path}...")
-        model = FinAINextForCausalLM.from_pretrained(model_path)
+        try:
+            model = FinAINextForCausalLM.from_pretrained(
+                model_path, config=config, ignore_mismatched_sizes=True
+            )
+        except Exception as e:
+            print(f"Error loading model: {e}. Reinitializing from scratch.")
+            model = FinAINextForCausalLM(config)
     else:
         print("Initializing new model from scratch.")
         model = FinAINextForCausalLM(config)
