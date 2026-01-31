@@ -94,9 +94,7 @@ class TernaryTrainer:
             # Check for NaN loss
             if torch.isnan(loss):
                 print(
-                    f"\n[WARN] NaN loss detected at step {
-                        self.global_step +
-                        1}, skipping batch..."
+                    f"\n[WARN] NaN loss detected at step {self.global_step + 1}, skipping batch..."
                 )
                 self.optimizer.zero_grad()
                 continue
@@ -111,12 +109,10 @@ class TernaryTrainer:
             )
             if accumulation_idx == 1:
                 print(
-                    f"\n[WORK] Starting optimization step {
-                        self.global_step + 1}..."
+                    f"\n[WORK] Starting optimization step {self.global_step + 1}..."
                 )
             print(
-                f"  > Processing batch {accumulation_idx}/{
-                    self.config.gradient_accumulation_steps}...",
+                f"  > Processing batch {accumulation_idx}/{self.config.gradient_accumulation_steps}...",
                 end="\r",
             )
 
