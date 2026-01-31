@@ -25,7 +25,7 @@ def create_dataloader(
     batch_size=4,
     block_size=1024,
     skip_items=0,
-    max_bytes_per_slice=30 * 1024 * 1024,
+    max_bytes_per_slice=100 * 1024 * 1024,
 ):
     print(
         f"Initializing Sliced DataLoader (skipping {skip_items} items, max_bytes={max_bytes_per_slice}...)"
@@ -34,7 +34,24 @@ def create_dataloader(
     # Use only FineWeb-Edu as requested
     dataset_name = "HuggingFaceFW/fineweb-edu"
     print(f"  - Loading {dataset_name}...")
-    dataset = load_dataset(dataset_name, "default", split="train", streaming=True)
+
+    import time
+
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            dataset = load_dataset(
+                dataset_name, "default", split="train", streaming=True
+            )
+            break
+        except Exception as e:
+            if attempt < max_retries - 1:
+                print(
+                    f"Error loading dataset (attempt {attempt + 1}): {e}. Retrying in 10s..."
+                )
+                time.sleep(10)
+            else:
+                raise e
 
     if skip_items > 0:
         dataset = dataset.skip(skip_items)
@@ -142,7 +159,7 @@ def main():
 
     # 6. Training Config
     # If running in GHA, we might want to cap steps (e.g. 100 steps per hour)
-    max_steps = int(os.getenv("MAX_STEPS", "1000"))
+    max_steps = int(os.getenv("MAX_STEPS", "200"))
 
     train_config = NextTrainingConfig(
         batch_size=2,

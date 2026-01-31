@@ -73,7 +73,7 @@ class FinAINextModel(FinAINextPreTrainedModel):
         labels=None,
         vision_features=None,
         audio_features=None,
-        **kwargs
+        **kwargs,
     ):
         hidden_states = self.embed_tokens(input_ids)
 
