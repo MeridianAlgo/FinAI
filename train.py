@@ -25,7 +25,7 @@ def create_dataloader(
 ):
     print(f"Loading dataset: {dataset_name} (skipping {skip_items} items)...")
     # Stream and skip efficiently
-    dataset = load_dataset(dataset_name, split="train", streaming=True)
+    dataset = load_dataset(dataset_name, name="sample-10BT", split="train", streaming=True)
     if skip_items > 0:
         dataset = dataset.skip(skip_items)
 
