@@ -130,18 +130,24 @@ def main():
 
     # 3. Model Initialization or Loading
     model_exists = os.path.exists(os.path.join(model_path, "config.json"))
+    weights_exist = os.path.exists(os.path.join(model_path, "model.safetensors"))
+    
     if model_exists:
-        print(f"Loading existing model from {model_path}...")
-        try:
-            model = FinAINextForCausalLM.from_pretrained(
-                model_path, config=config, ignore_mismatched_sizes=True
-            )
-            print("Model weights loaded.")
-        except Exception as e:
-            print(f"Error loading model weights: {e}. Reinitializing weights.")
+        if weights_exist:
+            print(f"Loading existing model and weights from {model_path}...")
+            try:
+                model = FinAINextForCausalLM.from_pretrained(
+                    model_path, config=config, ignore_mismatched_sizes=True
+                )
+                print("Model weights loaded successfully.")
+            except Exception as e:
+                print(f"Error loading model weights: {e}. Reinitializing weights.")
+                model = FinAINextForCausalLM(config)
+        else:
+            print(f"Config found at {model_path} but weights (model.safetensors) are missing. Initializing fresh weights.")
             model = FinAINextForCausalLM(config)
     else:
-        print("Initializing new model from scratch.")
+        print("Initializing new model and config from scratch.")
         model = FinAINextForCausalLM(config)
 
     # Debug: Print initial weight sample

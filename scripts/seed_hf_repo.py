@@ -28,18 +28,28 @@ def push():
     model = FinAINextForCausalLM(config)
 
     # 3. Save locally
-    print(f"Saving to {model_path}...")
+    print(f"Saving architecture to {model_path}...")
     os.makedirs(model_path, exist_ok=True)
-    model.save_pretrained(model_path, safe_serialization=False)
+    # Save config and model architecture metadata
+    model.config.save_pretrained(model_path)
+    
+    # We do NOT save the weights here to keep the seed light.
+    # We also want to include the tokenizer config if possible
+    from transformers import AutoTokenizer
+    try:
+        tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-0.5B")
+        tokenizer.save_pretrained(model_path)
+    except Exception as e:
+        print(f"Warning: Could not save tokenizer to seed: {e}")
 
     # 4. Copy Model Card
     print("Adding Model Card...")
     import shutil
-
-    shutil.copy("MODEL_CARD.md", os.path.join(model_path, "README.md"))
+    if os.path.exists("MODEL_CARD.md"):
+        shutil.copy("MODEL_CARD.md", os.path.join(model_path, "README.md"))
 
     # 5. Push to HF
-    print(f"Pushing to HF: {repo_id}...")
+    print(f"Pushing seed to HF: {repo_id}...")
     hf_token = os.getenv("HF_TOKEN")
     if not hf_token:
         print("ERROR: HF_TOKEN not found in .env")
@@ -50,10 +60,10 @@ def push():
     api.upload_folder(
         folder_path=model_path,
         repo_id=repo_id,
-        commit_message="Initial FinAI-Next Liquid-BitNet model seed",
+        commit_message="Initial FinAI-Next Architecture Seed (Config + Tokenizer)",
         token=hf_token,
     )
-    print("Seed successful! GitHub Actions can now pull this model.")
+    print("Seed successful! HF Repo now contains architecture but no weights yet.")
 
 
 if __name__ == "__main__":
