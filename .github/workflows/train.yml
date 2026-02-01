@@ -40,12 +40,15 @@ jobs:
           from huggingface_hub import HfApi, snapshot_download
           import os
           repo_id = 'MeridianAlgo/FinAI-Lite'
+          print(f'Attempting to download from {repo_id}...')
           try:
               snapshot_download(repo_id=repo_id, local_dir='./checkpoints_next/model', token=os.getenv('HF_TOKEN'))
               print('Model downloaded successfully')
           except Exception as e:
               print(f'No model found or error: {e}')
           "
+          echo "Directory content after download:"
+          ls -R ./checkpoints_next || echo "Directory does not exist"
 
       - name: Run Training
         env:
@@ -55,6 +58,14 @@ jobs:
           PYTHONPATH: .
         run: |
           python train.py
+
+      - name: Debug Output
+        run: |
+          echo "Directory content after training:"
+          ls -R ./checkpoints_next
+          if [ -f "dataset_state.json" ]; then
+            cat dataset_state.json
+          fi
 
       - name: Upload Model to HF
         env:

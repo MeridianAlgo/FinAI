@@ -129,18 +129,25 @@ def main():
     print(f"Configuration: {config}")
 
     # 3. Model Initialization or Loading
-    if os.path.exists(os.path.join(model_path, "config.json")):
+    model_exists = os.path.exists(os.path.join(model_path, "config.json"))
+    if model_exists:
         print(f"Loading existing model from {model_path}...")
         try:
             model = FinAINextForCausalLM.from_pretrained(
                 model_path, config=config, ignore_mismatched_sizes=True
             )
+            print("Model weights loaded.")
         except Exception as e:
-            print(f"Error loading model: {e}. Reinitializing from scratch.")
+            print(f"Error loading model weights: {e}. Reinitializing weights.")
             model = FinAINextForCausalLM(config)
     else:
         print("Initializing new model from scratch.")
         model = FinAINextForCausalLM(config)
+
+    # Debug: Print initial weight sample
+    with torch.no_grad():
+        weight_sample = model.model.embed_tokens.weight[0][:5].tolist()
+        print(f"DEBUG: Initial weight sample: {weight_sample}")
 
     print(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
 
@@ -174,9 +181,7 @@ def main():
     )
 
     # 6. Training Config
-    # If running in GHA, we might want to cap steps (e.g. 100 steps per hour)
     max_steps = int(os.getenv("MAX_STEPS", "200"))
-
     train_config = NextTrainingConfig(
         batch_size=2,
         gradient_accumulation_steps=2,
@@ -188,34 +193,25 @@ def main():
     # 7. Training
     trainer = TernaryTrainer(model, dataloader, train_config)
 
+    # Load trainer state if it exists
+    if model_exists:
+        trainer.load_checkpoint(model_path)
+
     try:
         trainer.train()
     except KeyboardInterrupt:
         print("\nTraining interrupted by user.")
     finally:
-        # Final Save - Fix Windows file locking issue
+        # Debug: Print final weight sample
+        with torch.no_grad():
+            weight_sample = model.model.embed_tokens.weight[0][:5].tolist()
+            print(f"DEBUG: Final weight sample: {weight_sample}")
+
+        # Final Save
         print("Saving final state to local storage...")
+        trainer.save_checkpoint(model_path)
 
-        # Move model to CPU and clear CUDA cache to release file handles
-        model.cpu()
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-
-        # Delete old checkpoint files to release memory-mapped handles
-        import shutil
-
-        if os.path.exists(model_path):
-            print(f"Removing old checkpoint at {model_path}...")
-            shutil.rmtree(model_path, ignore_errors=True)
-            import time
-
-            time.sleep(1.0)  # Give Windows time to release handles
-
-        model.save_pretrained(model_path, safe_serialization=False)
-
-        # Save dataset state (use the trainer's global step to estimate or pass back from gen)
-        # For simple tracking, we'll update based on steps * batch *
-        # accumulation
+        # Save dataset state
         new_processed = processed_items + (
             trainer.global_step
             * train_config.batch_size

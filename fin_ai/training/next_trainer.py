@@ -139,7 +139,9 @@ class TernaryTrainer:
                 # GitHub Step Summary
                 if os.getenv("GITHUB_STEP_SUMMARY"):
                     with open(os.getenv("GITHUB_STEP_SUMMARY"), "a") as f:
-                        f.write(f"| {self.global_step} | {actual_loss:.4f} | {lr:.2e} |\n")
+                        f.write(
+                            f"| {self.global_step} | {actual_loss:.4f} | {lr:.2e} |\n"
+                        )
 
                 progress_bar.update(1)
                 progress_bar.set_postfix(
@@ -160,29 +162,56 @@ class TernaryTrainer:
                 if self.global_step % self.config.save_steps == 0:
                     self.save_checkpoint()
 
-    def save_checkpoint(self):
-        os.makedirs(self.config.output_dir, exist_ok=True)
-        save_path = os.path.join(self.config.output_dir, f"step-{self.global_step}")
+    def save_checkpoint(self, path=None):
+        save_path = path or os.path.join(
+            self.config.output_dir, f"step-{self.global_step}"
+        )
+        os.makedirs(save_path, exist_ok=True)
 
-        # Fix Windows file locking issue
+        print(f"\n[INFO] Saving trainer state to {save_path}...")
+
+        # Move model to CPU to release handles and save memory
         original_device = next(self.model.parameters()).device
         self.model.cpu()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-        # Delete old checkpoint to release memory-mapped handles
-        import shutil
+        # Save model
+        self.model.save_pretrained(save_path, safe_serialization=True)
 
-        if os.path.exists(save_path):
-            shutil.rmtree(save_path, ignore_errors=True)
+        # Save optimizer, scheduler and global_step
+        checkpoint = {
+            "optimizer_state_dict": self.optimizer.state_dict(),
+            "scheduler_state_dict": self.scheduler.state_dict(),
+            "global_step": self.global_step,
+            "config": self.config,
+        }
+        torch.save(checkpoint, os.path.join(save_path, "trainer_state.pt"))
 
-        import time
-
-        time.sleep(1.0)
-
-        self.model.save_pretrained(save_path, safe_serialization=False)
-
-        # Move model back to original device
+        # Move model back
         self.model.to(original_device)
+        print("[INFO] Checkpoint saved successfully.")
 
-        print(f"\n[INFO] Saved ternary checkpoint to {save_path}")
+    def load_checkpoint(self, load_path):
+        if not os.path.exists(load_path):
+            print(f"[WARN] Checkpoint path {load_path} does not exist.")
+            return False
+
+        print(f"[INFO] Loading trainer state from {load_path}...")
+
+        # Load trainer state
+        state_file = os.path.join(load_path, "trainer_state.pt")
+        if os.path.exists(state_file):
+            checkpoint = torch.load(state_file, map_location=self.device)
+            self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+            self.scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
+            self.global_step = checkpoint["global_step"]
+            print(
+                f"[INFO] Loaded optimizer, scheduler, and global_step ({self.global_step})."
+            )
+        else:
+            print(
+                f"[WARN] No trainer_state.pt found in {load_path}. Only model weights will be used."
+            )
+
+        return True
