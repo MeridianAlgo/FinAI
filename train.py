@@ -211,7 +211,7 @@ def main():
 
             time.sleep(1.0)  # Give Windows time to release handles
 
-        model.save_pretrained(model_path, safe_serialization=True)
+        model.save_pretrained(model_path, safe_serialization=False)
 
         # Save dataset state (use the trainer's global step to estimate or pass back from gen)
         # For simple tracking, we'll update based on steps * batch *

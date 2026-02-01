@@ -67,6 +67,13 @@ class TernaryTrainer:
         print(f"Starting Ternary Training for {self.config.max_steps} steps...")
         print(f"Device: {self.device}")
 
+        # Initialize GitHub Step Summary
+        if os.getenv("GITHUB_STEP_SUMMARY"):
+            with open(os.getenv("GITHUB_STEP_SUMMARY"), "a") as f:
+                f.write("### Training Progress\n")
+                f.write("| Step | Loss | Learning Rate |\n")
+                f.write("| --- | --- | --- |\n")
+
         import gc
 
         progress_bar = tqdm(total=self.config.max_steps, desc="Training")
@@ -129,6 +136,11 @@ class TernaryTrainer:
                 actual_loss = loss.item() * self.config.gradient_accumulation_steps
                 lr = self.scheduler.get_last_lr()[0]
 
+                # GitHub Step Summary
+                if os.getenv("GITHUB_STEP_SUMMARY"):
+                    with open(os.getenv("GITHUB_STEP_SUMMARY"), "a") as f:
+                        f.write(f"| {self.global_step} | {actual_loss:.4f} | {lr:.2e} |\n")
+
                 progress_bar.update(1)
                 progress_bar.set_postfix(
                     {"loss": f"{actual_loss:.4f}", "lr": f"{lr:.2e}"}
@@ -168,7 +180,7 @@ class TernaryTrainer:
 
         time.sleep(1.0)
 
-        self.model.save_pretrained(save_path, safe_serialization=True)
+        self.model.save_pretrained(save_path, safe_serialization=False)
 
         # Move model back to original device
         self.model.to(original_device)

@@ -30,7 +30,7 @@ def push():
     # 3. Save locally
     print(f"Saving to {model_path}...")
     os.makedirs(model_path, exist_ok=True)
-    model.save_pretrained(model_path, safe_serialization=True)
+    model.save_pretrained(model_path, safe_serialization=False)
 
     # 4. Copy Model Card
     print("Adding Model Card...")

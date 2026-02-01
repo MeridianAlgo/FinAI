@@ -5,6 +5,10 @@ on:
     - cron: '0 * * * *' # Hourly
   workflow_dispatch: # Manual trigger
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   train:
     runs-on: ubuntu-latest
