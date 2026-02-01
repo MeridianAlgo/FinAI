@@ -32,10 +32,11 @@ def push():
     os.makedirs(model_path, exist_ok=True)
     # Save config and model architecture metadata
     model.config.save_pretrained(model_path)
-    
+
     # We do NOT save the weights here to keep the seed light.
     # We also want to include the tokenizer config if possible
     from transformers import AutoTokenizer
+
     try:
         tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-0.5B")
         tokenizer.save_pretrained(model_path)
@@ -45,6 +46,7 @@ def push():
     # 4. Copy Model Card
     print("Adding Model Card...")
     import shutil
+
     if os.path.exists("MODEL_CARD.md"):
         shutil.copy("MODEL_CARD.md", os.path.join(model_path, "README.md"))
 

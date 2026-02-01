@@ -27,6 +27,11 @@ class NextTrainingConfig:
     log_steps: int = 1
 
 
+# Allow NextTrainingConfig to be loaded via torch.load (PyTorch 2.6+ security)
+if hasattr(torch.serialization, "add_safe_globals"):
+    torch.serialization.add_safe_globals([NextTrainingConfig])
+
+
 class TernaryTrainer:
     def __init__(self, model, train_dataloader, config=None):
         self.model = model
