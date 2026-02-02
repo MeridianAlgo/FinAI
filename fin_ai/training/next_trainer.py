@@ -21,6 +21,7 @@ class NextTrainingConfig:
     weight_decay: float = 0.01
     warmup_steps: int = 500
     max_steps: int = 100000
+    total_steps: int = 100000
     max_grad_norm: float = 1.0
     output_dir: str = "./checkpoints_next"
     save_steps: int = 1000
@@ -47,7 +48,7 @@ class TernaryTrainer:
         )
 
         self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-            self.optimizer, T_max=self.config.max_steps
+            self.optimizer, T_max=self.config.total_steps
         )
 
         # Real-time Tracking
@@ -176,13 +177,14 @@ class TernaryTrainer:
         print(f"\n[INFO] Saving trainer state to {save_path}...")
 
         # Move model to CPU to release handles and save memory
-        original_device = next(self.model.parameters()).device
         self.model.cpu()
+        import gc
+        gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
         # Save model
-        self.model.save_pretrained(save_path, safe_serialization=True)
+        self.model.save_pretrained(save_path, safe_serialization=False)
 
         # Save optimizer, scheduler and global_step
         checkpoint = {
@@ -192,9 +194,6 @@ class TernaryTrainer:
             "config": self.config,
         }
         torch.save(checkpoint, os.path.join(save_path, "trainer_state.pt"))
-
-        # Move model back
-        self.model.to(original_device)
         print("[INFO] Checkpoint saved successfully.")
 
     def load_checkpoint(self, load_path):

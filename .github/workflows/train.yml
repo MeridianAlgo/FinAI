@@ -54,7 +54,8 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           COMET_API_KEY: ${{ secrets.COMET_API_KEY }}
-          MAX_STEPS: 200 # Target ~200 steps to stay comfortably under 1 hr limit
+          MAX_STEPS: 200
+          TOTAL_STEPS: 100000
           PYTHONPATH: .
         run: |
           python train.py

@@ -89,8 +89,9 @@ class FinAINextModel(FinAINextPreTrainedModel):
 
         # Iterative layer processing with adaptive exit
         for i, layer in enumerate(self.layers):
-            # Recurrent Liquid Step
-            hidden_states, liquid_state = layer(hidden_states, liquid_state)
+            # Recurrent Liquid Step with Residual Connection
+            layer_output, liquid_state = layer(hidden_states, liquid_state)
+            hidden_states = hidden_states + layer_output
 
             # Adaptive Compute Exit Check
             hidden_states, should_skip = self.adaptive_wrappers[i](hidden_states)
