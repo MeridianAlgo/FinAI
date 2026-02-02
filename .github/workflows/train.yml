@@ -2,7 +2,7 @@ name: Hourly FinAI Training
 
 on:
   schedule:
-    - cron: '0 * * * *' # Hourly
+    - cron: '0 */2 * * *' # Every 2 hours (to avoid overlap since training takes ~1.5h)
   workflow_dispatch: # Manual trigger
 
 concurrency:
@@ -12,6 +12,7 @@ concurrency:
 jobs:
   train:
     runs-on: ubuntu-latest
+    timeout-minutes: 115
     permissions:
       contents: write
     
