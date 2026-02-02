@@ -179,6 +179,7 @@ class TernaryTrainer:
         # Move model to CPU to release handles and save memory
         self.model.cpu()
         import gc
+
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()

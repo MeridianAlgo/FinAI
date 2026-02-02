@@ -11,6 +11,9 @@ concurrency:
 
 jobs:
   train:
+    environment: 
+      name: production
+      url: https://huggingface.co/MeridianAlgo/FinAI-Lite
     runs-on: ubuntu-latest
     timeout-minutes: 115
     permissions:

@@ -113,7 +113,7 @@ def main():
     processed_items = 0
     # Prefer state synced with weights if it exists
     backup_state_path = os.path.join(model_path, "dataset_state.json")
-    
+
     if os.path.exists(backup_state_path):
         with open(backup_state_path, "r") as f:
             state = json.load(f)
@@ -145,8 +145,10 @@ def main():
             print(f"Loading existing model and weights from {model_path}...")
             try:
                 model = FinAINextForCausalLM.from_pretrained(
-                    model_path, config=config, ignore_mismatched_sizes=True,
-                    low_cpu_mem_usage=False
+                    model_path,
+                    config=config,
+                    ignore_mismatched_sizes=True,
+                    low_cpu_mem_usage=False,
                 )
                 print("Model weights loaded successfully.")
             except Exception as e:
@@ -238,16 +240,20 @@ def main():
         # `trainer.global_step` is the final global_step after training.
         # Number of optimization steps completed in this run = trainer.global_step - initial_global_step.
         # Each optimization step processes `train_config.batch_size * train_config.gradient_accumulation_steps` dataloader batches.
-        batches_processed_in_this_run = (trainer.global_step - initial_global_step) * train_config.batch_size * train_config.gradient_accumulation_steps
+        batches_processed_in_this_run = (
+            (trainer.global_step - initial_global_step)
+            * train_config.batch_size
+            * train_config.gradient_accumulation_steps
+        )
         new_processed = processed_items + batches_processed_in_this_run
 
         with open(state_path, "w") as f:
             json.dump({"processed_items": new_processed}, f)
-        
+
         # Save a backup synced with weights
         with open(backup_state_path, "w") as f:
             json.dump({"processed_items": new_processed}, f)
-            
+
         print(f"Final state saved. Total processed: {new_processed}")
 
 
