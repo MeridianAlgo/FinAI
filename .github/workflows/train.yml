@@ -7,7 +7,7 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   train:
@@ -91,5 +91,5 @@ jobs:
           git config --local user.name "GitHub Action"
           git add dataset_state.json
           git commit -m "Update dataset state [skip ci]" || echo "No changes to commit"
-          git pull --rebase origin main
+          git pull --rebase -X theirs origin main
           git push origin main

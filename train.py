@@ -111,11 +111,19 @@ def main():
 
     # 1. Load Dataset State
     processed_items = 0
-    if os.path.exists(state_path):
+    # Prefer state synced with weights if it exists
+    backup_state_path = os.path.join(model_path, "dataset_state.json")
+    
+    if os.path.exists(backup_state_path):
+        with open(backup_state_path, "r") as f:
+            state = json.load(f)
+            processed_items = state.get("processed_items", 0)
+        print(f"Resuming from synced dataset index: {processed_items}")
+    elif os.path.exists(state_path):
         with open(state_path, "r") as f:
             state = json.load(f)
             processed_items = state.get("processed_items", 0)
-        print(f"Resuming from dataset index: {processed_items}")
+        print(f"Resuming from root dataset index: {processed_items}")
 
     # 2. Configuration
     config = FinAINextConfig(
@@ -235,6 +243,11 @@ def main():
 
         with open(state_path, "w") as f:
             json.dump({"processed_items": new_processed}, f)
+        
+        # Save a backup synced with weights
+        with open(backup_state_path, "w") as f:
+            json.dump({"processed_items": new_processed}, f)
+            
         print(f"Final state saved. Total processed: {new_processed}")
 
 
