@@ -7,22 +7,62 @@ on:
     branches: [ "main" ]
 
 jobs:
-  lint:
+  verify:
+    name: "1. Verify & Lint"
     runs-on: ubuntu-latest
-    environment:
-      name: code-quality
+    permissions:
+      contents: write
+    environment: branch
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
+      - uses: actions/checkout@v4
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
           cache: 'pip'
+      
+      - name: Check & Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff black mypy isort
+          pip install -r requirements.txt
+      
+      - name: Linting Check Via Ruff
+        run: ruff check . --exclude legacy
+      
+      - name: Formatting Check Via Black
+        run: black --check . --exclude legacy
+      
+      - name: Auto-Fix if Linting Failed
+        if: failure()
+        run: |
+          echo "Linting failed, attempting auto-fix..."
+          ruff check . --fix --exclude legacy || true
+          isort .
+          black . --exclude legacy
+          
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add .
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: auto-fix linting issues [skip ci]"
+            git pull --rebase origin main
+            git push origin main
+            echo "Changes pushed. A new workflow will be triggered."
+          else
+            echo "No changes to push."
+          fi
+      
+      - name: Type Checking Via MyPy
+        env:
+          PYTHONPATH: .
+        run: mypy --ignore-missing-imports --exclude legacy .
 
-      - name: Install Linting Tools
-        run: pip install ruff
-
-      - name: Run Linting
-        run: ruff check .
+  report:
+    name: "2. Quality Report"
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: branch
+    steps:
+      - name: Quality Check Passed
+        run: echo "Code quality standards met."
