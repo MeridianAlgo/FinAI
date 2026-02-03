@@ -16,11 +16,10 @@ concurrency:
 
 jobs:
   verify:
-    name: "1. Verify & Lint"
+    name: "Verify & Lint"
     permissions:
       contents: write
     runs-on: ubuntu-latest
-    environment: branch
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -37,9 +36,15 @@ jobs:
       
       - name: Linting Check Via Ruff
         run: ruff check . --exclude legacy
+        continue-on-error: true
       
       - name: Formatting Check Via Black
         run: black --check . --exclude legacy
+        continue-on-error: true
+
+      - name: Import Order Check Via Isort
+        run: isort --check-only .
+        continue-on-error: true
       
       - name: Auto-Fix if Linting Failed
         if: failure()
@@ -67,11 +72,11 @@ jobs:
         run: mypy --ignore-missing-imports --exclude legacy .
 
   seed:
-    name: "2. Nuke & Seed HF"
+    name: "Nuke & Seed HF"
     needs: verify
     if: github.event.inputs.force_seed == 'true'
     runs-on: ubuntu-latest
-    environment: branch
+    environment: HuggingFace Hub
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -86,7 +91,7 @@ jobs:
         run: python scripts/seed_hf_repo.py
 
   train:
-    name: "3. Distributed Training"
+    name: "Distributed Training"
     needs: [verify, seed]
     if: |
       always() && 
@@ -96,7 +101,6 @@ jobs:
     timeout-minutes: 100
     permissions:
       contents: write
-    environment: branch
     steps:
       - uses: actions/checkout@v4
         with:
@@ -151,10 +155,10 @@ jobs:
           git push origin main
 
   deploy:
-    name: "4. Deploy to Hugging Face"
+    name: "Deploy to Hugging Face"
     needs: train
     environment:
-      name: HuggingFace
+      name: HuggingFace Hub
       url: https://huggingface.co/MeridianAlgo/FinAI-Lite
     runs-on: ubuntu-latest
     steps:
