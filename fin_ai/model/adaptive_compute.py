@@ -2,6 +2,7 @@
 
 import torch
 import torch.nn as nn
+
 from .bitnet import BitLinear, BitRMSNorm
 
 
@@ -26,7 +27,7 @@ class MultimodalProjector(nn.Module):
             BitLinear(input_dim, config.hidden_size),
             BitRMSNorm(config.hidden_size),
             nn.SiLU(),
-            BitLinear(config.hidden_size, config.hidden_size)
+            BitLinear(config.hidden_size, config.hidden_size),
         )
 
     def forward(self, x):

@@ -131,7 +131,9 @@ def main():
     # 3. Model Initialization or Loading
     # In the root, we look for config.json and model.safetensors
     model_exists = os.path.exists("config.json")
-    weights_exist = os.path.exists("model.safetensors") or os.path.exists("pytorch_model.bin")
+    weights_exist = os.path.exists("model.safetensors") or os.path.exists(
+        "pytorch_model.bin"
+    )
 
     if model_exists:
         if weights_exist:
@@ -148,10 +150,14 @@ def main():
                 print(f"CRITICAL ERROR: Failed to load existing model weights: {e}")
                 print("Aborting to prevent accidental state reset.")
                 import sys
+
                 sys.exit(1)
         else:
-            print(f"CRITICAL ERROR: Config found at {model_path} but weights are missing.")
+            print(
+                f"CRITICAL ERROR: Config found at {model_path} but weights are missing."
+            )
             import sys
+
             sys.exit(1)
     else:
         print("Initializing new model and config from scratch.")
