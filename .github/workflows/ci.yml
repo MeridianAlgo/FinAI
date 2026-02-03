@@ -26,6 +26,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install ruff black mypy isort pytest pytest-asyncio
           pip install -r requirements.txt
+          pip install -e .
       
       - name: Linting Check (Ruff)
         run: ruff check . --exclude legacy
@@ -60,11 +61,7 @@ jobs:
           fi
       
       - name: Type Checking (MyPy)
-        env:
-          PYTHONPATH: .
         run: mypy --ignore-missing-imports --exclude legacy .
 
       - name: Run Performance Tests
-        env:
-          PYTHONPATH: .
         run: pytest --ignore=legacy/

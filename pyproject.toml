@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fin_ai"
+version = "0.1.0"
+description = "FinAI-Next: Advanced Financial AI with Liquid BitNet"
+dependencies = [
+    "torch>=2.0.0",
+    "transformers>=4.35.0",
+    "datasets>=2.14.0",
+    "comet-ml>=3.35.0",
+    "tqdm>=4.66.0",
+    "python-dotenv",
+    "safetensors>=0.4.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
