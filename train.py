@@ -169,13 +169,17 @@ def main():
         except Exception as e:
             print(f"Error loading checkpoint: {e}. Trying base model...")
             if model_exists and weights_exist:
-                model = FinAINextForCausalLM.from_pretrained(
-                    model_path,
-                    config=config,
-                    ignore_mismatched_sizes=True,
-                    low_cpu_mem_usage=False,
-                )
-                print("Base model loaded successfully.")
+                try:
+                    model = FinAINextForCausalLM.from_pretrained(
+                        model_path,
+                        config=config,
+                        ignore_mismatched_sizes=True,
+                        low_cpu_mem_usage=False,
+                    )
+                    print("Base model loaded successfully.")
+                except Exception as e2:
+                    print(f"Error loading base model: {e2}. Initializing fresh.")
+                    model = FinAINextForCausalLM(config)
             else:
                 print("Initializing fresh model.")
                 model = FinAINextForCausalLM(config)

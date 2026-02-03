@@ -16,6 +16,9 @@ dependencies = [
     "safetensors>=0.4.0",
 ]
 
+[tool.setuptools]
+packages = ["fin_ai"]
+
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
