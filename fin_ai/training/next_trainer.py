@@ -210,7 +210,9 @@ class TernaryTrainer:
         if os.path.exists(state_file):
             checkpoint = torch.load(state_file, map_location=self.device)
             if not isinstance(checkpoint, dict):
-                print(f"[ERROR] trainer_state.pt is not a dictionary (got {type(checkpoint)}). Skipping state load.")
+                print(
+                    f"[ERROR] trainer_state.pt is not a dictionary (got {type(checkpoint)}). Skipping state load."
+                )
                 return False
             self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
             self.scheduler.load_state_dict(checkpoint["scheduler_state_dict"])

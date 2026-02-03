@@ -137,8 +137,9 @@ def main():
     )
     # In the model_path, we look for config.json and weights
     model_exists = os.path.exists(os.path.join(model_path, "config.json"))
-    weights_exist = os.path.exists(os.path.join(model_path, "model.safetensors")) or \
-                    os.path.exists(os.path.join(model_path, "pytorch_model.bin"))
+    weights_exist = os.path.exists(
+        os.path.join(model_path, "model.safetensors")
+    ) or os.path.exists(os.path.join(model_path, "pytorch_model.bin"))
 
     if model_exists:
         if weights_exist:
@@ -154,6 +155,7 @@ def main():
             except Exception as e:
                 print(f"CRITICAL ERROR: Failed to load existing model weights: {e}")
                 import traceback
+
                 traceback.print_exc()
                 print("Aborting to prevent accidental state reset.")
                 import sys

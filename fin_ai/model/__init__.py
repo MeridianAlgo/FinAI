@@ -1,2 +1,2 @@
-from .configuration_next import FinAINextConfig
-from .modeling_next import FinAINextForCausalLM, FinAINextModel
+from .configuration_next import FinAINextConfig as FinAINextConfig
+from .modeling_next import FinAINextForCausalLM as FinAINextForCausalLM, FinAINextModel as FinAINextModel

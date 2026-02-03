@@ -32,7 +32,6 @@ class FinAINextPreTrainedModel(PreTrainedModel):
             module.weight.data.normal_(mean=0.0, std=self.config.initializer_range)
 
 
-
 class FinAINextModel(FinAINextPreTrainedModel):
     """
     The core Liquid-BitNet backbone.
