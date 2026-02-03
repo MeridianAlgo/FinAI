@@ -19,7 +19,7 @@ class FinAINextPreTrainedModel(PreTrainedModel):
     standard Transformers library hooks.
     """
 
-    config_class: type[FinAINextConfig] = FinAINextConfig
+    config_class = FinAINextConfig  # type: ignore[assignment]
     base_model_prefix = "model"
     supports_gradient_checkpointing = True
 
@@ -102,7 +102,7 @@ class FinAINextModel(FinAINextPreTrainedModel):
         return hidden_states
 
 
-class FinAINextForCausalLM(FinAINextPreTrainedModel, GenerationMixin):
+class FinAINextForCausalLM(FinAINextPreTrainedModel, GenerationMixin):  # type: ignore[misc]
     """
     FinAI-Next variant with a Causal LM head for text generation.
     Supports tied word embeddings and standard cross-entropy loss.
