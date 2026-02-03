@@ -19,7 +19,7 @@ class FinAINextPreTrainedModel(PreTrainedModel):
     standard Transformers library hooks.
     """
 
-    config_class = FinAINextConfig
+    config_class: type[FinAINextConfig] = FinAINextConfig
     base_model_prefix = "model"
     supports_gradient_checkpointing = True
 
