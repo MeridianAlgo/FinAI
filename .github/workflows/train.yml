@@ -31,6 +31,7 @@ jobs:
       - name: Run Nuke & Seed
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          PYTHONPATH: .
         run: python scripts/seed_hf_repo.py
 
   train:
