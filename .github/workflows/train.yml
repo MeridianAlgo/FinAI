@@ -66,7 +66,7 @@ jobs:
           from huggingface_hub import snapshot_download
           import os
           try:
-              snapshot_download(repo_id='MeridianAlgo/FinAI-Lite', local_dir='./checkpoints_next/model', token=os.getenv('HF_TOKEN'))
+              snapshot_download(repo_id='MeridianAlgo/FinAI-Lite', local_dir='./model', token=os.getenv('HF_TOKEN'))
               print('State pulled from HF')
           except Exception as e:
               print(f'Fresh start required: {e}')
@@ -91,7 +91,7 @@ jobs:
           api = HfApi()
           print('Uploading to Hugging Face...')
           api.upload_folder(
-              folder_path='./checkpoints_next/model',
+              folder_path='./model',
               repo_id='MeridianAlgo/FinAI-Lite',
               commit_message='Hourly deployment via GitHub Engine [skip ci]',
               token=os.getenv('HF_TOKEN')
@@ -103,7 +103,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: model-checkpoint
-          path: ./checkpoints_next/model/
+          path: ./model/
           retention-days: 1
 
       - name: Update Repository State

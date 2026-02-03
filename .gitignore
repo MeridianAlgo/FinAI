@@ -4,6 +4,7 @@
 # Model Checkpoints (Big files, uploaded to Hugging Face)
 checkpoints_next/
 checkpoints/
+model/
 legacy/
 
 # Python System

@@ -106,7 +106,7 @@ def main():
     print("Initializing FinAI-Next (Liquid-BitNet) Overhaul...")
 
     # Path settings
-    model_path = "./checkpoints_next/model"
+    model_path = "./model"
     state_path = "dataset_state.json"
 
     # 1. Load Dataset State
@@ -210,7 +210,7 @@ def main():
         max_steps=max_steps,
         total_steps=total_steps,
         learning_rate=5e-5,
-        output_dir="./checkpoints_next",
+        output_dir="./model",
     )
 
     # 7. Training
