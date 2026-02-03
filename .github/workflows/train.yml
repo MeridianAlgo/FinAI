@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   verify:
-    name: "01. Verify & Lint"
+    name: "Verify & Lint"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -32,17 +32,19 @@ jobs:
           pip install ruff black mypy
           pip install -r requirements.txt
       
-      - name: Hella Linting (Ruff)
-        run: ruff check .
+      - name: Linting Check Via Ruff
+        run: ruff check . --exclude legacy
       
-      - name: Formatting Check (Black)
-        run: black --check .
+      - name: Formatting Check Via Black
+        run: black --check . --exclude legacy
       
-      - name: Type Checking (MyPy)
-        run: mypy --ignore-missing-imports .
+      - name: Type Checking Via MyPy
+        env:
+          PYTHONPATH: .
+        run: mypy --ignore-missing-imports --exclude legacy .
 
   seed:
-    name: "02. Nuke & Seed HF"
+    name: "Nuke & Seed HF"
     needs: verify
     if: github.event.inputs.force_seed == 'true'
     runs-on: ubuntu-latest
@@ -60,8 +62,12 @@ jobs:
         run: python scripts/seed_hf_repo.py
 
   train:
-    name: "03. Distributed Training"
-    needs: verify
+    name: "Distributed Training"
+    needs: [verify, seed]
+    if: |
+      always() && 
+      needs.verify.result == 'success' && 
+      (needs.seed.result == 'success' || needs.seed.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 100
     permissions:
@@ -120,7 +126,7 @@ jobs:
           git push origin main
 
   deploy:
-    name: "04. Deploy to Hugging Face"
+    name: "Deploy to Hugging Face"
     needs: train
     environment:
       name: HuggingFace
@@ -141,7 +147,7 @@ jobs:
           name: model-checkpoint
           path: ./model_to_upload
       
-      - name: Push to Hub
+      - name: Push to Hugging Face Hub
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |

@@ -1,8 +1,10 @@
 import os
+
 from huggingface_hub import HfApi
+from transformers import AutoTokenizer
+
 from fin_ai.model.configuration_next import FinAINextConfig
 from fin_ai.model.modeling_next import FinAINextForCausalLM
-from transformers import AutoTokenizer
 
 
 def seed_repo():

@@ -1,5 +1,6 @@
-import os
 import json
+import os
+
 from comet_ml import API
 from dotenv import load_dotenv
 
