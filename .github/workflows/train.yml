@@ -12,7 +12,7 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   seed:
@@ -35,13 +35,13 @@ jobs:
         run: python scripts/seed_hf_repo.py
 
   train:
-    name: "Distributed Training"
+    name: "Continuous Distributed Training"
     needs: seed
     if: |
       always() && 
       (needs.seed.result == 'success' || needs.seed.result == 'skipped')
     runs-on: ubuntu-latest
-    timeout-minutes: 100
+    timeout-minutes: 120
     permissions:
       contents: write
     steps:
@@ -81,7 +81,25 @@ jobs:
           PYTHONPATH: .
         run: python train.py
 
-      - name: Upload Training State (Artifact)
+      - name: Deploy to Hugging Face Hub
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python -c "
+          from huggingface_hub import HfApi
+          import os
+          api = HfApi()
+          print('Uploading to Hugging Face...')
+          api.upload_folder(
+              folder_path='./checkpoints_next/model',
+              repo_id='MeridianAlgo/FinAI-Lite',
+              commit_message='Hourly deployment via GitHub Engine [skip ci]',
+              token=os.getenv('HF_TOKEN')
+          )
+          print('Deployment successful!')
+          "
+
+      - name: Upload Training State (GitHub Artifact)
         uses: actions/upload-artifact@v4
         with:
           name: model-checkpoint
@@ -96,41 +114,3 @@ jobs:
           git commit -m "chore: sync dataset state [skip ci]" || echo "No changes"
           git pull --rebase -X theirs origin main
           git push origin main
-
-  deploy:
-    name: "Deploy to Hugging Face"
-    needs: train
-    environment:
-      name: HuggingFace Hub
-      url: https://huggingface.co/MeridianAlgo/FinAI-Lite
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
-      - name: Install HF Hub
-        run: pip install huggingface_hub
-      
-      - name: Download Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: model-checkpoint
-          path: ./model_to_upload
-      
-      - name: Push to Hugging Face Hub
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: |
-          python -c "
-          from huggingface_hub import HfApi
-          import os
-          api = HfApi()
-          api.upload_folder(
-              folder_path='./model_to_upload',
-              repo_id='MeridianAlgo/FinAI-Lite',
-              commit_message='Hourly deployment via GitHub Engine',
-              token=os.getenv('HF_TOKEN')
-          )
-          "

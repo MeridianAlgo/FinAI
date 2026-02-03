@@ -235,6 +235,8 @@ def main():
         # Final Save
         print("Saving final state to local storage...")
         trainer.save_checkpoint(model_path)
+        if tokenizer is not None:
+            tokenizer.save_pretrained(model_path)
 
         # Save dataset state
         # `processed_items` loaded from dataset_state.json is the initial skip count for this run.
