@@ -103,7 +103,7 @@ class FinAINextModel(FinAINextPreTrainedModel):
         return hidden_states
 
 
-class FinAINextForCausalLM(FinAINextPreTrainedModel):
+class FinAINextForCausalLM(FinAINextPreTrainedModel, GenerationMixin):  # type: ignore[misc]
     """
     FinAI-Next variant with a Causal LM head for text generation.
     Supports tied word embeddings and standard cross-entropy loss.

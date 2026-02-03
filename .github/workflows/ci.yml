@@ -1,4 +1,4 @@
-name: Tests
+name: CI
 
 on:
   push:
@@ -7,11 +7,12 @@ on:
     branches: [ "main" ]
 
 jobs:
-  verify:
+  lint:
     name: "Verify & Lint"
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    environment: branch
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -65,7 +66,7 @@ jobs:
 
   test:
     name: "Automated Tests"
-    needs: verify
+    needs: lint
     runs-on: ubuntu-latest
     environment: branch
     steps:
