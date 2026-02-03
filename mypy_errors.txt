@@ -1,2 +1,0 @@
-fin_ai\model\modeling_next.py:106: error: Definition of "generation_config" in base class "PreTrainedModel" is incompatible with definition in base class "GenerationMixin"  [misc]
-Found 1 error in 1 file (checked 1 source file)

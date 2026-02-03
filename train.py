@@ -154,13 +154,14 @@ def main():
                 )
                 print("Model weights loaded successfully.")
             except Exception as e:
-                print(f"Error loading model weights: {e}. Reinitializing weights.")
-                model = FinAINextForCausalLM(config)
+                print(f"CRITICAL ERROR: Failed to load existing model weights: {e}")
+                print("Aborting to prevent accidental state reset.")
+                import sys
+                sys.exit(1)
         else:
-            print(
-                f"Config found at {model_path} but weights (model.safetensors) are missing. Initializing fresh weights."
-            )
-            model = FinAINextForCausalLM(config)
+            print(f"CRITICAL ERROR: Config found at {model_path} but weights are missing.")
+            import sys
+            sys.exit(1)
     else:
         print("Initializing new model and config from scratch.")
         model = FinAINextForCausalLM(config)
