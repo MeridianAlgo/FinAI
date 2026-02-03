@@ -59,25 +59,47 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-      
+          pip install ruff black
+
+      - name: Lint and Format
+        run: |
+          black .
+          ruff check . --fix
+
       - name: Pull Model State
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           python -c "
           from huggingface_hub import snapshot_download
-          import os, sys
+          import os, sys, shutil
+          
+          model_dir = './model'
+          os.makedirs(model_dir, exist_ok=True)
+          
+          # 1. Pull General Model (Source of Architecture)
           try:
-              print('Attempting to pull model from HF root...')
-              # Pull everything to root
-              snapshot_download(repo_id='MeridianAlgo/FinAI-Lite', local_dir='.', token=os.getenv('HF_TOKEN'))
-              print('State pulled successfully from HF')
+              print('Pulling General Model from MeridianAlgo/FinAI...')
+              snapshot_download(
+                  repo_id='MeridianAlgo/FinAI', 
+                  local_dir=model_dir, 
+                  token=os.getenv('HF_TOKEN'),
+                  allow_patterns=['config.json', 'tokenizer*', 'generation_config.json']
+              )
           except Exception as e:
-              if '404' in str(e) or 'not found' in str(e).lower():
-                  print(f'NOTE: Repository not found or empty ({e}). Starting fresh.')
-              else:
-                  print(f'CRITICAL ERROR during snapshot download: {e}')
-                  sys.exit(1)
+              print(f'Note: Could not pull general model ({e})')
+
+          # 2. Pull Latest Checkpoint (Source of Weights)
+          try:
+              print('Pulling latest checkpoint from MeridianAlgo/FinAI-Lite...')
+              snapshot_download(
+                  repo_id='MeridianAlgo/FinAI-Lite', 
+                  local_dir=model_dir, 
+                  token=os.getenv('HF_TOKEN')
+              )
+              print('Checkpoint pulled successfully.')
+          except Exception as e:
+              print(f'Note: No existing checkpoint found ({e}). Starting from general model.')
           "
 
       - name: Execute Training Loop
@@ -97,14 +119,12 @@ jobs:
           from huggingface_hub import HfApi
           import os
           api = HfApi()
-          print('Uploading to Hugging Face root...')
-          # Upload everything in root except hidden files and scripts
+          print('Uploading checkpoint to MeridianAlgo/FinAI-Lite...')
           api.upload_folder(
-              folder_path='.',
+              folder_path='./model',
               repo_id='MeridianAlgo/FinAI-Lite',
-              commit_message='Hourly deployment via GitHub Engine [skip ci]',
-              token=os.getenv('HF_TOKEN'),
-              allow_patterns=['config.json', 'model.safetensors', 'trainer_state.pt', 'tokenizer*', 'generation_config.json']
+              commit_message='Hourly checkpoint deployment via GitHub Engine [skip ci]',
+              token=os.getenv('HF_TOKEN')
           )
           print('Deployment successful!')
           "
@@ -113,13 +133,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: model-checkpoint
-          # Upload specific model files
-          path: |
-            config.json
-            model.safetensors
-            trainer_state.pt
-            tokenizer*
-            generation_config.json
+          path: model/
           retention-days: 1
 
       - name: Update Repository State

@@ -106,8 +106,9 @@ def main():
     print("Initializing FinAI-Next (Liquid-BitNet) Overhaul...")
 
     # Path settings
-    model_path = "."
+    model_path = "./model"
     state_path = "dataset_state.json"
+    backup_state_path = os.path.join(model_path, "dataset_state.json")
 
     # 1. Load Dataset State
     processed_items = 0
@@ -134,6 +135,10 @@ def main():
     weights_exist = os.path.exists("model.safetensors") or os.path.exists(
         "pytorch_model.bin"
     )
+    # In the model_path, we look for config.json and weights
+    model_exists = os.path.exists(os.path.join(model_path, "config.json"))
+    weights_exist = os.path.exists(os.path.join(model_path, "model.safetensors")) or \
+                    os.path.exists(os.path.join(model_path, "pytorch_model.bin"))
 
     if model_exists:
         if weights_exist:
@@ -145,9 +150,11 @@ def main():
                     ignore_mismatched_sizes=True,
                     low_cpu_mem_usage=False,
                 )
-                print("Model weights loaded successfully.")
+                print(f"Model weights loaded successfully from {model_path}.")
             except Exception as e:
                 print(f"CRITICAL ERROR: Failed to load existing model weights: {e}")
+                import traceback
+                traceback.print_exc()
                 print("Aborting to prevent accidental state reset.")
                 import sys
 
@@ -208,7 +215,7 @@ def main():
         max_steps=max_steps,
         total_steps=total_steps,
         learning_rate=5e-5,
-        output_dir=".",
+        output_dir=model_path,
     )
 
     # 7. Training
