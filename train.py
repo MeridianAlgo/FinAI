@@ -107,16 +107,30 @@ def main():
 
     # Path settings
     model_path = "./model"
+    checkpoint_path = "./checkpoint"
     state_path = "dataset_state.json"
-    backup_state_path = os.path.join(model_path, "dataset_state.json")
 
     # 1. Load Dataset State
     processed_items = 0
-    if os.path.exists(state_path):
+    checkpoint_state_path = os.path.join(checkpoint_path, "dataset_state.json")
+    model_state_path = os.path.join(model_path, "dataset_state.json")
+    
+    # Priority: checkpoint > model > root
+    if os.path.exists(checkpoint_state_path):
+        with open(checkpoint_state_path, "r") as f:
+            state = json.load(f)
+            processed_items = state.get("processed_items", 0)
+        print(f"Resuming from checkpoint dataset index: {processed_items}")
+    elif os.path.exists(model_state_path):
+        with open(model_state_path, "r") as f:
+            state = json.load(f)
+            processed_items = state.get("processed_items", 0)
+        print(f"Resuming from model dataset index: {processed_items}")
+    elif os.path.exists(state_path):
         with open(state_path, "r") as f:
             state = json.load(f)
             processed_items = state.get("processed_items", 0)
-        print(f"Resuming from dataset index: {processed_items}")
+        print(f"Resuming from root dataset index: {processed_items}")
 
     # 2. Configuration
     config = FinAINextConfig(
@@ -130,46 +144,57 @@ def main():
     print(f"Configuration: {config}")
 
     # 3. Model Initialization or Loading
-    # In the root, we look for config.json and model.safetensors
-    model_exists = os.path.exists("config.json")
-    weights_exist = os.path.exists("model.safetensors") or os.path.exists(
-        "pytorch_model.bin"
-    )
-    # In the model_path, we look for config.json and weights
+    # Priority: checkpoint > model > fresh init
+    checkpoint_exists = os.path.exists(os.path.join(checkpoint_path, "config.json"))
+    checkpoint_weights_exist = os.path.exists(
+        os.path.join(checkpoint_path, "model.safetensors")
+    ) or os.path.exists(os.path.join(checkpoint_path, "pytorch_model.bin"))
+    
     model_exists = os.path.exists(os.path.join(model_path, "config.json"))
     weights_exist = os.path.exists(
         os.path.join(model_path, "model.safetensors")
     ) or os.path.exists(os.path.join(model_path, "pytorch_model.bin"))
 
-    if model_exists:
-        if weights_exist:
-            print(f"Loading existing model and weights from {model_path}...")
-            try:
+    # Try checkpoint first
+    if checkpoint_exists and checkpoint_weights_exist:
+        print(f"Loading checkpoint model from {checkpoint_path}...")
+        try:
+            model = FinAINextForCausalLM.from_pretrained(
+                checkpoint_path,
+                config=config,
+                ignore_mismatched_sizes=True,
+                low_cpu_mem_usage=False,
+            )
+            print("Checkpoint model loaded successfully.")
+        except Exception as e:
+            print(f"Error loading checkpoint: {e}. Trying base model...")
+            if model_exists and weights_exist:
                 model = FinAINextForCausalLM.from_pretrained(
                     model_path,
                     config=config,
                     ignore_mismatched_sizes=True,
                     low_cpu_mem_usage=False,
                 )
-                print(f"Model weights loaded successfully from {model_path}.")
-            except Exception as e:
-                print(f"CRITICAL ERROR: Failed to load existing model weights: {e}")
-                import traceback
-
-                traceback.print_exc()
-                print("Aborting to prevent accidental state reset.")
-                import sys
-
-                sys.exit(1)
-        else:
-            print(
-                f"CRITICAL ERROR: Config found at {model_path} but weights are missing."
+                print("Base model loaded successfully.")
+            else:
+                print("Initializing fresh model.")
+                model = FinAINextForCausalLM(config)
+    # Try base model if no checkpoint
+    elif model_exists and weights_exist:
+        print(f"Loading base model from {model_path}...")
+        try:
+            model = FinAINextForCausalLM.from_pretrained(
+                model_path,
+                config=config,
+                ignore_mismatched_sizes=True,
+                low_cpu_mem_usage=False,
             )
-            import sys
-
-            sys.exit(1)
+            print("Base model loaded successfully.")
+        except Exception as e:
+            print(f"Error loading model: {e}. Reinitializing.")
+            model = FinAINextForCausalLM(config)
     else:
-        print("Initializing new model and config from scratch.")
+        print("No existing model found. Initializing new model from scratch.")
         model = FinAINextForCausalLM(config)
 
     # Debug: Print initial weight sample
@@ -217,17 +242,22 @@ def main():
         max_steps=max_steps,
         total_steps=total_steps,
         learning_rate=5e-5,
-        output_dir=model_path,
+        output_dir=checkpoint_path,
     )
 
     # 7. Training
     trainer = TernaryTrainer(model, dataloader, train_config)
 
     initial_global_step = 0
-    # Load trainer state if it exists
-    if model_exists:
+    # Load trainer state - try checkpoint first, then model
+    if checkpoint_exists and checkpoint_weights_exist:
+        trainer.load_checkpoint(checkpoint_path)
+        initial_global_step = trainer.global_step
+        print(f"Loaded trainer state from checkpoint (step {initial_global_step})")
+    elif model_exists and weights_exist:
         trainer.load_checkpoint(model_path)
         initial_global_step = trainer.global_step
+        print(f"Loaded trainer state from base model (step {initial_global_step})")
 
     try:
         trainer.train()
@@ -239,18 +269,13 @@ def main():
             weight_sample = model.model.embed_tokens.weight[0][:5].tolist()
             print(f"DEBUG: Final weight sample: {weight_sample}")
 
-        # Final Save
-        print("Saving final state to local storage...")
-        trainer.save_checkpoint(model_path)
+        # Final Save - always save to checkpoint path
+        print("Saving final state to checkpoint...")
+        trainer.save_checkpoint(checkpoint_path)
         if tokenizer is not None:
-            tokenizer.save_pretrained(model_path)
+            tokenizer.save_pretrained(checkpoint_path)
 
         # Save dataset state
-        # `processed_items` loaded from dataset_state.json is the initial skip count for this run.
-        # `initial_global_step` is the global_step loaded from trainer_state.pt (or 0 if new).
-        # `trainer.global_step` is the final global_step after training.
-        # Number of optimization steps completed in this run = trainer.global_step - initial_global_step.
-        # Each optimization step processes `train_config.batch_size * train_config.gradient_accumulation_steps` dataloader batches.
         batches_processed_in_this_run = (
             (trainer.global_step - initial_global_step)
             * train_config.batch_size
@@ -261,11 +286,12 @@ def main():
         with open(state_path, "w") as f:
             json.dump({"processed_items": new_processed}, f)
 
-        # Save a backup synced with weights
-        with open(backup_state_path, "w") as f:
+        # Save state synced with checkpoint
+        checkpoint_state_backup = os.path.join(checkpoint_path, "dataset_state.json")
+        with open(checkpoint_state_backup, "w") as f:
             json.dump({"processed_items": new_processed}, f)
 
-        print(f"Final state saved. Total processed: {new_processed}")
+        print(f"Checkpoint saved. Total processed: {new_processed}")
 
 
 if __name__ == "__main__":

@@ -71,35 +71,47 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           python -c "
-          from huggingface_hub import snapshot_download
-          import os, sys, shutil
+          from huggingface_hub import snapshot_download, list_repo_files
+          import os, shutil
           
-          model_dir = './model'
-          os.makedirs(model_dir, exist_ok=True)
+          repo_id = 'MeridianAlgo/FinAI-Lite'
+          token = os.getenv('HF_TOKEN')
           
-          # 1. Pull General Model (Source of Architecture)
           try:
-              print('Pulling General Model from MeridianAlgo/FinAI...')
-              snapshot_download(
-                  repo_id='MeridianAlgo/FinAI', 
-                  local_dir=model_dir, 
-                  token=os.getenv('HF_TOKEN'),
-                  allow_patterns=['config.json', 'tokenizer*', 'generation_config.json']
-              )
+              files = list_repo_files(repo_id=repo_id, token=token)
+              print(f'Files in repo: {files[:10]}...')
+              
+              has_checkpoint = any('checkpoint/' in f for f in files)
+              has_root_model = 'config.json' in files
+              
+              if has_checkpoint:
+                  print('Checkpoint found! Pulling checkpoint...')
+                  snapshot_download(
+                      repo_id=repo_id, 
+                      local_dir='./checkpoint',
+                      allow_patterns='checkpoint/**',
+                      token=token
+                  )
+                  if os.path.exists('./checkpoint/checkpoint'):
+                      for item in os.listdir('./checkpoint/checkpoint'):
+                          shutil.move(
+                              os.path.join('./checkpoint/checkpoint', item),
+                              os.path.join('./checkpoint', item)
+                          )
+                      os.rmdir('./checkpoint/checkpoint')
+                  print('Checkpoint pulled successfully')
+              elif has_root_model:
+                  print('Root model found! Pulling to model directory...')
+                  snapshot_download(
+                      repo_id=repo_id,
+                      local_dir='./model',
+                      token=token
+                  )
+                  print('Root model pulled successfully')
+              else:
+                  print('No model found in repo. Starting fresh.')
           except Exception as e:
-              print(f'Note: Could not pull general model ({e})')
-
-          # 2. Pull Latest Checkpoint (Source of Weights)
-          try:
-              print('Pulling latest checkpoint from MeridianAlgo/FinAI-Lite...')
-              snapshot_download(
-                  repo_id='MeridianAlgo/FinAI-Lite', 
-                  local_dir=model_dir, 
-                  token=os.getenv('HF_TOKEN')
-              )
-              print('Checkpoint pulled successfully.')
-          except Exception as e:
-              print(f'Note: No existing checkpoint found ({e}). Starting from general model.')
+              print(f'Error pulling state: {e}. Starting fresh.')
           "
 
       - name: Execute Training Loop
@@ -121,9 +133,10 @@ jobs:
           api = HfApi()
           print('Uploading checkpoint to MeridianAlgo/FinAI-Lite...')
           api.upload_folder(
-              folder_path='./model',
+              folder_path='./checkpoint',
               repo_id='MeridianAlgo/FinAI-Lite',
-              commit_message='Hourly checkpoint deployment via GitHub Engine [skip ci]',
+              path_in_repo='checkpoint',
+              commit_message='Training checkpoint update via GitHub Engine [skip ci]',
               token=os.getenv('HF_TOKEN')
           )
           print('Deployment successful!')
@@ -133,7 +146,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: model-checkpoint
-          path: model/
+          path: checkpoint/
           retention-days: 1
 
       - name: Update Repository State
