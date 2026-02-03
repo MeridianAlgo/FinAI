@@ -169,9 +169,7 @@ class TernaryTrainer:
                     self.save_checkpoint()
 
     def save_checkpoint(self, path=None):
-        save_path = path or os.path.join(
-            self.config.output_dir, f"step-{self.global_step}"
-        )
+        save_path = path or self.config.output_dir
         os.makedirs(save_path, exist_ok=True)
 
         print(f"\n[INFO] Saving trainer state to {save_path}...")

@@ -106,24 +106,16 @@ def main():
     print("Initializing FinAI-Next (Liquid-BitNet) Overhaul...")
 
     # Path settings
-    model_path = "./model"
+    model_path = "."
     state_path = "dataset_state.json"
 
     # 1. Load Dataset State
     processed_items = 0
-    # Prefer state synced with weights if it exists
-    backup_state_path = os.path.join(model_path, "dataset_state.json")
-
-    if os.path.exists(backup_state_path):
-        with open(backup_state_path, "r") as f:
-            state = json.load(f)
-            processed_items = state.get("processed_items", 0)
-        print(f"Resuming from synced dataset index: {processed_items}")
-    elif os.path.exists(state_path):
+    if os.path.exists(state_path):
         with open(state_path, "r") as f:
             state = json.load(f)
             processed_items = state.get("processed_items", 0)
-        print(f"Resuming from root dataset index: {processed_items}")
+        print(f"Resuming from dataset index: {processed_items}")
 
     # 2. Configuration
     config = FinAINextConfig(
@@ -137,10 +129,9 @@ def main():
     print(f"Configuration: {config}")
 
     # 3. Model Initialization or Loading
-    model_exists = os.path.exists(os.path.join(model_path, "config.json"))
-    weights_exist = os.path.exists(
-        os.path.join(model_path, "model.safetensors")
-    ) or os.path.exists(os.path.join(model_path, "pytorch_model.bin"))
+    # In the root, we look for config.json and model.safetensors
+    model_exists = os.path.exists("config.json")
+    weights_exist = os.path.exists("model.safetensors") or os.path.exists("pytorch_model.bin")
 
     if model_exists:
         if weights_exist:
@@ -211,7 +202,7 @@ def main():
         max_steps=max_steps,
         total_steps=total_steps,
         learning_rate=5e-5,
-        output_dir="./model",
+        output_dir=".",
     )
 
     # 7. Training

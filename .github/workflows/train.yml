@@ -68,8 +68,9 @@ jobs:
           from huggingface_hub import snapshot_download
           import os, sys
           try:
-              print('Attempting to pull model from HF...')
-              snapshot_download(repo_id='MeridianAlgo/FinAI-Lite', local_dir='./model', token=os.getenv('HF_TOKEN'))
+              print('Attempting to pull model from HF root...')
+              # Pull everything to root
+              snapshot_download(repo_id='MeridianAlgo/FinAI-Lite', local_dir='.', token=os.getenv('HF_TOKEN'))
               print('State pulled successfully from HF')
           except Exception as e:
               if '404' in str(e) or 'not found' in str(e).lower():
@@ -96,12 +97,14 @@ jobs:
           from huggingface_hub import HfApi
           import os
           api = HfApi()
-          print('Uploading to Hugging Face...')
+          print('Uploading to Hugging Face root...')
+          # Upload everything in root except hidden files and scripts
           api.upload_folder(
-              folder_path='./model',
+              folder_path='.',
               repo_id='MeridianAlgo/FinAI-Lite',
               commit_message='Hourly deployment via GitHub Engine [skip ci]',
-              token=os.getenv('HF_TOKEN')
+              token=os.getenv('HF_TOKEN'),
+              allow_patterns=['config.json', 'model.safetensors', 'trainer_state.pt', 'tokenizer*', 'generation_config.json']
           )
           print('Deployment successful!')
           "
@@ -110,7 +113,13 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: model-checkpoint
-          path: ./model/
+          # Upload specific model files
+          path: |
+            config.json
+            model.safetensors
+            trainer_state.pt
+            tokenizer*
+            generation_config.json
           retention-days: 1
 
       - name: Update Repository State
