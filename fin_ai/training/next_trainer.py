@@ -185,7 +185,7 @@ class TernaryTrainer:
             torch.cuda.empty_cache()
 
         # Save model
-        self.model.save_pretrained(save_path, safe_serialization=False)
+        self.model.save_pretrained(save_path, safe_serialization=True)
 
         # Save optimizer, scheduler and global_step
         checkpoint = {

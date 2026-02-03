@@ -1,0 +1,49 @@
+Training Run Loss Summary
+========================
+
+Run: involved_alpaca_5906
+  Start: Step 701, Loss 7.3039
+  End:   Step 601, Loss 16.2357
+
+Run: wet_shark_5904
+  Start: Step 601, Loss 16.2559
+  End:   Step 762, Loss 7.5759
+  [!] ISSUE: Loss started > 15. Weights were likely reset.
+
+Run: available_watt_2751
+  Start: Step 601, Loss 16.2848
+  End:   Step 726, Loss 8.6252
+  [!] ISSUE: Loss started > 15. Weights were likely reset.
+
+Run: cheerful_groove_2685
+  Start: Step 601, Loss 16.2904
+  End:   Step 800, Loss 7.9018
+  [!] ISSUE: Loss started > 15. Weights were likely reset.
+
+Run: crimson_blend_3188
+  Start: Step 801, Loss 16.2668
+  End:   Step 1000, Loss 8.0720
+  [!] ISSUE: Loss started > 15. Weights were likely reset.
+
+Run: stiff_kiwano_215
+  Start: Step 1123, Loss 7.5791
+  End:   Step 1001, Loss 16.3260
+
+Run: systematic_kiwifruit_2816
+  Start: Step 1180, Loss 6.9540
+  End:   Step 1001, Loss 16.3995
+
+Run: linear_rubble_2314
+  Start: Step 1001, Loss 16.3379
+  End:   Step 1138, Loss 7.3512
+  [!] ISSUE: Loss started > 15. Weights were likely reset.
+
+Run: supposed_primer_7834
+  Start: Step 1001, Loss 16.3573
+  End:   Step 1151, Loss 7.9693
+  [!] ISSUE: Loss started > 15. Weights were likely reset.
+
+Run: complete_hearth_4409
+  Start: Step 1001, Loss 16.4055
+  End:   Step 1016, Loss 10.8184
+  [!] ISSUE: Loss started > 15. Weights were likely reset.

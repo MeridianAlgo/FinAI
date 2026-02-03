@@ -1,78 +1,147 @@
-name: Hourly FinAI Training
+name: FinAI Training Engine
 
 on:
   schedule:
-    - cron: '0 */2 * * *' # Every 2 hours (to avoid overlap since training takes ~1.5h)
-  workflow_dispatch: # Manual trigger
+    - cron: '0 */2 * * *'
+  workflow_dispatch:
+    inputs:
+      force_seed:
+        description: 'Nuke and Re-seed HF Repo?'
+        type: boolean
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  train:
-    environment: 
-      name: production
-      url: https://huggingface.co/MeridianAlgo/FinAI-Lite
+  verify:
+    name: "01. Verify & Lint"
     runs-on: ubuntu-latest
-    timeout-minutes: 115
-    permissions:
-      contents: write
-    
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
+      - uses: actions/checkout@v4
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
           cache: 'pip'
-
-      - name: Install Dependencies
+      
+      - name: Check & Install Dependencies
         run: |
           python -m pip install --upgrade pip
+          pip install ruff black mypy
           pip install -r requirements.txt
+      
+      - name: Hella Linting (Ruff)
+        run: ruff check .
+      
+      - name: Formatting Check (Black)
+        run: black --check .
+      
+      - name: Type Checking (MyPy)
+        run: mypy --ignore-missing-imports .
 
-      - name: Download Model from HF (Optional)
+  seed:
+    name: "02. Nuke & Seed HF"
+    needs: verify
+    if: github.event.inputs.force_seed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Install Critical Deps
+        run: pip install huggingface_hub transformers torch datasets python-dotenv
+      - name: Run Nuke & Seed
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: python scripts/seed_hf_repo.py
+
+  train:
+    name: "03. Distributed Training"
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+      
+      - name: Install Dependencies
+        run: pip install -r requirements.txt
+      
+      - name: Pull Model State
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           python -c "
-          from huggingface_hub import HfApi, snapshot_download
+          from huggingface_hub import snapshot_download
           import os
-          repo_id = 'MeridianAlgo/FinAI-Lite'
-          print(f'Attempting to download from {repo_id}...')
           try:
-              snapshot_download(repo_id=repo_id, local_dir='./checkpoints_next/model', token=os.getenv('HF_TOKEN'))
-              print('Model downloaded successfully')
+              snapshot_download(repo_id='MeridianAlgo/FinAI-Lite', local_dir='./checkpoints_next/model', token=os.getenv('HF_TOKEN'))
+              print('State pulled from HF')
           except Exception as e:
-              print(f'No model found or error: {e}')
+              print(f'Fresh start required: {e}')
           "
-          echo "Directory content after download:"
-          ls -R ./checkpoints_next || echo "Directory does not exist"
 
-      - name: Run Training
+      - name: Execute Training Loop
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           COMET_API_KEY: ${{ secrets.COMET_API_KEY }}
           MAX_STEPS: 200
           TOTAL_STEPS: 100000
           PYTHONPATH: .
-        run: |
-          python train.py
+        run: python train.py
 
-      - name: Debug Output
-        run: |
-          echo "Directory content after training:"
-          ls -R ./checkpoints_next
-          if [ -f "dataset_state.json" ]; then
-            cat dataset_state.json
-          fi
+      - name: Upload Training State (Artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-checkpoint
+          path: ./checkpoints_next/model/
+          retention-days: 1
 
-      - name: Upload Model to HF
+      - name: Update Repository State
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add dataset_state.json
+          git commit -m "chore: sync dataset state [skip ci]" || echo "No changes"
+          git pull --rebase -X theirs origin main
+          git push origin main
+
+  deploy:
+    name: "04. Deploy to Hugging Face"
+    needs: train
+    environment:
+      name: HuggingFace
+      url: https://huggingface.co/MeridianAlgo/FinAI-Lite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Install HF Hub
+        run: pip install huggingface_hub
+      
+      - name: Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: model-checkpoint
+          path: ./model_to_upload
+      
+      - name: Push to Hub
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
@@ -80,20 +149,10 @@ jobs:
           from huggingface_hub import HfApi
           import os
           api = HfApi()
-          repo_id = 'MeridianAlgo/FinAI-Lite'
           api.upload_folder(
-              folder_path='./checkpoints_next/model',
-              repo_id=repo_id,
-              commit_message='Hourly training update',
+              folder_path='./model_to_upload',
+              repo_id='MeridianAlgo/FinAI-Lite',
+              commit_message='Hourly deployment via GitHub Engine',
               token=os.getenv('HF_TOKEN')
           )
           "
-
-      - name: Commit and Push State
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add dataset_state.json
-          git commit -m "Update dataset state [skip ci]" || echo "No changes to commit"
-          git pull --rebase -X theirs origin main
-          git push origin main

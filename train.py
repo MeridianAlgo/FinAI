@@ -138,7 +138,9 @@ def main():
 
     # 3. Model Initialization or Loading
     model_exists = os.path.exists(os.path.join(model_path, "config.json"))
-    weights_exist = os.path.exists(os.path.join(model_path, "model.safetensors"))
+    weights_exist = os.path.exists(
+        os.path.join(model_path, "model.safetensors")
+    ) or os.path.exists(os.path.join(model_path, "pytorch_model.bin"))
 
     if model_exists:
         if weights_exist:

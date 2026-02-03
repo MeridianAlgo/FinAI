@@ -1,72 +1,65 @@
 import os
-
-from dotenv import load_dotenv
 from huggingface_hub import HfApi
-
 from fin_ai.model.configuration_next import FinAINextConfig
 from fin_ai.model.modeling_next import FinAINextForCausalLM
+from transformers import AutoTokenizer
 
-load_dotenv()
 
-
-def push():
-    print("Seeding Hugging Face repository with initial model...")
+def seed_repo():
+    token = os.getenv("HF_TOKEN")
     repo_id = "MeridianAlgo/FinAI-Lite"
-    model_path = "./checkpoints_next/model"
+    api = HfApi(token=token)
 
-    # 1. Setup Config (Exactly as in train.py)
+    print(f"Nuking and Seeding {repo_id}...")
+
+    # 1. Nuke existing files if repo exists
+    try:
+        files = api.list_repo_files(repo_id)
+        for file in files:
+            if file != ".gitattributes":
+                print(f"  - Deleting {file}")
+                api.delete_file(path_in_repo=file, repo_id=repo_id)
+    except Exception as e:
+        print(f"Repo might not exist or error: {e}")
+        api.create_repo(repo_id=repo_id, exist_ok=True)
+
+    # 2. Re-initialize Model & Config
     config = FinAINextConfig(
         vocab_size=151665,
         hidden_size=1536,
         num_layers=24,
         liquid_state_dim=384,
         gradient_checkpointing=True,
+        tie_word_embeddings=True,
     )
-
-    # 2. Initialize Model
-    print("Initializing model architecture...")
     model = FinAINextForCausalLM(config)
 
-    # 3. Save locally
-    print(f"Saving architecture to {model_path}...")
-    os.makedirs(model_path, exist_ok=True)
-    # Save config and model architecture metadata
-    model.config.save_pretrained(model_path)
+    # 3. Save locally temp
+    temp_dir = "./temp_seed"
+    os.makedirs(temp_dir, exist_ok=True)
+    model.save_pretrained(temp_dir, safe_serialization=True)
 
-    # We do NOT save the weights here to keep the seed light.
-    # We also want to include the tokenizer config if possible
-    from transformers import AutoTokenizer
+    # 4. Tokenizer
+    tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-0.5B")
+    tokenizer.save_pretrained(temp_dir)
 
-    try:
-        tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-0.5B")
-        tokenizer.save_pretrained(model_path)
-    except Exception as e:
-        print(f"Warning: Could not save tokenizer to seed: {e}")
+    # 5. Upload everything
+    print("Uploading seed files...")
+    api.upload_folder(
+        folder_path=temp_dir,
+        repo_id=repo_id,
+        commit_message="Nuke and Seed: Fresh Start",
+    )
 
-    # 4. Copy Model Card
-    print("Adding Model Card...")
+    # Cleanup
     import shutil
 
-    if os.path.exists("MODEL_CARD.md"):
-        shutil.copy("MODEL_CARD.md", os.path.join(model_path, "README.md"))
-
-    # 5. Push to HF
-    print(f"Pushing seed to HF: {repo_id}...")
-    hf_token = os.getenv("HF_TOKEN")
-    if not hf_token:
-        print("ERROR: HF_TOKEN not found in .env")
-        return
-
-    api = HfApi()
-    api.create_repo(repo_id=repo_id, exist_ok=True, token=hf_token)
-    api.upload_folder(
-        folder_path=model_path,
-        repo_id=repo_id,
-        commit_message="Initial FinAI-Next Architecture Seed (Config + Tokenizer)",
-        token=hf_token,
-    )
-    print("Seed successful! HF Repo now contains architecture but no weights yet.")
+    shutil.rmtree(temp_dir)
+    print("Seeding complete.")
 
 
 if __name__ == "__main__":
-    push()
+    if not os.getenv("HF_TOKEN"):
+        print("HF_TOKEN not found in env")
+    else:
+        seed_repo()
