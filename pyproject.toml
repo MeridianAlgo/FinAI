@@ -22,3 +22,7 @@ packages = ["fin_ai"]
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+
+[tool.mypy]
+exclude = ["legacy/"]
+ignore_missing_imports = true
