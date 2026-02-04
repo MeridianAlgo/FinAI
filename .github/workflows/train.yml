@@ -153,7 +153,7 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add dataset_state.json
-          git commit -m "chore: sync dataset state [skip ci]" || echo "No changes"
-          git pull --rebase -X theirs origin main
+          git add -A
+          git diff --staged --quiet || git commit -m "chore: sync dataset state and lint fixes [skip ci]"
+          git pull --rebase -X theirs origin main || (git rebase --abort && git pull --no-rebase origin main)
           git push origin main
