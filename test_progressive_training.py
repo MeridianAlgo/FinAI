@@ -203,17 +203,37 @@ def main():
     print("=" * 60 + "\n")
 
     success = True
+
+    # Check 1: Ending loss of iteration N should equal starting loss of iteration N+1
+    print("Check 1: Continuity (ending loss = next starting loss)")
+    for i in range(len(results) - 1):
+        current_end = results[i]["ending_loss"]
+        next_start = results[i + 1]["starting_loss"]
+        diff = abs(current_end - next_start)
+
+        if diff < 0.01:  # Allow small floating point differences
+            print(
+                f"[PASS] Iteration {i+1} ending ({current_end:.4f}) = Iteration {i+2} starting ({next_start:.4f})"
+            )
+        else:
+            print(
+                f"[FAIL] Iteration {i+1} ending ({current_end:.4f}) != Iteration {i+2} starting ({next_start:.4f}), diff={diff:.4f}"
+            )
+            success = False
+
+    # Check 2: Starting loss should decrease across iterations
+    print("\nCheck 2: Progressive decrease (each starting loss < previous)")
     for i in range(len(results) - 1):
         current_start = results[i]["starting_loss"]
         next_start = results[i + 1]["starting_loss"]
 
         if next_start < current_start:
             print(
-                f"✓ Iteration {i+2} starting loss ({next_start:.4f}) < Iteration {i+1} starting loss ({current_start:.4f})"
+                f"[PASS] Iteration {i+2} starting ({next_start:.4f}) < Iteration {i+1} starting ({current_start:.4f})"
             )
         else:
             print(
-                f"✗ FAILED: Iteration {i+2} starting loss ({next_start:.4f}) >= Iteration {i+1} starting loss ({current_start:.4f})"
+                f"[FAIL] Iteration {i+2} starting ({next_start:.4f}) >= Iteration {i+1} starting ({current_start:.4f})"
             )
             success = False
 
@@ -225,9 +245,11 @@ def main():
         os.remove(state_path)
 
     if success:
-        print("\n✓ TEST PASSED: Loss decreases progressively across training runs!")
+        print(
+            "\n[PASS] TEST PASSED: Loss decreases progressively across training runs!"
+        )
     else:
-        print("\n✗ TEST FAILED: Loss does not decrease progressively!")
+        print("\n[FAIL] TEST FAILED: Loss does not decrease progressively!")
         exit(1)
 
 
