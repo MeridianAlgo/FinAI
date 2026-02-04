@@ -47,9 +47,10 @@ class TernaryTrainer:
             weight_decay=self.config.weight_decay,
         )
 
-        # Use max_steps (per-run steps) for scheduler, not total_steps (cumulative)
+        # Don't reset scheduler - it should continue from where it left off
+        # Use total_steps for the full training lifecycle
         self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-            self.optimizer, T_max=self.config.max_steps
+            self.optimizer, T_max=self.config.total_steps, eta_min=1e-6
         )
 
         # Track steps within current run for proper scheduler behavior
@@ -148,7 +149,9 @@ class TernaryTrainer:
                 lr = self.scheduler.get_last_lr()[0]
 
                 # Log every step to see LR behavior
-                print(f"\n[STEP {self.global_step}] Loss: {actual_loss:.4f}, LR: {lr:.2e}, Run Step: {self.run_step}/{self.config.max_steps}")
+                print(
+                    f"\n[STEP {self.global_step}] Loss: {actual_loss:.4f}, LR: {lr:.2e}, Run Step: {self.run_step}/{self.config.max_steps}"
+                )
 
                 # GitHub Step Summary
                 if os.getenv("GITHUB_STEP_SUMMARY"):
@@ -182,13 +185,22 @@ class TernaryTrainer:
 
         print(f"\n[INFO] Saving trainer state to {save_path}...")
 
-        # Move model to CPU to release handles and save memory
+        # Move model to CPU and clear CUDA cache
+        device_before = next(self.model.parameters()).device
         self.model.cpu()
         import gc
 
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
+
+        # Delete old safetensors file if it exists (Windows file locking workaround)
+        safetensors_path = os.path.join(save_path, "model.safetensors")
+        if os.path.exists(safetensors_path):
+            try:
+                os.remove(safetensors_path)
+            except Exception as e:
+                print(f"[WARN] Could not remove old safetensors file: {e}")
 
         # Save model
         self.model.save_pretrained(save_path, safe_serialization=True)
@@ -204,8 +216,8 @@ class TernaryTrainer:
         torch.save(checkpoint, os.path.join(save_path, "trainer_state.pt"))
         print("[INFO] Checkpoint saved successfully.")
 
-        # Move model back to device
-        self.model.to(self.device)
+        # Move model back to original device
+        self.model.to(device_before)
 
     def load_checkpoint(self, load_path):
         if not os.path.exists(load_path):

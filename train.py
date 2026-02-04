@@ -114,7 +114,7 @@ def main():
     processed_items = 0
     checkpoint_state_path = os.path.join(checkpoint_path, "dataset_state.json")
     model_state_path = os.path.join(model_path, "dataset_state.json")
-    
+
     # Priority: checkpoint > model > root
     if os.path.exists(checkpoint_state_path):
         with open(checkpoint_state_path, "r") as f:
@@ -149,7 +149,7 @@ def main():
     checkpoint_weights_exist = os.path.exists(
         os.path.join(checkpoint_path, "model.safetensors")
     ) or os.path.exists(os.path.join(checkpoint_path, "pytorch_model.bin"))
-    
+
     model_exists = os.path.exists(os.path.join(model_path, "config.json"))
     weights_exist = os.path.exists(
         os.path.join(model_path, "model.safetensors")

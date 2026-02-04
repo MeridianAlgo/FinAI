@@ -108,6 +108,8 @@ class FinAINextForCausalLM(FinAINextPreTrainedModel, GenerationMixin):  # type: 
     Supports tied word embeddings and standard cross-entropy loss.
     """
 
+    _tied_weights_keys: list[str] = ["lm_head.weight"]  # type: ignore[assignment]
+
     def __init__(self, config):
         super().__init__(config)
         self.model = FinAINextModel(config)
