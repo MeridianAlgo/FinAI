@@ -41,7 +41,7 @@ jobs:
       always() && 
       (needs.seed.result == 'success' || needs.seed.result == 'skipped')
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 240
     permissions:
       contents: write
     steps:

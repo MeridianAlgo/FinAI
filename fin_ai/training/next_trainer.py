@@ -47,9 +47,13 @@ class TernaryTrainer:
             weight_decay=self.config.weight_decay,
         )
 
+        # Use max_steps (per-run steps) for scheduler, not total_steps (cumulative)
         self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-            self.optimizer, T_max=self.config.total_steps
+            self.optimizer, T_max=self.config.max_steps
         )
+
+        # Track steps within current run for proper scheduler behavior
+        self.run_step = 0
 
         # Real-time Tracking
         self.experiment = None
@@ -137,10 +141,14 @@ class TernaryTrainer:
                 self.scheduler.step()
                 self.optimizer.zero_grad()
                 self.global_step += 1
+                self.run_step += 1
 
                 # Tracking
                 actual_loss = loss.item() * self.config.gradient_accumulation_steps
                 lr = self.scheduler.get_last_lr()[0]
+
+                # Log every step to see LR behavior
+                print(f"\n[STEP {self.global_step}] Loss: {actual_loss:.4f}, LR: {lr:.2e}, Run Step: {self.run_step}/{self.config.max_steps}")
 
                 # GitHub Step Summary
                 if os.getenv("GITHUB_STEP_SUMMARY"):
@@ -190,6 +198,7 @@ class TernaryTrainer:
             "optimizer_state_dict": self.optimizer.state_dict(),
             "scheduler_state_dict": self.scheduler.state_dict(),
             "global_step": self.global_step,
+            "run_step": self.run_step,
             "config": self.config,
         }
         torch.save(checkpoint, os.path.join(save_path, "trainer_state.pt"))
@@ -217,8 +226,9 @@ class TernaryTrainer:
             self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
             self.scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
             self.global_step = checkpoint["global_step"]
+            self.run_step = checkpoint.get("run_step", 0)  # Backward compatible
             print(
-                f"[INFO] Loaded optimizer, scheduler, and global_step ({self.global_step})."
+                f"[INFO] Loaded optimizer, scheduler, and global_step ({self.global_step}), run_step ({self.run_step})."
             )
         else:
             print(
