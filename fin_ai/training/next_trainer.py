@@ -201,28 +201,28 @@ class TernaryTrainer:
         if os.path.exists(safetensors_path):
             try:
                 os.remove(safetensors_path)
-                print(f"  Removed old safetensors file")
+                print("  Removed old safetensors file")
             except Exception as e:
                 print(f"  [WARN] Could not remove old safetensors file: {e}")
 
         # Save model - CRITICAL for progressive training
-        print(f"  Saving model weights...")
+        print("  Saving model weights...")
         try:
             self.model.save_pretrained(save_path, safe_serialization=True)
-            print(f"  ✓ Model weights saved successfully")
-            
+            print("  ✓ Model weights saved successfully")
+
             # Verify the file was created
             if os.path.exists(safetensors_path):
                 size_mb = os.path.getsize(safetensors_path) / (1024 * 1024)
                 print(f"  ✓ Verified: model.safetensors ({size_mb:.2f} MB)")
             else:
-                print(f"  ✗ WARNING: model.safetensors not found after save!")
+                print("  ✗ WARNING: model.safetensors not found after save!")
         except Exception as e:
             print(f"  ✗ ERROR saving model: {e}")
             raise
 
         # Save optimizer, scheduler and global_step
-        print(f"  Saving trainer state...")
+        print("  Saving trainer state...")
         checkpoint = {
             "optimizer_state_dict": self.optimizer.state_dict(),
             "scheduler_state_dict": self.scheduler.state_dict(),
@@ -232,7 +232,7 @@ class TernaryTrainer:
         }
         trainer_state_path = os.path.join(save_path, "trainer_state.pt")
         torch.save(checkpoint, trainer_state_path)
-        
+
         # Verify trainer state
         if os.path.exists(trainer_state_path):
             size_kb = os.path.getsize(trainer_state_path) / 1024
@@ -240,8 +240,8 @@ class TernaryTrainer:
             print(f"    - Global step: {self.global_step}")
             print(f"    - Run step: {self.run_step}")
         else:
-            print(f"  ✗ WARNING: trainer_state.pt not found after save!")
-        
+            print("  ✗ WARNING: trainer_state.pt not found after save!")
+
         print(f"{'='*60}\n")
 
         # Move model back to original device

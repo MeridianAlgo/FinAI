@@ -156,7 +156,7 @@ def main():
     ) or os.path.exists(os.path.join(model_path, "pytorch_model.bin"))
 
     model_loaded = False
-    
+
     # Try checkpoint first
     if checkpoint_exists and checkpoint_weights_exist:
         print(f"Loading checkpoint model from {checkpoint_path}...")
@@ -172,7 +172,7 @@ def main():
         except Exception as e:
             print(f"✗ Error loading checkpoint: {e}")
             print("Will try base model or initialize fresh...")
-    
+
     # Try base model if checkpoint failed
     if not model_loaded and model_exists and weights_exist:
         print(f"Loading base model from {model_path}...")
@@ -188,7 +188,7 @@ def main():
         except Exception as e:
             print(f"✗ Error loading base model: {e}")
             print("Will initialize fresh model...")
-    
+
     # Initialize fresh if nothing loaded
     if not model_loaded:
         print("⚠ No existing model found. Initializing new model from scratch.")
@@ -201,7 +201,7 @@ def main():
         weight_mean = model.model.embed_tokens.weight.mean().item()
         weight_std = model.model.embed_tokens.weight.std().item()
         print(f"\n{'='*60}")
-        print(f"INITIAL MODEL STATE")
+        print("INITIAL MODEL STATE")
         print(f"{'='*60}")
         print(f"Weight sample: {[f'{x:.4f}' for x in weight_sample]}")
         print(f"Weight mean: {weight_mean:.6f}, std: {weight_std:.6f}")
@@ -276,7 +276,7 @@ def main():
             weight_mean = model.model.embed_tokens.weight.mean().item()
             weight_std = model.model.embed_tokens.weight.std().item()
             print(f"\n{'='*60}")
-            print(f"FINAL MODEL STATE")
+            print("FINAL MODEL STATE")
             print(f"{'='*60}")
             print(f"Weight sample: {[f'{x:.4f}' for x in weight_sample]}")
             print(f"Weight mean: {weight_mean:.6f}, std: {weight_std:.6f}")
@@ -289,7 +289,7 @@ def main():
         print(f"Saving to: {checkpoint_path}")
         trainer.save_checkpoint(checkpoint_path)
         print("✓ Model weights saved")
-        
+
         if tokenizer is not None:
             tokenizer.save_pretrained(checkpoint_path)
             print("✓ Tokenizer saved")
