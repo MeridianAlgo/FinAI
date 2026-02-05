@@ -22,6 +22,7 @@ class FinAINextPreTrainedModel(PreTrainedModel):
     config_class = FinAINextConfig  # type: ignore[assignment]
     base_model_prefix = "model"
     supports_gradient_checkpointing = True
+    _tied_weights_keys = {}
 
     def _init_weights(self, module):
         if isinstance(module, (nn.Linear, BitLinear)):
@@ -108,8 +109,6 @@ class FinAINextForCausalLM(FinAINextPreTrainedModel, GenerationMixin):  # type: 
     Supports tied word embeddings and standard cross-entropy loss.
     """
 
-    _tied_weights_keys: list[str] = ["lm_head.weight"]  # type: ignore[assignment]
-
     def __init__(self, config):
         super().__init__(config)
         self.model = FinAINextModel(config)
@@ -129,6 +128,13 @@ class FinAINextForCausalLM(FinAINextPreTrainedModel, GenerationMixin):  # type: 
 
     def set_output_embeddings(self, value):
         self.lm_head = value
+
+    @property
+    def _tied_weights_keys(self):
+        """Return tied weights as a dictionary mapping for transformers compatibility."""
+        if self.config.tie_word_embeddings:
+            return {"lm_head.weight": "model.embed_tokens.weight"}
+        return {}
 
     def forward(self, input_ids, labels=None, **kwargs):
         hidden_states = self.model(input_ids, **kwargs)
