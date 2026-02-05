@@ -155,6 +155,8 @@ def main():
         os.path.join(model_path, "model.safetensors")
     ) or os.path.exists(os.path.join(model_path, "pytorch_model.bin"))
 
+    model_loaded = False
+    
     # Try checkpoint first
     if checkpoint_exists and checkpoint_weights_exist:
         print(f"Loading checkpoint model from {checkpoint_path}...")
@@ -162,49 +164,48 @@ def main():
             model = FinAINextForCausalLM.from_pretrained(
                 checkpoint_path,
                 config=config,
-                ignore_mismatched_sizes=True,
+                ignore_mismatched_sizes=False,  # CRITICAL: Don't ignore mismatches!
                 low_cpu_mem_usage=False,
             )
-            print("Checkpoint model loaded successfully.")
+            print("✓ Checkpoint model loaded successfully - CONTINUING TRAINING")
+            model_loaded = True
         except Exception as e:
-            print(f"Error loading checkpoint: {e}. Trying base model...")
-            if model_exists and weights_exist:
-                try:
-                    model = FinAINextForCausalLM.from_pretrained(
-                        model_path,
-                        config=config,
-                        ignore_mismatched_sizes=True,
-                        low_cpu_mem_usage=False,
-                    )
-                    print("Base model loaded successfully.")
-                except Exception as e2:
-                    print(f"Error loading base model: {e2}. Initializing fresh.")
-                    model = FinAINextForCausalLM(config)
-            else:
-                print("Initializing fresh model.")
-                model = FinAINextForCausalLM(config)
-    # Try base model if no checkpoint
-    elif model_exists and weights_exist:
+            print(f"✗ Error loading checkpoint: {e}")
+            print("Will try base model or initialize fresh...")
+    
+    # Try base model if checkpoint failed
+    if not model_loaded and model_exists and weights_exist:
         print(f"Loading base model from {model_path}...")
         try:
             model = FinAINextForCausalLM.from_pretrained(
                 model_path,
                 config=config,
-                ignore_mismatched_sizes=True,
+                ignore_mismatched_sizes=False,
                 low_cpu_mem_usage=False,
             )
-            print("Base model loaded successfully.")
+            print("✓ Base model loaded successfully - CONTINUING TRAINING")
+            model_loaded = True
         except Exception as e:
-            print(f"Error loading model: {e}. Reinitializing.")
-            model = FinAINextForCausalLM(config)
-    else:
-        print("No existing model found. Initializing new model from scratch.")
+            print(f"✗ Error loading base model: {e}")
+            print("Will initialize fresh model...")
+    
+    # Initialize fresh if nothing loaded
+    if not model_loaded:
+        print("⚠ No existing model found. Initializing new model from scratch.")
+        print("⚠ This should only happen on the FIRST training run!")
         model = FinAINextForCausalLM(config)
 
-    # Debug: Print initial weight sample
+    # Debug: Print initial weight sample to verify model state
     with torch.no_grad():
         weight_sample = model.model.embed_tokens.weight[0][:5].tolist()
-        print(f"DEBUG: Initial weight sample: {weight_sample}")
+        weight_mean = model.model.embed_tokens.weight.mean().item()
+        weight_std = model.model.embed_tokens.weight.std().item()
+        print(f"\n{'='*60}")
+        print(f"INITIAL MODEL STATE")
+        print(f"{'='*60}")
+        print(f"Weight sample: {[f'{x:.4f}' for x in weight_sample]}")
+        print(f"Weight mean: {weight_mean:.6f}, std: {weight_std:.6f}")
+        print(f"{'='*60}\n")
 
     print(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
 
@@ -247,6 +248,7 @@ def main():
         total_steps=total_steps,
         learning_rate=5e-5,
         output_dir=checkpoint_path,
+        save_steps=50,  # Save more frequently to ensure checkpoints are created
     )
 
     # 7. Training
@@ -268,16 +270,29 @@ def main():
     except KeyboardInterrupt:
         print("\nTraining interrupted by user.")
     finally:
-        # Debug: Print final weight sample
+        # Debug: Print final weight sample to verify training happened
         with torch.no_grad():
             weight_sample = model.model.embed_tokens.weight[0][:5].tolist()
-            print(f"DEBUG: Final weight sample: {weight_sample}")
+            weight_mean = model.model.embed_tokens.weight.mean().item()
+            weight_std = model.model.embed_tokens.weight.std().item()
+            print(f"\n{'='*60}")
+            print(f"FINAL MODEL STATE")
+            print(f"{'='*60}")
+            print(f"Weight sample: {[f'{x:.4f}' for x in weight_sample]}")
+            print(f"Weight mean: {weight_mean:.6f}, std: {weight_std:.6f}")
+            print(f"{'='*60}\n")
 
-        # Final Save - always save to checkpoint path
-        print("Saving final state to checkpoint...")
+        # Final Save - CRITICAL: Always save to checkpoint path
+        print(f"\n{'='*60}")
+        print("SAVING CHECKPOINT - THIS IS CRITICAL FOR PROGRESSIVE TRAINING")
+        print(f"{'='*60}")
+        print(f"Saving to: {checkpoint_path}")
         trainer.save_checkpoint(checkpoint_path)
+        print("✓ Model weights saved")
+        
         if tokenizer is not None:
             tokenizer.save_pretrained(checkpoint_path)
+            print("✓ Tokenizer saved")
 
         # Save dataset state
         batches_processed_in_this_run = (
