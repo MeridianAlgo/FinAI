@@ -258,7 +258,9 @@ class TernaryTrainer:
         state_file = os.path.join(load_path, "trainer_state.pt")
         if os.path.exists(state_file):
             try:
-                checkpoint = torch.load(state_file, map_location=self.device, weights_only=False)
+                checkpoint = torch.load(
+                    state_file, map_location=self.device, weights_only=False
+                )
                 if not isinstance(checkpoint, dict):
                     print(
                         f"[ERROR] trainer_state.pt is not a dictionary (got {type(checkpoint)}). Skipping state load."
@@ -275,6 +277,7 @@ class TernaryTrainer:
             except Exception as e:
                 print(f"[ERROR] Failed to load trainer state: {e}")
                 import traceback
+
                 traceback.print_exc()
                 return False
         else:

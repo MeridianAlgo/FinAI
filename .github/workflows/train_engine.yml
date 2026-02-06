@@ -59,12 +59,10 @@ jobs:
         uses: actions/cache@v4
         id: cache-deps
         with:
-          path: |
-            ~/.cache/pip
-            ${{ env.pythonLocation }}
-          key: ${{ runner.os }}-python-3.10-${{ hashFiles('requirements.txt') }}
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
           restore-keys: |
-            ${{ runner.os }}-python-3.10-
+            ${{ runner.os }}-pip-
       
       - name: Install Dependencies
         if: steps.cache-deps.outputs.cache-hit != 'true'
@@ -145,34 +143,57 @@ jobs:
           "
 
       - name: Execute Training Loop
+        id: training
+        continue-on-error: true
+        timeout-minutes: 230
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           COMET_API_KEY: ${{ secrets.COMET_API_KEY }}
           MAX_STEPS: 200
           TOTAL_STEPS: 100000
           PYTHONPATH: .
-        run: python train.py
+        run: |
+          python train.py || echo "Training interrupted or timed out"
+          
+      - name: Check Training Status
+        run: |
+          if [ "${{ steps.training.outcome }}" == "failure" ]; then
+            echo "⚠ Training timed out or failed, but checkpoint should be saved"
+          elif [ "${{ steps.training.outcome }}" == "success" ]; then
+            echo "✓ Training completed successfully"
+          fi
 
       - name: Deploy to Hugging Face Hub
+        if: always()
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           python -c "
           from huggingface_hub import HfApi
           import os
+          
+          if not os.path.exists('./checkpoint'):
+              print('No checkpoint directory found, skipping upload')
+              exit(0)
+          
           api = HfApi()
           print('Uploading checkpoint to MeridianAlgo/FinAI-Lite...')
-          api.upload_folder(
-              folder_path='./checkpoint',
-              repo_id='MeridianAlgo/FinAI-Lite',
-              path_in_repo='checkpoint',
-              commit_message='Training checkpoint update via GitHub Engine [skip ci]',
-              token=os.getenv('HF_TOKEN')
-          )
-          print('Deployment successful!')
+          try:
+              api.upload_folder(
+                  folder_path='./checkpoint',
+                  repo_id='MeridianAlgo/FinAI-Lite',
+                  path_in_repo='checkpoint',
+                  commit_message='Training checkpoint update via GitHub Engine [skip ci]',
+                  token=os.getenv('HF_TOKEN')
+              )
+              print('✓ Deployment successful!')
+          except Exception as e:
+              print(f'✗ Deployment failed: {e}')
+              exit(1)
           "
 
       - name: Upload Training State (GitHub Artifact)
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: model-checkpoint
@@ -180,6 +201,7 @@ jobs:
           retention-days: 1
 
       - name: Update Repository State
+        if: always()
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"

@@ -164,12 +164,12 @@ def main():
         print(f"{'='*60}")
         print(f"  config.json exists: {checkpoint_exists}")
         print(f"  model weights exist: {checkpoint_weights_exist}")
-        
+
         # List files in checkpoint
         if os.path.exists(checkpoint_path):
             files = os.listdir(checkpoint_path)
             print(f"  Files in checkpoint: {files[:10]}")
-        
+
         try:
             # Load without passing config to use the checkpoint's config
             model = FinAINextForCausalLM.from_pretrained(
@@ -178,7 +178,7 @@ def main():
                 low_cpu_mem_usage=False,
             )
             print("✓ Checkpoint model loaded successfully - CONTINUING TRAINING")
-            
+
             # Verify weights loaded
             with torch.no_grad():
                 weight_sample = model.model.embed_tokens.weight[0][:5].tolist()
@@ -186,12 +186,13 @@ def main():
                 weight_std = model.model.embed_tokens.weight.std().item()
                 print(f"  Loaded weight sample: {[f'{x:.4f}' for x in weight_sample]}")
                 print(f"  Loaded weight mean: {weight_mean:.6f}, std: {weight_std:.6f}")
-            
+
             model_loaded = True
             print(f"{'='*60}\n")
         except Exception as e:
             print(f"✗ Error loading checkpoint: {e}")
             import traceback
+
             traceback.print_exc()
             print("Will try base model or initialize fresh...")
             print(f"{'='*60}\n")
@@ -213,6 +214,7 @@ def main():
         except Exception as e:
             print(f"✗ Error loading base model: {e}")
             import traceback
+
             traceback.print_exc()
             print("Will initialize fresh model...")
             print(f"{'='*60}\n")
@@ -291,12 +293,12 @@ def main():
         success = trainer.load_checkpoint(checkpoint_path)
         if success:
             initial_global_step = trainer.global_step
-            print(f"✓ Loaded trainer state from checkpoint")
+            print("✓ Loaded trainer state from checkpoint")
             print(f"  Global step: {initial_global_step}")
             print(f"  Run step: {trainer.run_step}")
             print(f"  Will continue training from step {initial_global_step + 1}")
         else:
-            print(f"✗ Failed to load trainer state - will start from step 0")
+            print("✗ Failed to load trainer state - will start from step 0")
         print(f"{'='*60}\n")
     elif model_exists and weights_exist:
         print(f"\n{'='*60}")
@@ -305,11 +307,11 @@ def main():
         success = trainer.load_checkpoint(model_path)
         if success:
             initial_global_step = trainer.global_step
-            print(f"✓ Loaded trainer state from base model")
+            print("✓ Loaded trainer state from base model")
             print(f"  Global step: {initial_global_step}")
             print(f"  Run step: {trainer.run_step}")
         else:
-            print(f"✗ Failed to load trainer state - will start from step 0")
+            print("✗ Failed to load trainer state - will start from step 0")
         print(f"{'='*60}\n")
     else:
         print(f"\n{'='*60}")
