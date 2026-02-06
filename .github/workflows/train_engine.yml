@@ -78,40 +78,52 @@ jobs:
           token = os.getenv('HF_TOKEN')
           
           try:
-              files = list_repo_files(repo_id=repo_id, token=token)
-              print(f'Files in repo: {files[:10]}...')
+              files = list(list_repo_files(repo_id=repo_id, token=token))
+              print(f'Found {len(files)} files in repo')
               
-              has_checkpoint = any('checkpoint/' in f for f in files)
-              has_root_model = 'config.json' in files
+              # Check for checkpoint files
+              checkpoint_files = [f for f in files if f.startswith('checkpoint/')]
               
-              if has_checkpoint:
-                  print('Checkpoint found! Pulling checkpoint...')
-                  snapshot_download(
-                      repo_id=repo_id, 
-                      local_dir='./checkpoint',
-                      allow_patterns='checkpoint/**',
-                      token=token
-                  )
-                  if os.path.exists('./checkpoint/checkpoint'):
-                      for item in os.listdir('./checkpoint/checkpoint'):
-                          shutil.move(
-                              os.path.join('./checkpoint/checkpoint', item),
-                              os.path.join('./checkpoint', item)
-                          )
-                      os.rmdir('./checkpoint/checkpoint')
-                  print('Checkpoint pulled successfully')
-              elif has_root_model:
-                  print('Root model found! Pulling to model directory...')
+              if checkpoint_files:
+                  print(f'Checkpoint found with {len(checkpoint_files)} files! Pulling...')
+                  
+                  # Download entire repo to temp location
+                  temp_dir = './temp_download'
                   snapshot_download(
                       repo_id=repo_id,
-                      local_dir='./model',
+                      local_dir=temp_dir,
                       token=token
                   )
-                  print('Root model pulled successfully')
+                  
+                  # Move checkpoint folder to correct location
+                  if os.path.exists(os.path.join(temp_dir, 'checkpoint')):
+                      if os.path.exists('./checkpoint'):
+                          shutil.rmtree('./checkpoint')
+                      shutil.move(os.path.join(temp_dir, 'checkpoint'), './checkpoint')
+                      print('✓ Checkpoint moved to ./checkpoint')
+                  
+                  # Verify critical files
+                  critical_files = ['model.safetensors', 'trainer_state.pt', 'config.json']
+                  for cf in critical_files:
+                      path = os.path.join('./checkpoint', cf)
+                      if os.path.exists(path):
+                          size_mb = os.path.getsize(path) / (1024 * 1024)
+                          print(f'  ✓ {cf} ({size_mb:.2f} MB)')
+                      else:
+                          print(f'  ✗ {cf} MISSING!')
+                  
+                  # Clean up temp
+                  if os.path.exists(temp_dir):
+                      shutil.rmtree(temp_dir)
+                  
+                  print('Checkpoint pulled successfully!')
               else:
-                  print('No model found in repo. Starting fresh.')
+                  print('No checkpoint found in repo. Starting fresh.')
           except Exception as e:
-              print(f'Error pulling state: {e}. Starting fresh.')
+              print(f'Error pulling state: {e}')
+              import traceback
+              traceback.print_exc()
+              print('Will start fresh.')
           "
 
       - name: Execute Training Loop

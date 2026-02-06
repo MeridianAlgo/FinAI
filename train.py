@@ -257,13 +257,36 @@ def main():
     initial_global_step = 0
     # Load trainer state - try checkpoint first, then model
     if checkpoint_exists and checkpoint_weights_exist:
-        trainer.load_checkpoint(checkpoint_path)
-        initial_global_step = trainer.global_step
-        print(f"Loaded trainer state from checkpoint (step {initial_global_step})")
+        print(f"\n{'='*60}")
+        print("LOADING TRAINER STATE FROM CHECKPOINT")
+        print(f"{'='*60}")
+        success = trainer.load_checkpoint(checkpoint_path)
+        if success:
+            initial_global_step = trainer.global_step
+            print(f"✓ Loaded trainer state from checkpoint")
+            print(f"  Global step: {initial_global_step}")
+            print(f"  Run step: {trainer.run_step}")
+            print(f"  Will continue training from step {initial_global_step + 1}")
+        else:
+            print(f"✗ Failed to load trainer state - will start from step 0")
+        print(f"{'='*60}\n")
     elif model_exists and weights_exist:
-        trainer.load_checkpoint(model_path)
-        initial_global_step = trainer.global_step
-        print(f"Loaded trainer state from base model (step {initial_global_step})")
+        print(f"\n{'='*60}")
+        print("LOADING TRAINER STATE FROM BASE MODEL")
+        print(f"{'='*60}")
+        success = trainer.load_checkpoint(model_path)
+        if success:
+            initial_global_step = trainer.global_step
+            print(f"✓ Loaded trainer state from base model")
+            print(f"  Global step: {initial_global_step}")
+            print(f"  Run step: {trainer.run_step}")
+        else:
+            print(f"✗ Failed to load trainer state - will start from step 0")
+        print(f"{'='*60}\n")
+    else:
+        print(f"\n{'='*60}")
+        print("NO CHECKPOINT FOUND - STARTING FROM STEP 0")
+        print(f"{'='*60}\n")
 
     try:
         trainer.train()

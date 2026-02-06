@@ -257,22 +257,28 @@ class TernaryTrainer:
         # Load trainer state
         state_file = os.path.join(load_path, "trainer_state.pt")
         if os.path.exists(state_file):
-            checkpoint = torch.load(state_file, map_location=self.device)
-            if not isinstance(checkpoint, dict):
+            try:
+                checkpoint = torch.load(state_file, map_location=self.device, weights_only=False)
+                if not isinstance(checkpoint, dict):
+                    print(
+                        f"[ERROR] trainer_state.pt is not a dictionary (got {type(checkpoint)}). Skipping state load."
+                    )
+                    return False
+                self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+                self.scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
+                self.global_step = checkpoint["global_step"]
+                self.run_step = checkpoint.get("run_step", 0)  # Backward compatible
                 print(
-                    f"[ERROR] trainer_state.pt is not a dictionary (got {type(checkpoint)}). Skipping state load."
+                    f"[INFO] ✓ Loaded optimizer, scheduler, and global_step ({self.global_step}), run_step ({self.run_step})."
                 )
+                return True
+            except Exception as e:
+                print(f"[ERROR] Failed to load trainer state: {e}")
+                import traceback
+                traceback.print_exc()
                 return False
-            self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-            self.scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
-            self.global_step = checkpoint["global_step"]
-            self.run_step = checkpoint.get("run_step", 0)  # Backward compatible
-            print(
-                f"[INFO] Loaded optimizer, scheduler, and global_step ({self.global_step}), run_step ({self.run_step})."
-            )
         else:
             print(
                 f"[WARN] No trainer_state.pt found in {load_path}. Only model weights will be used."
             )
-
-        return True
+            return False
