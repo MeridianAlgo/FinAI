@@ -159,35 +159,63 @@ def main():
 
     # Try checkpoint first
     if checkpoint_exists and checkpoint_weights_exist:
-        print(f"Loading checkpoint model from {checkpoint_path}...")
+        print(f"\n{'='*60}")
+        print(f"ATTEMPTING TO LOAD CHECKPOINT FROM: {checkpoint_path}")
+        print(f"{'='*60}")
+        print(f"  config.json exists: {checkpoint_exists}")
+        print(f"  model weights exist: {checkpoint_weights_exist}")
+        
+        # List files in checkpoint
+        if os.path.exists(checkpoint_path):
+            files = os.listdir(checkpoint_path)
+            print(f"  Files in checkpoint: {files[:10]}")
+        
         try:
+            # Load without passing config to use the checkpoint's config
             model = FinAINextForCausalLM.from_pretrained(
                 checkpoint_path,
-                config=config,
-                ignore_mismatched_sizes=False,  # CRITICAL: Don't ignore mismatches!
+                ignore_mismatched_sizes=False,
                 low_cpu_mem_usage=False,
             )
             print("✓ Checkpoint model loaded successfully - CONTINUING TRAINING")
+            
+            # Verify weights loaded
+            with torch.no_grad():
+                weight_sample = model.model.embed_tokens.weight[0][:5].tolist()
+                weight_mean = model.model.embed_tokens.weight.mean().item()
+                weight_std = model.model.embed_tokens.weight.std().item()
+                print(f"  Loaded weight sample: {[f'{x:.4f}' for x in weight_sample]}")
+                print(f"  Loaded weight mean: {weight_mean:.6f}, std: {weight_std:.6f}")
+            
             model_loaded = True
+            print(f"{'='*60}\n")
         except Exception as e:
             print(f"✗ Error loading checkpoint: {e}")
+            import traceback
+            traceback.print_exc()
             print("Will try base model or initialize fresh...")
+            print(f"{'='*60}\n")
 
     # Try base model if checkpoint failed
     if not model_loaded and model_exists and weights_exist:
-        print(f"Loading base model from {model_path}...")
+        print(f"\n{'='*60}")
+        print(f"ATTEMPTING TO LOAD BASE MODEL FROM: {model_path}")
+        print(f"{'='*60}")
         try:
             model = FinAINextForCausalLM.from_pretrained(
                 model_path,
-                config=config,
                 ignore_mismatched_sizes=False,
                 low_cpu_mem_usage=False,
             )
             print("✓ Base model loaded successfully - CONTINUING TRAINING")
             model_loaded = True
+            print(f"{'='*60}\n")
         except Exception as e:
             print(f"✗ Error loading base model: {e}")
+            import traceback
+            traceback.print_exc()
             print("Will initialize fresh model...")
+            print(f"{'='*60}\n")
 
     # Initialize fresh if nothing loaded
     if not model_loaded:
