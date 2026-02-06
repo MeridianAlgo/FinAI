@@ -139,7 +139,7 @@ def main():
         num_layers=24,
         liquid_state_dim=384,
         gradient_checkpointing=True,
-        tie_word_embeddings=True,
+        tie_word_embeddings=False,  # Checkpoint has separate weights
     )
     print(f"Configuration: {config}")
 
