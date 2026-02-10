@@ -18,6 +18,7 @@
   "rms_norm_eps": 1e-06,
   "skip_threshold": 0.1,
   "ternary_bits": 1.58,
+  "tie_word_embeddings": false,
   "transformers_version": "4.57.3",
   "use_audio_projector": true,
   "use_cache": true,
