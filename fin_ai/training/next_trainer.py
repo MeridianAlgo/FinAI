@@ -1,11 +1,12 @@
 """Specialized Ternary Trainer with Real-Time Tracking"""
 
+import asyncio
 import logging
 import os
 from dataclasses import dataclass
 
-import torch
 from comet_ml import Experiment
+import torch
 from dotenv import load_dotenv
 from tqdm import tqdm
 
@@ -94,6 +95,14 @@ class TernaryTrainer:
         ):
             try:
                 batch = next(train_iter)
+            except (asyncio.CancelledError, KeyboardInterrupt):
+                print("[INFO] Training cancelled.")
+                break
+            except OSError as e:
+                if getattr(e, "winerror", None) == 995:
+                    print("[INFO] Windows cancelled the operation (WinError 995). Stopping training.")
+                    break
+                raise
             except StopIteration:
                 print(
                     f"[INFO] Dataset exhausted or slice limit reached at step {step}. Stopping training."

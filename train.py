@@ -8,6 +8,11 @@ if os.name == 'nt':
     import multiprocessing
     multiprocessing.set_start_method('spawn', force=True)
 
+try:
+    import comet_ml  # noqa: F401
+except Exception:
+    comet_ml = None
+
 import torch
 from datasets import load_dataset
 from transformers import AutoTokenizer
@@ -65,42 +70,48 @@ def create_dataloader(
         total_bytes_yielded = 0
         local_processed = 0
 
-        for item in dataset:
-            text = item.get("text", "")
-            if not isinstance(text, str) or not text.strip():
-                continue
+        try:
+            for item in dataset:
+                text = item.get("text", "")
+                if not isinstance(text, str) or not text.strip():
+                    continue
 
-            # Check slice limit
-            text_bytes = len(text.encode("utf-8"))
-            if total_bytes_yielded + text_bytes > max_bytes_per_slice:
-                print(
-                    f"[INFO] 30MB slice limit reached ({total_bytes_yielded / 1024 / 1024:.2f} MB). Ending epoch."
+                # Check slice limit
+                text_bytes = len(text.encode("utf-8"))
+                if total_bytes_yielded + text_bytes > max_bytes_per_slice:
+                    print(
+                        f"[INFO] 30MB slice limit reached ({total_bytes_yielded / 1024 / 1024:.2f} MB). Ending epoch."
+                    )
+                    return
+
+                tokens = tokenizer(
+                    text,
+                    truncation=True,
+                    max_length=block_size,
+                    padding="max_length",
                 )
+
+                input_ids = torch.tensor(tokens["input_ids"])
+                labels = input_ids.clone()
+
+                # Mask padding
+                pad_token_id = tokenizer.pad_token_id
+                if pad_token_id is not None:
+                    labels[input_ids == pad_token_id] = -100
+
+                yield {
+                    "input_ids": input_ids,
+                    "labels": labels,
+                    "processed_idx": skip_items + local_processed,
+                }
+
+                total_bytes_yielded += text_bytes
+                local_processed += 1
+        except OSError as e:
+            if getattr(e, "winerror", None) == 995:
+                print("[INFO] Windows cancelled the operation (WinError 995). Ending data stream.")
                 return
-
-            tokens = tokenizer(
-                text,
-                truncation=True,
-                max_length=block_size,
-                padding="max_length",
-            )
-
-            input_ids = torch.tensor(tokens["input_ids"])
-            labels = input_ids.clone()
-
-            # Mask padding
-            pad_token_id = tokenizer.pad_token_id
-            if pad_token_id is not None:
-                labels[input_ids == pad_token_id] = -100
-
-            yield {
-                "input_ids": input_ids,
-                "labels": labels,
-                "processed_idx": skip_items + local_processed,
-            }
-
-            total_bytes_yielded += text_bytes
-            local_processed += 1
+            raise
 
     return torch.utils.data.DataLoader(
         CustomIterableDataset(gen), batch_size=batch_size

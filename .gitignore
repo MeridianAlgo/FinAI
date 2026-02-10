@@ -28,5 +28,9 @@ datasets/
 *.temp
 training_output.txt
 
+# Experiment logs
+comet_logs.json
+comet_summary.txt
+
 # Dataset State (CRITICAL: DO NOT IGNORE - needed for GitHub Actions persistence)
 # dataset_state.json should be tracked by git

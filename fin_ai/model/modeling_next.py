@@ -132,8 +132,6 @@ class FinAINextForCausalLM(FinAINextPreTrainedModel, GenerationMixin):  # type: 
     @property
     def _tied_weights_keys(self):
         """Return tied weights as a dictionary mapping for transformers compatibility."""
-        if self.config.tie_word_embeddings:
-            return {"lm_head.weight": "model.embed_tokens.weight"}
         return {}
 
     def forward(self, input_ids, labels=None, **kwargs):
@@ -146,7 +144,9 @@ class FinAINextForCausalLM(FinAINextPreTrainedModel, GenerationMixin):  # type: 
             shift_logits = logits[..., :-1, :].contiguous()
             shift_labels = labels[..., 1:].contiguous()
             loss = torch.nn.functional.cross_entropy(
-                shift_logits.view(-1, self.config.vocab_size), shift_labels.view(-1)
+                shift_logits.view(-1, self.config.vocab_size),
+                shift_labels.view(-1),
+                ignore_index=-100,
             )
 
         return type("CausalLMOutput", (), {"loss": loss, "logits": logits})

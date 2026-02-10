@@ -19,7 +19,7 @@ class FinAINextConfig(PretrainedConfig):
         pad_token_id=None,
         bos_token_id=0,
         eos_token_id=1,
-        tie_word_embeddings=True,
+        tie_word_embeddings=False,
         liquid_state_dim=384,
         liquid_memory_size=1024,
         skip_threshold=0.1,
