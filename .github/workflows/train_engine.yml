@@ -41,7 +41,7 @@ jobs:
       always() && 
       (needs.seed.result == 'success' || needs.seed.result == 'skipped')
     runs-on: ubuntu-latest
-    timeout-minutes: 240
+    timeout-minutes: 360
     permissions:
       contents: write
     steps:
@@ -145,13 +145,13 @@ jobs:
       - name: Execute Training Loop
         id: training
         continue-on-error: true
-        timeout-minutes: 230
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           COMET_API_KEY: ${{ secrets.COMET_API_KEY }}
-          MAX_STEPS: 200
+          MAX_STEPS: 25
           TOTAL_STEPS: 100000
           PYTHONPATH: .
+          PYTHONUNBUFFERED: '1'
         run: |
           python train.py || echo "Training interrupted or timed out"
           
