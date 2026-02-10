@@ -1,10 +1,12 @@
 name: FinAI Training Engine
 
 on:
-  schedule:
-    - cron: '0 */2 * * *'
   workflow_dispatch:
     inputs:
+      full_train:
+        description: 'Run full training loop (downloads checkpoint + streams dataset). Not recommended on GitHub-hosted CPU runners.'
+        type: boolean
+        default: false
       force_seed:
         description: 'Nuke and Re-seed HF Repo?'
         type: boolean
@@ -83,6 +85,7 @@ jobs:
           ruff check . --fix
 
       - name: Pull Model State
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.full_train == 'true'
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
@@ -147,9 +150,13 @@ jobs:
         continue-on-error: true
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          COMET_API_KEY: ${{ secrets.COMET_API_KEY }}
-          MAX_STEPS: 25
+          COMET_API_KEY: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.full_train == 'true') && secrets.COMET_API_KEY || '' }}
+          SMOKE_TEST: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.full_train == 'true') && '0' || '1' }}
+          MAX_STEPS: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.full_train == 'true') && '25' || '10' }}
           TOTAL_STEPS: 100000
+          GRAD_ACCUM: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.full_train == 'true') && '2' || '1' }}
+          BATCH_SIZE: '2'
+          BLOCK_SIZE: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.full_train == 'true') && '128' || '64' }}
           PYTHONPATH: .
           PYTHONUNBUFFERED: '1'
         run: |

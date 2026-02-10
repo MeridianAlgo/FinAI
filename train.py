@@ -118,13 +118,60 @@ def create_dataloader(
     )
 
 
+def create_smoke_dataloader(vocab_size: int, batch_size: int, block_size: int):
+    def gen():
+        for _ in range(1000):
+            input_ids = torch.randint(0, vocab_size, (block_size,), dtype=torch.long)
+            labels = input_ids.clone()
+            yield {"input_ids": input_ids, "labels": labels}
+
+    return torch.utils.data.DataLoader(CustomIterableDataset(gen), batch_size=batch_size)
+
+
 def main():
     print("Initializing FinAI-Next (Liquid-BitNet) Overhaul...")
+
+    smoke_test = os.getenv("SMOKE_TEST", "0") == "1"
 
     # Path settings
     model_path = "./model"
     checkpoint_path = "./checkpoint"
     state_path = "dataset_state.json"
+
+    if smoke_test:
+        config = FinAINextConfig(
+            vocab_size=4096,
+            hidden_size=128,
+            num_layers=2,
+            liquid_state_dim=64,
+            gradient_checkpointing=False,
+            tie_word_embeddings=False,
+            use_vision_projector=False,
+            use_audio_projector=False,
+        )
+        model = FinAINextForCausalLM(config)
+
+        dataloader = create_smoke_dataloader(
+            vocab_size=config.vocab_size,
+            batch_size=int(os.getenv("BATCH_SIZE", "2")),
+            block_size=int(os.getenv("BLOCK_SIZE", "64")),
+        )
+
+        max_steps = int(os.getenv("MAX_STEPS", "10"))
+        total_steps = int(os.getenv("TOTAL_STEPS", str(max_steps)))
+        train_config = NextTrainingConfig(
+            batch_size=int(os.getenv("BATCH_SIZE", "2")),
+            gradient_accumulation_steps=int(os.getenv("GRAD_ACCUM", "1")),
+            max_steps=max_steps,
+            total_steps=total_steps,
+            learning_rate=5e-4,
+            output_dir=checkpoint_path,
+            save_steps=max_steps,
+        )
+
+        trainer = TernaryTrainer(model, dataloader, train_config)
+        trainer.train()
+        return
 
     # 1. Load Dataset State
     processed_items = 0
@@ -150,12 +197,14 @@ def main():
 
     # 2. Configuration
     config = FinAINextConfig(
-        vocab_size=151665,
-        hidden_size=1536,
-        num_layers=24,
-        liquid_state_dim=384,
-        gradient_checkpointing=True,
+        vocab_size=int(os.getenv("VOCAB_SIZE", "151665")),
+        hidden_size=int(os.getenv("HIDDEN_SIZE", "512")),
+        num_layers=int(os.getenv("NUM_LAYERS", "8")),
+        liquid_state_dim=int(os.getenv("LIQUID_STATE_DIM", "128")),
+        gradient_checkpointing=os.getenv("GRADIENT_CHECKPOINTING", "1") == "1",
         tie_word_embeddings=False,  # Checkpoint has separate weights
+        use_vision_projector=os.getenv("USE_VISION", "0") == "1",
+        use_audio_projector=os.getenv("USE_AUDIO", "0") == "1",
     )
     print(f"Configuration: {config}")
 

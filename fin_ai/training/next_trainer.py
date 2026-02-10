@@ -89,6 +89,7 @@ class TernaryTrainer:
         import gc
 
         progress_bar = tqdm(total=self.config.max_steps, desc="Training")
+        printed_run_start_loss = False
 
         for step in range(
             self.config.max_steps * self.config.gradient_accumulation_steps
@@ -119,6 +120,13 @@ class TernaryTrainer:
             # Forward pass
             outputs = self.model(**batch)
             loss = outputs.loss / self.config.gradient_accumulation_steps
+
+            if not printed_run_start_loss:
+                print(
+                    f"\n[RUN START] Global step: {self.global_step}, Run step: {self.run_step}, "
+                    f"Initial batch loss: {(loss.item() * self.config.gradient_accumulation_steps):.4f}"
+                )
+                printed_run_start_loss = True
 
             # Check for NaN loss
             if torch.isnan(loss):

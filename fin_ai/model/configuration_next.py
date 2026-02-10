@@ -9,8 +9,8 @@ class FinAINextConfig(PretrainedConfig):
     def __init__(
         self,
         vocab_size=151665,
-        hidden_size=1536,  # Elite-Consumer sweet spot
-        num_layers=48,  # Balanced depth
+        hidden_size=512,  # Smaller default for CPU-friendly training
+        num_layers=8,  # Smaller default depth
         max_position_embeddings=32768,
         hidden_act="silu",
         initializer_range=0.02,
@@ -20,12 +20,12 @@ class FinAINextConfig(PretrainedConfig):
         bos_token_id=0,
         eos_token_id=1,
         tie_word_embeddings=False,
-        liquid_state_dim=384,
-        liquid_memory_size=1024,
+        liquid_state_dim=128,
+        liquid_memory_size=256,
         skip_threshold=0.1,
         ternary_bits=1.58,
-        use_vision_projector=True,
-        use_audio_projector=True,
+        use_vision_projector=False,
+        use_audio_projector=False,
         dynamic_depth_threshold=0.8,
         num_mtp_heads=2,
         **kwargs,
