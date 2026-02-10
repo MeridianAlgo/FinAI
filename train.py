@@ -3,6 +3,11 @@
 import json
 import os
 
+# Windows multiprocessing fix - must be before torch import
+if os.name == 'nt':
+    import multiprocessing
+    multiprocessing.set_start_method('spawn', force=True)
+
 import torch
 from datasets import load_dataset
 from transformers import AutoTokenizer
@@ -149,6 +154,8 @@ def main():
     checkpoint_weights_exist = os.path.exists(
         os.path.join(checkpoint_path, "model.safetensors")
     ) or os.path.exists(os.path.join(checkpoint_path, "pytorch_model.bin"))
+    # Also check for trainer state to ensure we have a valid training checkpoint
+    trainer_state_exists = os.path.exists(os.path.join(checkpoint_path, "trainer_state.pt"))
 
     model_exists = os.path.exists(os.path.join(model_path, "config.json"))
     weights_exist = os.path.exists(
@@ -157,8 +164,8 @@ def main():
 
     model_loaded = False
 
-    # Try checkpoint first
-    if checkpoint_exists and checkpoint_weights_exist:
+    # Try checkpoint first (requires both weights AND trainer state)
+    if checkpoint_exists and checkpoint_weights_exist and trainer_state_exists:
         print(f"\n{'='*60}")
         print(f"ATTEMPTING TO LOAD CHECKPOINT FROM: {checkpoint_path}")
         print(f"{'='*60}")
@@ -285,8 +292,8 @@ def main():
     trainer = TernaryTrainer(model, dataloader, train_config)
 
     initial_global_step = 0
-    # Load trainer state - try checkpoint first, then model
-    if checkpoint_exists and checkpoint_weights_exist:
+    # Load trainer state - requires trainer_state.pt for valid checkpoint
+    if checkpoint_exists and checkpoint_weights_exist and trainer_state_exists:
         print(f"\n{'='*60}")
         print("LOADING TRAINER STATE FROM CHECKPOINT")
         print(f"{'='*60}")
