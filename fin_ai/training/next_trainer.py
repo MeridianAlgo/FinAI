@@ -101,7 +101,9 @@ class TernaryTrainer:
                 break
             except OSError as e:
                 if getattr(e, "winerror", None) == 995:
-                    print("[INFO] Windows cancelled the operation (WinError 995). Stopping training.")
+                    print(
+                        "[INFO] Windows cancelled the operation (WinError 995). Stopping training."
+                    )
                     break
                 raise
             except StopIteration:

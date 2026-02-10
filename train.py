@@ -4,9 +4,10 @@ import json
 import os
 
 # Windows multiprocessing fix - must be before torch import
-if os.name == 'nt':
+if os.name == "nt":
     import multiprocessing
-    multiprocessing.set_start_method('spawn', force=True)
+
+    multiprocessing.set_start_method("spawn", force=True)
 
 try:
     import comet_ml  # noqa: F401
@@ -109,7 +110,9 @@ def create_dataloader(
                 local_processed += 1
         except OSError as e:
             if getattr(e, "winerror", None) == 995:
-                print("[INFO] Windows cancelled the operation (WinError 995). Ending data stream.")
+                print(
+                    "[INFO] Windows cancelled the operation (WinError 995). Ending data stream."
+                )
                 return
             raise
 
@@ -125,7 +128,9 @@ def create_smoke_dataloader(vocab_size: int, batch_size: int, block_size: int):
             labels = input_ids.clone()
             yield {"input_ids": input_ids, "labels": labels}
 
-    return torch.utils.data.DataLoader(CustomIterableDataset(gen), batch_size=batch_size)
+    return torch.utils.data.DataLoader(
+        CustomIterableDataset(gen), batch_size=batch_size
+    )
 
 
 def main():
@@ -215,7 +220,9 @@ def main():
         os.path.join(checkpoint_path, "model.safetensors")
     ) or os.path.exists(os.path.join(checkpoint_path, "pytorch_model.bin"))
     # Also check for trainer state to ensure we have a valid training checkpoint
-    trainer_state_exists = os.path.exists(os.path.join(checkpoint_path, "trainer_state.pt"))
+    trainer_state_exists = os.path.exists(
+        os.path.join(checkpoint_path, "trainer_state.pt")
+    )
 
     model_exists = os.path.exists(os.path.join(model_path, "config.json"))
     weights_exist = os.path.exists(
