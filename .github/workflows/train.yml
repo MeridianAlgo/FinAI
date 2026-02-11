@@ -93,7 +93,7 @@ jobs:
           from huggingface_hub import snapshot_download, list_repo_files
           import os, shutil
 
-          repo_id = 'MeridianAlgo/MeridianFormer'
+          repo_id = 'MeridianAlgo/FinAI-Lite'
           token = os.getenv('HF_TOKEN')
 
           try:
@@ -164,11 +164,11 @@ jobs:
               exit(0)
 
           api = HfApi()
-          print('Uploading to MeridianAlgo/MeridianFormer...')
+          print('Uploading to MeridianAlgo/FinAI-Lite...')
           try:
               api.upload_folder(
                   folder_path='./checkpoint',
-                  repo_id='MeridianAlgo/MeridianFormer',
+                  repo_id='MeridianAlgo/FinAI-Lite',
                   path_in_repo='checkpoint',
                   commit_message='Hourly training update [skip ci]',
                   token=os.getenv('HF_TOKEN')

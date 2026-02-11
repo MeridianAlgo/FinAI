@@ -468,7 +468,6 @@ class MeridianForCausalLM(PreTrainedModel):
     config_class = MeridianConfig
     base_model_prefix = "model"
     supports_gradient_checkpointing = True
-    _tied_weights_keys = ["lm_head.weight"]
 
     def __init__(self, config: MeridianConfig):
         super().__init__(config)
@@ -476,11 +475,12 @@ class MeridianForCausalLM(PreTrainedModel):
         self.model = MeridianModel(config)
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
-        # Initialize weights
-        self.apply(self._init_weights)
+        # Initialize weights and apply final processing
+        self.post_init()
 
-        # Tie weights if configured
-        if config.tie_word_embeddings:
+    def tie_weights(self):
+        """Tie input and output embeddings if configured."""
+        if self.config.tie_word_embeddings:
             self.lm_head.weight = self.model.embed_tokens.weight
 
     def _init_weights(self, module: nn.Module) -> None:

@@ -7,7 +7,7 @@ from huggingface_hub import HfApi
 
 def main():
     token = os.getenv("HF_TOKEN")
-    repo_id = "MeridianAlgo/MeridianFormer"
+    repo_id = "MeridianAlgo/FinAI-Lite"
 
     if not token:
         print("✗ HF_TOKEN not set")
