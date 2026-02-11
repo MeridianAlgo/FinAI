@@ -4,7 +4,7 @@ Curriculum-aware dataset mixing with finance, math, and general knowledge.
 Uses streaming to avoid downloading massive datasets.
 
 Dataset mix:
- - 40% FinanceAlpaca (financial QA & instructions)  
+ - 40% FinanceAlpaca (financial QA & instructions)
  - 30% OpenMathInstruct (math reasoning — critical for finance)
  - 30% FineWeb-Edu (general knowledge foundation)
 
@@ -15,7 +15,7 @@ broad language understanding.
 from __future__ import annotations
 
 import time
-from typing import Iterator, Optional
+from typing import Iterator
 
 import torch
 from datasets import load_dataset

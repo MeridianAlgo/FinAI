@@ -14,7 +14,7 @@ from __future__ import annotations
 import math
 import os
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 import psutil
@@ -113,13 +113,15 @@ class MeridianTrainer:
                     auto_metric_logging=False,
                 )
                 self.experiment.set_name(config.experiment_name)
-                self.experiment.log_parameters({
-                    "batch_size": config.batch_size,
-                    "grad_accum": config.gradient_accumulation_steps,
-                    "max_steps": config.max_steps,
-                    "lr": config.learning_rate,
-                    "ewc": config.use_ewc,
-                })
+                self.experiment.log_parameters(
+                    {
+                        "batch_size": config.batch_size,
+                        "grad_accum": config.gradient_accumulation_steps,
+                        "max_steps": config.max_steps,
+                        "lr": config.learning_rate,
+                        "ewc": config.use_ewc,
+                    }
+                )
             except Exception as e:
                 print(f"⚠ Comet ML init failed: {e}")
 
@@ -161,16 +163,17 @@ class MeridianTrainer:
     def _log_memory(self) -> None:
         mem = psutil.virtual_memory()
         print(
-            f"  Memory: {mem.used / 1e9:.1f}GB / {mem.total / 1e9:.1f}GB "
-            f"({mem.percent}% used)"
+            f"  Memory: {mem.used / 1e9:.1f}GB / {mem.total / 1e9:.1f}GB " f"({mem.percent}% used)"
         )
 
     def train(self) -> None:
         """Execute training loop."""
         print(f"\n{'='*70}")
-        print(f"  MERIDIANFORMER TRAINING ENGINE")
-        print(f"  Steps: {self.config.max_steps} | BS: {self.config.batch_size} "
-              f"| Accum: {self.config.gradient_accumulation_steps}")
+        print("  MERIDIANFORMER TRAINING ENGINE")
+        print(
+            f"  Steps: {self.config.max_steps} | BS: {self.config.batch_size} "
+            f"| Accum: {self.config.gradient_accumulation_steps}"
+        )
         print(f"  LR: {self.config.learning_rate} | Global step: {self.global_step}")
         total_params = sum(p.numel() for p in self.model.parameters())
         trainable_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
@@ -208,7 +211,7 @@ class MeridianTrainer:
 
             if loss is None:
                 continue
-            
+
             # Check for NaN loss
             if torch.isnan(loss):
                 print(f"  [WARNING] Step {self.run_step}: Loss is NaN. Skipping batch.")
@@ -219,9 +222,11 @@ class MeridianTrainer:
             if self.ewc is not None and self.ewc._initialized:
                 ewc_loss = self.ewc.penalty(self.model)
                 loss = loss + ewc_loss
-                
+
                 if torch.isnan(loss):
-                    print(f"  [WARNING] Step {self.run_step}: Total loss (with EWC) is NaN. Skipping batch.")
+                    print(
+                        f"  [WARNING] Step {self.run_step}: Total loss (with EWC) is NaN. Skipping batch."
+                    )
                     self.optimizer.zero_grad()
                     continue
 
@@ -238,12 +243,12 @@ class MeridianTrainer:
                 grad_norm = torch.nn.utils.clip_grad_norm_(
                     self.model.parameters(), self.config.max_grad_norm
                 )
-                
+
                 # Check for NaN gradients
                 if torch.isnan(grad_norm):
                     print(f"  [WARNING] Step {self.run_step}: Gradient norm is NaN. Skipping step.")
                     self.optimizer.zero_grad()
-                    # Increment steps anyway to avoid infinite loops if stuck? 
+                    # Increment steps anyway to avoid infinite loops if stuck?
                     # Better to just skip update but count as a step or not?
                     # If we skip, we don't update weights.
                     self.optimizer.zero_grad()
@@ -277,8 +282,11 @@ class MeridianTrainer:
                             {
                                 "loss": avg_loss,
                                 "lr": lr,
-                                "grad_norm": grad_norm.item()
-                                if isinstance(grad_norm, torch.Tensor) else grad_norm,
+                                "grad_norm": (
+                                    grad_norm.item()
+                                    if isinstance(grad_norm, torch.Tensor)
+                                    else grad_norm
+                                ),
                                 "tokens_per_sec": tps,
                                 "global_step": self.global_step,
                             },
@@ -309,7 +317,7 @@ class MeridianTrainer:
 
         elapsed = time.time() - start_time
         print(f"\n{'='*70}")
-        print(f"  TRAINING COMPLETE")
+        print("  TRAINING COMPLETE")
         print(f"  Steps: {step_count} | Time: {elapsed:.0f}s | Best loss: {self.best_loss:.4f}")
         print(f"  Tokens processed: {tokens_processed:,}")
         print(f"{'='*70}\n")

@@ -22,10 +22,10 @@ from transformers.modeling_outputs import CausalLMOutputWithPast
 
 from meridian.model.configuration import MeridianConfig
 
-
 # ---------------------------------------------------------------------------
 # Primitives
 # ---------------------------------------------------------------------------
+
 
 class RMSNorm(nn.Module):
     """Root Mean Square Layer Normalization (faster than LayerNorm)."""
@@ -87,6 +87,7 @@ class RotaryEmbedding(nn.Module):
 # Attention: Grouped Query Attention (GQA)
 # ---------------------------------------------------------------------------
 
+
 class MeridianAttention(nn.Module):
     """Multi-head attention with Grouped Query Attention (GQA) + RoPE.
 
@@ -123,9 +124,21 @@ class MeridianAttention(nn.Module):
     ) -> Tuple[torch.Tensor, Optional[Tuple[torch.Tensor, torch.Tensor]]]:
         bsz, q_len, _ = hidden_states.shape
 
-        q = self.q_proj(hidden_states).view(bsz, q_len, self.num_heads, self.head_dim).transpose(1, 2)
-        k = self.k_proj(hidden_states).view(bsz, q_len, self.num_kv_heads, self.head_dim).transpose(1, 2)
-        v = self.v_proj(hidden_states).view(bsz, q_len, self.num_kv_heads, self.head_dim).transpose(1, 2)
+        q = (
+            self.q_proj(hidden_states)
+            .view(bsz, q_len, self.num_heads, self.head_dim)
+            .transpose(1, 2)
+        )
+        k = (
+            self.k_proj(hidden_states)
+            .view(bsz, q_len, self.num_kv_heads, self.head_dim)
+            .transpose(1, 2)
+        )
+        v = (
+            self.v_proj(hidden_states)
+            .view(bsz, q_len, self.num_kv_heads, self.head_dim)
+            .transpose(1, 2)
+        )
 
         # Handle KV cache
         kv_seq_len = q_len
@@ -169,6 +182,7 @@ class MeridianAttention(nn.Module):
 # Feed-Forward: SwiGLU
 # ---------------------------------------------------------------------------
 
+
 class MeridianSwiGLU(nn.Module):
     """SwiGLU feed-forward network — state-of-the-art gated activation.
 
@@ -190,6 +204,7 @@ class MeridianSwiGLU(nn.Module):
 # Mixture of Experts (MoE) with Load-Balanced Routing
 # ---------------------------------------------------------------------------
 
+
 class ExpertRouter(nn.Module):
     """Top-k expert router with auxiliary load-balancing loss."""
 
@@ -199,7 +214,9 @@ class ExpertRouter(nn.Module):
         self.num_experts = num_experts
         self.num_experts_per_token = num_experts_per_token
 
-    def forward(self, hidden_states: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def forward(
+        self, hidden_states: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Returns (router_weights, expert_indices, aux_loss)."""
         router_logits = self.gate(hidden_states)  # [B*S, E]
         router_probs = F.softmax(router_logits, dim=-1)
@@ -230,10 +247,12 @@ class MeridianMoELayer(nn.Module):
 
     def __init__(self, config: MeridianConfig):
         super().__init__()
-        self.experts = nn.ModuleList([
-            MeridianSwiGLU(config.hidden_size, config.expert_intermediate_size)
-            for _ in range(config.num_experts)
-        ])
+        self.experts = nn.ModuleList(
+            [
+                MeridianSwiGLU(config.hidden_size, config.expert_intermediate_size)
+                for _ in range(config.num_experts)
+            ]
+        )
         self.router = ExpertRouter(
             config.hidden_size, config.num_experts, config.num_experts_per_token
         )
@@ -272,6 +291,7 @@ class MeridianMoELayer(nn.Module):
 # Financial Numeracy Encoding (Novel)
 # ---------------------------------------------------------------------------
 
+
 class NumeracyEncoder(nn.Module):
     """Novel: Financial Numeracy Encoding.
 
@@ -309,9 +329,7 @@ class NumeracyEncoder(nn.Module):
             bucket = max(0, bucket - 1)
         return bucket
 
-    def forward(
-        self, hidden_states: torch.Tensor, input_ids: torch.Tensor
-    ) -> torch.Tensor:
+    def forward(self, hidden_states: torch.Tensor, input_ids: torch.Tensor) -> torch.Tensor:
         """Add numeracy signals to hidden states.
 
         For efficiency on CPU, we use a simplified approach:
@@ -334,6 +352,7 @@ class NumeracyEncoder(nn.Module):
 # Transformer Block
 # ---------------------------------------------------------------------------
 
+
 class MeridianDecoderLayer(nn.Module):
     """Single transformer decoder layer.
 
@@ -348,7 +367,7 @@ class MeridianDecoderLayer(nn.Module):
         self.post_attention_layernorm = RMSNorm(config.hidden_size, config.rms_norm_eps)
 
         # Alternate dense/MoE layers for efficiency
-        self.is_moe = (layer_idx % config.moe_layer_frequency == 1)
+        self.is_moe = layer_idx % config.moe_layer_frequency == 1
         if self.is_moe:
             self.moe = MeridianMoELayer(config)
         else:
@@ -387,6 +406,7 @@ class MeridianDecoderLayer(nn.Module):
 # Full Model
 # ---------------------------------------------------------------------------
 
+
 class MeridianModel(nn.Module):
     """MeridianFormer backbone (embeddings + decoder layers + final norm)."""
 
@@ -395,9 +415,9 @@ class MeridianModel(nn.Module):
         self.config = config
         self.embed_tokens = nn.Embedding(config.vocab_size, config.hidden_size)
 
-        self.layers = nn.ModuleList([
-            MeridianDecoderLayer(config, i) for i in range(config.num_layers)
-        ])
+        self.layers = nn.ModuleList(
+            [MeridianDecoderLayer(config, i) for i in range(config.num_layers)]
+        )
         self.norm = RMSNorm(config.hidden_size, config.rms_norm_eps)
 
         # Numeracy encoder (novel)
@@ -425,16 +445,24 @@ class MeridianModel(nn.Module):
         # Causal attention mask
         bsz, seq_len = input_ids.shape
         if attention_mask is None:
-            causal_mask = torch.triu(
-                torch.full((seq_len, seq_len), float("-inf"), device=input_ids.device),
-                diagonal=1,
-            ).unsqueeze(0).unsqueeze(0)
+            causal_mask = (
+                torch.triu(
+                    torch.full((seq_len, seq_len), float("-inf"), device=input_ids.device),
+                    diagonal=1,
+                )
+                .unsqueeze(0)
+                .unsqueeze(0)
+            )
         else:
             # Convert padding mask to causal mask
-            causal_mask = torch.triu(
-                torch.full((seq_len, seq_len), float("-inf"), device=input_ids.device),
-                diagonal=1,
-            ).unsqueeze(0).unsqueeze(0)
+            causal_mask = (
+                torch.triu(
+                    torch.full((seq_len, seq_len), float("-inf"), device=input_ids.device),
+                    diagonal=1,
+                )
+                .unsqueeze(0)
+                .unsqueeze(0)
+            )
             # Apply padding mask
             pad_mask = (1.0 - attention_mask.unsqueeze(1).unsqueeze(2).float()) * float("-inf")
             causal_mask = causal_mask + pad_mask
@@ -447,7 +475,11 @@ class MeridianModel(nn.Module):
 
             if self.gradient_checkpointing and self.training:
                 hidden_states, new_kv, aux_loss = torch.utils.checkpoint.checkpoint(
-                    layer, hidden_states, causal_mask, past_kv, use_cache,
+                    layer,
+                    hidden_states,
+                    causal_mask,
+                    past_kv,
+                    use_cache,
                     use_reentrant=False,
                 )
             else:
@@ -552,9 +584,7 @@ class MeridianForCausalLM(PreTrainedModel):
             else:
                 curr_input = generated
 
-            outputs = self.forward(
-                curr_input, past_key_values=past_key_values, use_cache=True
-            )
+            outputs = self.forward(curr_input, past_key_values=past_key_values, use_cache=True)
             past_key_values = outputs.past_key_values
             next_logits = outputs.logits[:, -1, :] / temperature
 

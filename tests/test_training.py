@@ -1,13 +1,13 @@
 """Tests for the training system."""
 
-import torch
 import pytest
+import torch
 
+from meridian.data.pipeline import create_smoke_dataloader
 from meridian.model.configuration import MeridianConfig
 from meridian.model.modeling import MeridianForCausalLM
-from meridian.training.trainer import MeridianTrainer, TrainingConfig
 from meridian.training.ewc import ElasticWeightConsolidation
-from meridian.data.pipeline import create_smoke_dataloader
+from meridian.training.trainer import MeridianTrainer, TrainingConfig
 
 
 @pytest.fixture

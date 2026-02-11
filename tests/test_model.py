@@ -1,16 +1,11 @@
 """Tests for MeridianFormer model architecture."""
 
-import torch
 import pytest
+import torch
 
 from meridian.model.configuration import MeridianConfig
-from meridian.model.modeling import (
-    MeridianForCausalLM,
-    RMSNorm,
-    MeridianSwiGLU,
-    MeridianMoELayer,
-    NumeracyEncoder,
-)
+from meridian.model.modeling import (MeridianForCausalLM, MeridianMoELayer,
+                                     MeridianSwiGLU, NumeracyEncoder, RMSNorm)
 
 
 @pytest.fixture
@@ -122,9 +117,7 @@ class TestModel:
         loaded = MeridianForCausalLM.from_pretrained(save_path)
 
         # Check weights match
-        for (n1, p1), (n2, p2) in zip(
-            small_model.named_parameters(), loaded.named_parameters()
-        ):
+        for (n1, p1), (n2, p2) in zip(small_model.named_parameters(), loaded.named_parameters()):
             assert n1 == n2
             assert torch.allclose(p1, p2, atol=1e-6)
 

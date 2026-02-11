@@ -21,12 +21,11 @@ try:
 except Exception:
     pass
 
-import torch
 from transformers import AutoTokenizer
 
+from meridian.data.pipeline import create_dataloader, create_smoke_dataloader
 from meridian.model.configuration import MeridianConfig
 from meridian.model.modeling import MeridianForCausalLM
-from meridian.data.pipeline import create_dataloader, create_smoke_dataloader
 from meridian.training.trainer import MeridianTrainer, TrainingConfig
 
 

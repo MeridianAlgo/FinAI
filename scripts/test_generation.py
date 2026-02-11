@@ -5,7 +5,6 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import torch
 from transformers import AutoTokenizer
 
 from meridian.model.modeling import MeridianForCausalLM
@@ -36,9 +35,7 @@ def main():
         print(f"\n{'='*60}")
         print(f"Prompt: {prompt[:80]}...")
         tokens = tokenizer(prompt, return_tensors="pt")
-        output = model.generate_text(
-            tokens["input_ids"], max_new_tokens=128, temperature=0.7
-        )
+        output = model.generate_text(tokens["input_ids"], max_new_tokens=128, temperature=0.7)
         text = tokenizer.decode(output[0], skip_special_tokens=True)
         print(f"Output: {text}")
 

@@ -30,7 +30,7 @@ def main():
         components[component] = components.get(component, 0) + numel
 
     print(f"\n{'='*60}")
-    print(f"  MeridianFormer Parameter Report")
+    print("  MeridianFormer Parameter Report")
     print(f"{'='*60}\n")
     print(f"  Total: {total:>15,}")
     print(f"  Total (M): {total / 1e6:>11.1f}M\n")
