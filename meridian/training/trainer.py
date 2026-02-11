@@ -208,11 +208,22 @@ class MeridianTrainer:
 
             if loss is None:
                 continue
+            
+            # Check for NaN loss
+            if torch.isnan(loss):
+                print(f"  [WARNING] Step {self.run_step}: Loss is NaN. Skipping batch.")
+                self.optimizer.zero_grad()
+                continue
 
             # Add EWC penalty
             if self.ewc is not None and self.ewc._initialized:
                 ewc_loss = self.ewc.penalty(self.model)
                 loss = loss + ewc_loss
+                
+                if torch.isnan(loss):
+                    print(f"  [WARNING] Step {self.run_step}: Total loss (with EWC) is NaN. Skipping batch.")
+                    self.optimizer.zero_grad()
+                    continue
 
             # Scale for gradient accumulation
             scaled_loss = loss / self.config.gradient_accumulation_steps
@@ -227,6 +238,16 @@ class MeridianTrainer:
                 grad_norm = torch.nn.utils.clip_grad_norm_(
                     self.model.parameters(), self.config.max_grad_norm
                 )
+                
+                # Check for NaN gradients
+                if torch.isnan(grad_norm):
+                    print(f"  [WARNING] Step {self.run_step}: Gradient norm is NaN. Skipping step.")
+                    self.optimizer.zero_grad()
+                    # Increment steps anyway to avoid infinite loops if stuck? 
+                    # Better to just skip update but count as a step or not?
+                    # If we skip, we don't update weights.
+                    self.optimizer.zero_grad()
+                    continue
 
                 # Update LR
                 lr = self._update_lr(self.run_step)
