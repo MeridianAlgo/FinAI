@@ -142,6 +142,7 @@ jobs:
           TOTAL_STEPS: '100000'
           GRAD_ACCUM: '4'
           BATCH_SIZE: '2'
+          LEARNING_RATE: '5e-5'
           BLOCK_SIZE: '512'
           USE_EWC: '1'
           GRADIENT_CHECKPOINTING: '1'

@@ -218,12 +218,17 @@ def main():
             tokenizer.save_pretrained(checkpoint_path)
 
         # Update dataset state
-        batches_this_run = (
-            (trainer.global_step - initial_global_step)
-            * train_config.batch_size
-            * train_config.gradient_accumulation_steps
-        )
-        new_processed = processed_items + batches_this_run
+        # Use actual processed batches from trainer (includes skipped ones)
+        if hasattr(trainer, "processed_batches"):
+            batches_processed = trainer.processed_batches
+        else:
+            # Fallback for backward compatibility
+            batches_processed = (
+                trainer.global_step - initial_global_step
+            ) * train_config.gradient_accumulation_steps
+
+        items_processed = batches_processed * train_config.batch_size
+        new_processed = processed_items + items_processed
 
         for sp in [state_path, os.path.join(checkpoint_path, "dataset_state.json")]:
             with open(sp, "w") as f:

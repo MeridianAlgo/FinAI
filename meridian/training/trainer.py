@@ -42,7 +42,7 @@ class TrainingConfig:
     total_steps: int = 100_000
 
     # Optimizer
-    learning_rate: float = 3e-4
+    learning_rate: float = 5e-5
     weight_decay: float = 0.1
     max_grad_norm: float = 1.0
     warmup_ratio: float = 0.06
@@ -92,6 +92,7 @@ class MeridianTrainer:
         # State
         self.global_step = 0
         self.run_step = 0
+        self.processed_batches = 0
         self.best_loss = float("inf")
 
         # EWC for continual learning
@@ -193,6 +194,7 @@ class MeridianTrainer:
             # Get batch
             try:
                 batch = next(data_iter)
+                self.processed_batches += 1
             except StopIteration:
                 print("[INFO] Dataset exhausted. Ending training.")
                 break
@@ -327,6 +329,14 @@ class MeridianTrainer:
 
     def save_checkpoint(self, path: str) -> None:
         """Save model + optimizer + trainer state."""
+        # Sanity check for NaN weights
+        for name, param in self.model.named_parameters():
+            if torch.isnan(param).any():
+                print(
+                    f"  [CRITICAL] NaN detected in parameter '{name}'. Aborting checkpoint save to protect repo."
+                )
+                return
+
         os.makedirs(path, exist_ok=True)
         print(f"  [SAVE] Checkpoint → {path}")
 
