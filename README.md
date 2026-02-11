@@ -1,107 +1,116 @@
-# 🌊 MeridianFormer: Sparse MoE Financial LLM
+# MeridianFormer: Sparse Mixture-of-Experts Financial Language Model
 
 [![MeridianFormer Hourly Training](https://github.com/MeridianAlgo/FinAI/actions/workflows/train.yml/badge.svg)](https://github.com/MeridianAlgo/FinAI/actions/workflows/train.yml)
 [![MeridianFormer CI](https://github.com/MeridianAlgo/FinAI/actions/workflows/ci.yml/badge.svg)](https://github.com/MeridianAlgo/FinAI/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python: 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![Architecture: MoE](https://img.shields.io/badge/Architecture-Sparse%20MoE-green.svg)](#architecture)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Python: 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/downloads/)
 
-> **MeridianFormer** is a state-of-the-art, 283M-parameter Sparse Mixture-of-Experts (SMoE) language model engineered specifically for financial intelligence and mathematical reasoning. Optimized for high-efficiency CPU execution and continuous hourly learning.
-
----
-
-### 🤖 Development Notice
-*This codebase and the MeridianFormer architecture were architected and implemented by **Antigravity AI**.*
+MeridianFormer is a specialized 283M-parameter transformer-based language model utilizing a Sparse Mixture-of-Experts (SMoE) architecture. The project is designed specifically for financial intelligence, quantitative reasoning, and math-heavy tasks. It features a novel training paradigm optimized for continuous, hourly execution on standard CPU runners through the application of Elastic Weight Consolidation (EWC).
 
 ---
 
-## 🔬 Architectural Innovations
+## Development Attribution
+This project is developed by Ishaan Manoor (MeridianAlgo). All source code has been formatted and edited with the assistance of Antigravity AI.
 
-MeridianFormer represents a significant departure from standard dense transformer architectures, utilizing a suite of novel techniques to achieve state-of-the-art performance on commodity hardware.
+---
+
+## Architecture and Technical Implementation
+
+MeridianFormer departs from standard dense architectures to maximize knowledge capacity while minimizing computational overhead during inference and training.
 
 ### 1. Sparse Mixture-of-Experts (SMoE)
-Unlike traditional models that activate every parameter for every token, MeridianFormer utilizes a **Sparse 8-Expert MoE** system. With **Top-2 Routing**, only approximately **196M parameters** are active per token. This achieves the knowledge capacity of a larger model with the inference speed of a much smaller one, enabling viable high-speed training on CPU infrastructure.
+The model employs a sparse gateway system consisting of 8 distinct experts per MoE layer. Utilizing a load-balanced Top-2 routing mechanism, only 196M parameters are active per token. This architectural choice provides a 1.44x increase in computational efficiency over dense models of equivalent capacity, allowing for high-performance execution on CPU-based infrastructure.
 
-### 2. Grouped Query Attention (GQA) & RoPE
-We implement **Grouped Query Attention** (12 Query heads, 4 Key-Value heads) to significantly reduce the memory footprint of the KV cache. This is paired with **Rotary Position Embeddings (RoPE)** (base θ=500k), allowing for robust long-context understanding and superior relative position awareness.
+### 2. Grouped Query Attention (GQA)
+To optimize memory utilization and KV-cache efficiency, MeridianFormer implements Grouped Query Attention. With a ratio of 12 Query heads to 4 Key-Value heads, the model significantly reduces the memory bandwidth required for long-context generation without sacrificing attention resolution.
 
-### 3. Financial Numeracy Encoding
-A novel contribution to financial modeling: we inject **magnitude-aware embeddings** into the hidden state. Standard tokenization often loses the quantitative scale of numbers (e.g., treating "100" and "10000" as unrelated semantic tokens). MeridianFormer's numeracy encoder restores this relationship, enabling true quantitative reasoning.
+### 3. Rotary Position Embeddings (RoPE)
+The project utilizes Rotary Position Embeddings with a base frequency (theta) of 500,000. This configuration enables superior relative position awareness and supports context windows of up to 2,048 tokens, critical for analyzing long-form financial reports and multi-step mathematical solutions.
 
-### 4. Elastic Weight Consolidation (EWC)
-To support **Hourly Continual Pre-training**, we utilize **Elastic Weight Consolidation**. By computing the diagonal Fisher Information Matrix after each training run, the model identifies and protects parameters critical to previously learned financial knowledge, effectively solving the "catastrophic forgetting" problem inherent in online learning.
+### 4. SwiGLU Gated Activation
+Following state-of-the-art transformer standards (e.g., Llama 3), MeridianFormer replaces standard GELU activations with SwiGLU. The gated linear unit, combined with the SiLU activation function, provides improved gradient flow and representational capacity for complex financial patterns.
 
 ---
 
-## 🛠 Model Specifications
+## Novel Contributions
 
-| Parameter | Value |
+### Financial Numeracy Encoding
+Standard tokenization strategies often fail to capture the quantitative magnitude of numeric data. MeridianFormer introduces a learned Numeracy Encoding layer that injects magnitude-aware signals into the hidden states. By mapping numeric tokens to their respective logarithmic scales, the model develops an inherent understanding of quantitative relationships (e.g., the order-of-magnitude difference between pricing levels), rather than treating numbers as purely semantic strings.
+
+### Continuous Pre-training via Elastic Weight Consolidation (EWC)
+MeridianFormer is designed for perpetual learning. To mitigate the issue of catastrophic forgetting during frequent, incremental training runs, the system implements Elastic Weight Consolidation.
+*   **Fisher Information Matrix**: Following each training iteration, the model computes the diagonal Fisher matrix to identify weights that are critical to previously acquired knowledge.
+*   **Penalty Mechanism**: During subsequent runs, a L2-style penalty is applied to the loss function for changes made to these critical weights, ensuring the model retains its "core" financial reasoning while adapting to new market data.
+
+---
+
+## System Specifications
+
+| Feature | Specification |
 | :--- | :--- |
 | **Total Parameters** | 283,121,536 |
-| **Active Parameters** | 196,417,408 (~1.44x efficiency) |
-| **Layers** | 14 (Alternating Dense/MoE) |
+| **Active Parameters** | 196,417,408 |
+| **Layers** | 14 (Alternating Dense and MoE) |
 | **Hidden Dimension** | 768 |
-| **Attention Heads** | 12 Q-Heads / 4 KV-Heads (GQA) |
-| **Experts** | 8 per MoE layer (Top-2 Router) |
-| **Context Window** | 2,048 Tokens |
-| **Weight Tying** | Tied Embeddings (Embed ↔ LM Head) |
+| **Attention Heads** | 12 Query / 4 KV |
+| **Expert Count** | 8 (Top-2 Activated) |
+| **FFN Intermediate Size** | 1792 |
+| **Normalization** | RMSNorm (eps=1e-6) |
+| **Weight Tying** | Tied Embeddings (Input/Output) |
 
 ---
 
-## 📈 Training Curriculum
+## Data Curriculum and Pipeline
 
-MeridianFormer is trained on a curated mix of high-signal datasets to ensure financial expertise:
+The training pipeline uses a weighted streaming curriculum to ensure a balanced foundation in language, mathematics, and finance:
 
-*   **FinanceAlpaca (40%)**: Specialized financial instructions, market analysis, and QA.
-*   **OpenMathInstruct-2 (30%)**: Advanced mathematical reasoning and problem solving.
-*   **FineWeb-Edu (30%)**: High-quality educational content for foundational knowledge.
+*   **FinanceAlpaca (40%)**: Specialized instruction sets for financial analysis, portfolio management, and market sentiment.
+*   **OpenMathInstruct-2 (30%)**: Advanced math reasoning to sharpen the model's logic and calculation capabilities.
+*   **FineWeb-Edu (30%)**: High-quality educational data to maintain general semantic proficiency and world knowledge.
 
-### Continuous Training Loop
-The model undergoes automated training every hour via GitHub Actions:
-1.  **State Recovery**: Pulls the latest checkpoint from HuggingFace Hub.
-2.  **Streaming Pre-training**: Ingests new data samples via weighted round-robin streaming.
-3.  **EWC Optimization**: Trains with a penalty to preserve important financial weights.
-4.  **Distribution**: Pushes updated weights back to the HF Hub and syncs dataset telemetry.
+Data is streamed via a round-robin generator with support for state persistence (dataset_state.json), ensuring that the model never trains on the same sample twice across hourly runs.
 
 ---
 
-## 🚀 Getting Started
+## Project Execution and Automation
 
-### Installation
+The repository includes a comprehensive GitHub Actions ecosystem (`.github/workflows/`) that manages the model's lifecycle:
+*   **Hourly Training**: Automated execution on standard runners, managing checkpoint synchronization with HuggingFace Hub.
+*   **HuggingFace Integration**: Seamless weight management using the `safetensors` format for secure and efficient distribution.
+*   **Validation**: Integrated CI/CD suite performing architecture smoke tests, parameter validation, and unit testing on every commit.
+
+---
+
+## Developer Guide
+
+### Environment Setup
+Dependencies are managed via `requirements.txt`.
 ```bash
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
-### Analyze Architecture
+### Parameter Analysis
+Use the included script to verify the MoE efficiency and parameter distribution.
 ```bash
 python scripts/count_params.py
 ```
 
-### Training
+### Training Methods
+The `train.py` script supports environment variables for configuration.
 ```bash
-# Smoke test (Development)
+# Smoke test (validate architecture)
 SMOKE_TEST=1 python train.py
 
-# Full training run
+# Full training iteration
 python train.py
 ```
 
-### Inference
+### Generation and Testing
 ```bash
 python scripts/test_generation.py
 ```
 
 ---
 
-## 📂 Project Structure
-
-*   `meridian/model/`: Core Sparse MoE architecture and configuration.
-*   `meridian/training/`: Custom training engine with EWC support.
-*   `meridian/data/`: Finance-focused streaming curriculum pipeline.
-*   `scripts/`: Utilities for seeding, nuking, and evaluating the model.
-*   `.github/workflows/`: Automated hourly training and CI/CD pipelines.
-
----
-
-## ⚖️ License
-Distributed under the **MIT License**. See `LICENSE` (if available) for more information.
+## License
+This project is licensed under the MIT License.
