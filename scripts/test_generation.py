@@ -1,50 +1,47 @@
+"""Test generation from a trained MeridianFormer model."""
+
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import torch
 from transformers import AutoTokenizer
 
-from fin_ai.model.configuration_next import FinAINextConfig
-from fin_ai.model.modeling_next import FinAINextForCausalLM
+from meridian.model.modeling import MeridianForCausalLM
 
 
-def test_gen():
-    print("Loading model for generation test...")
-    model_path = "./checkpoints_next/model"
+def main():
+    model_path = os.getenv("MODEL_PATH", "./checkpoint")
 
-    # Load model
-    try:
-        model = FinAINextForCausalLM.from_pretrained(model_path)
-    except Exception as e:
-        print(f"Failed to load from {model_path}, using init: {e}")
-        config = FinAINextConfig()
-        model = FinAINextForCausalLM(config)
-
-    tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-0.5B")
-
+    print(f"Loading model from {model_path}...")
+    model = MeridianForCausalLM.from_pretrained(model_path)
     model.eval()
-    if torch.cuda.is_available():
-        model.cuda()
+
+    tokenizer = AutoTokenizer.from_pretrained(model_path)
+    if tokenizer.pad_token_id is None:
+        tokenizer.pad_token_id = tokenizer.eos_token_id
+
+    total_params = sum(p.numel() for p in model.parameters())
+    print(f"Parameters: {total_params:,}")
 
     prompts = [
-        "The market broke out of the consolidation phase because",
-        "Artificial Intelligence is evolving rapidly. In the future,",
-        "def fibonacci(n):",
+        "### Instruction:\nWhat is the current P/E ratio of Apple and what does it indicate?\n\n### Response:\n",
+        "### Instruction:\nCalculate the compound interest on $10,000 at 5% over 10 years.\n\n### Response:\n",
+        "### Instruction:\nExplain the Black-Scholes option pricing model.\n\n### Response:\n",
+        "### Instruction:\nWhat are the key differences between stocks and bonds?\n\n### Response:\n",
     ]
 
-    print("\n--- Generation Test ---")
-    for p in prompts:
-        inputs = tokenizer(p, return_tensors="pt")
-        if torch.cuda.is_available():
-            inputs = {k: v.cuda() for k, v in inputs.items()}
-
-        with torch.no_grad():
-            # Simple generation
-            outputs = model.generate(
-                **inputs, max_new_tokens=50, do_sample=True, temperature=0.7, top_p=0.9
-            )
-
-        text = tokenizer.decode(outputs[0], skip_special_tokens=True)
-        print(f"\nPrompt: {p}")
+    for prompt in prompts:
+        print(f"\n{'='*60}")
+        print(f"Prompt: {prompt[:80]}...")
+        tokens = tokenizer(prompt, return_tensors="pt")
+        output = model.generate_text(
+            tokens["input_ids"], max_new_tokens=128, temperature=0.7
+        )
+        text = tokenizer.decode(output[0], skip_special_tokens=True)
         print(f"Output: {text}")
 
 
 if __name__ == "__main__":
-    test_gen()
+    main()

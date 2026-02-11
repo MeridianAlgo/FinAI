@@ -1,8 +1,7 @@
 # Environment
 .env
 
-# Model Checkpoints (Big files, uploaded to Hugging Face)
-checkpoints_next/
+# Model Checkpoints (stored on HF Hub)
 checkpoints/
 /checkpoint/
 /model/
@@ -10,9 +9,8 @@ checkpoints/
 *.bin
 pytorch_model.bin
 trainer_state.pt
-legacy/
 
-# Python System
+# Python
 __pycache__/
 *.pyc
 *.pyo
@@ -23,15 +21,23 @@ env/
 venv/
 .venv/
 
-# Datasets & Temporary files
+# Caches
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Datasets & Temp
 datasets/
 *.tmp
 *.temp
 training_output.txt
 
-# Experiment logs
+# Experiment Logs
 comet_logs.json
 comet_summary.txt
 
-# Dataset State (CRITICAL: DO NOT IGNORE - needed for GitHub Actions persistence)
-# dataset_state.json should be tracked by git
+# OS
+.DS_Store
+Thumbs.db
+
+# TRACK: dataset_state.json (critical for GitHub Actions persistence)

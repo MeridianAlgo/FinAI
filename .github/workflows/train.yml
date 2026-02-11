@@ -1,0 +1,198 @@
+name: MeridianFormer Hourly Training
+
+on:
+  schedule:
+    # Every hour, every day
+    - cron: '0 * * * *'
+  workflow_dispatch:
+    inputs:
+      force_seed:
+        description: 'Nuke & re-seed HF repo with fresh model?'
+        type: boolean
+        default: false
+      max_steps:
+        description: 'Training steps per run (default: 200)'
+        type: string
+        default: '200'
+
+concurrency:
+  group: meridian-train-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  seed:
+    name: "🔧 Nuke & Seed HF"
+    if: github.event.inputs.force_seed == 'true'
+    runs-on: ubuntu-latest
+    environment: HuggingFace Hub
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install deps
+        run: |
+          pip install huggingface_hub transformers torch safetensors sentencepiece
+
+      - name: Nuke & Seed
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          PYTHONPATH: .
+        run: python scripts/seed_hf_repo.py
+
+  train:
+    name: "🚀 Hourly Training Run"
+    needs: seed
+    if: |
+      always() && 
+      (needs.seed.result == 'success' || needs.seed.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 55  # Leave 5min buffer in the hour
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Cache Dependencies
+        uses: actions/cache@v4
+        id: cache-deps
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-meridian-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-meridian-
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install ruff black
+
+      - name: Lint & Format
+        run: |
+          black . --quiet
+          ruff check . --fix --quiet
+
+      - name: Pull Checkpoint from HuggingFace
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python -c "
+          from huggingface_hub import snapshot_download, list_repo_files
+          import os, shutil
+
+          repo_id = 'MeridianAlgo/MeridianFormer'
+          token = os.getenv('HF_TOKEN')
+
+          try:
+              files = list(list_repo_files(repo_id=repo_id, token=token))
+              checkpoint_files = [f for f in files if f.startswith('checkpoint/')]
+
+              if checkpoint_files:
+                  print(f'Found {len(checkpoint_files)} checkpoint files')
+                  temp_dir = './temp_download'
+                  snapshot_download(
+                      repo_id=repo_id,
+                      local_dir=temp_dir,
+                      token=token
+                  )
+                  if os.path.exists(os.path.join(temp_dir, 'checkpoint')):
+                      if os.path.exists('./checkpoint'):
+                          shutil.rmtree('./checkpoint')
+                      shutil.move(os.path.join(temp_dir, 'checkpoint'), './checkpoint')
+                      print('✓ Checkpoint pulled')
+
+                  for cf in ['model.safetensors', 'trainer_state.pt', 'config.json', 'ewc_state.pt']:
+                      path = os.path.join('./checkpoint', cf)
+                      if os.path.exists(path):
+                          size_mb = os.path.getsize(path) / (1024 * 1024)
+                          print(f'  ✓ {cf} ({size_mb:.2f} MB)')
+
+                  if os.path.exists(temp_dir):
+                      shutil.rmtree(temp_dir)
+              else:
+                  print('No checkpoint found — will start fresh')
+          except Exception as e:
+              print(f'Pull error: {e}')
+              import traceback
+              traceback.print_exc()
+              print('Will start fresh.')
+          "
+
+      - name: Train
+        id: training
+        continue-on-error: true
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          COMET_API_KEY: ${{ secrets.COMET_API_KEY }}
+          SMOKE_TEST: '0'
+          MAX_STEPS: ${{ github.event.inputs.max_steps || '200' }}
+          TOTAL_STEPS: '100000'
+          GRAD_ACCUM: '4'
+          BATCH_SIZE: '2'
+          BLOCK_SIZE: '512'
+          USE_EWC: '1'
+          GRADIENT_CHECKPOINTING: '1'
+          PYTHONPATH: .
+          PYTHONUNBUFFERED: '1'
+        run: |
+          timeout 2700 python train.py || echo "Training completed or timed out"
+
+      - name: Upload Checkpoint to HuggingFace
+        if: always()
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python -c "
+          from huggingface_hub import HfApi
+          import os
+
+          if not os.path.exists('./checkpoint'):
+              print('No checkpoint found, skipping')
+              exit(0)
+
+          api = HfApi()
+          print('Uploading to MeridianAlgo/MeridianFormer...')
+          try:
+              api.upload_folder(
+                  folder_path='./checkpoint',
+                  repo_id='MeridianAlgo/MeridianFormer',
+                  path_in_repo='checkpoint',
+                  commit_message='Hourly training update [skip ci]',
+                  token=os.getenv('HF_TOKEN')
+              )
+              print('✓ Upload successful')
+          except Exception as e:
+              print(f'✗ Upload failed: {e}')
+              exit(1)
+          "
+
+      - name: Save Training Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: meridian-checkpoint-${{ github.run_number }}
+          path: checkpoint/
+          retention-days: 3
+
+      - name: Sync Dataset State
+        if: always()
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "MeridianFormer Bot"
+          git add dataset_state.json
+          git diff --staged --quiet || git commit -m "chore: sync dataset state [skip ci]"
+          git pull --rebase -X theirs origin main || (git rebase --abort && git pull --no-rebase origin main)
+          git push origin main

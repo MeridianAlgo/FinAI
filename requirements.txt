@@ -1,14 +1,16 @@
-torch>=2.0.0
-transformers>=4.35.0
-datasets>=2.14.0
+# MeridianFormer - Finance LLM Dependencies
+torch>=2.1.0
+transformers>=4.40.0
+datasets>=2.18.0
 tokenizers>=0.15.0
-accelerate>=0.24.0
+safetensors>=0.4.0
+huggingface_hub>=0.21.0
+sentencepiece>=0.2.0
+accelerate>=0.27.0
 comet-ml>=3.35.0
+python-dotenv>=1.0.0
+numpy>=1.24.0
 pyyaml>=6.0
 tqdm>=4.66.0
-numpy>=1.24.0
-huggingface_hub>=0.19.0
-python-dotenv
-safetensors>=0.4.0
-sentencepiece>=0.1.99
 requests>=2.31.0
+psutil>=5.9.0

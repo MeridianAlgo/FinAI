@@ -1,90 +1,87 @@
-name: CI
+name: MeridianFormer CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [main]
+    paths:
+      - 'meridian/**'
+      - 'train.py'
+      - 'requirements.txt'
   pull_request:
-    branches: [ "main" ]
+    branches: [main]
 
 jobs:
   lint:
-    name: "Verify & Lint"
+    name: "🔍 Lint & Format"
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    environment: branch
     steps:
       - uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
-          cache: 'pip'
-      
-      - name: Check & Install Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install ruff black mypy isort
-          pip install -r requirements.txt
-      
-      - name: Linting Check Via Ruff
-        run: ruff check . --exclude legacy
-        continue-on-error: true
-      
-      - name: Formatting Check Via Black
-        run: black --check . --exclude legacy
-        continue-on-error: true
+          python-version: '3.11'
 
-      - name: Import Order Check Via Isort
-        run: isort --check-only .
-        continue-on-error: true
-      
-      - name: Auto-Fix if Linting Failed
-        if: failure()
-        run: |
-          echo "Linting failed, attempting auto-fix..."
-          ruff check . --fix --exclude legacy || true
-          isort .
-          black . --exclude legacy
-          
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add .
-          if ! git diff --staged --quiet; then
-            git commit -m "chore: auto-fix linting issues [skip ci]"
-            git pull --rebase origin main
-            git push origin main
-            echo "Changes pushed. A new workflow will be triggered."
-          else
-            echo "No changes to push."
-          fi
-      
-      - name: Type Checking Via MyPy
-        env:
-          PYTHONPATH: .
-        run: mypy --ignore-missing-imports --exclude legacy .
+      - name: Install linters
+        run: pip install ruff black mypy
 
-  test:
-    name: "Automated Tests"
+      - name: Check formatting
+        run: black --check .
+
+      - name: Lint
+        run: ruff check .
+
+  smoke-test:
+    name: "🧪 Smoke Test"
     needs: lint
     runs-on: ubuntu-latest
-    environment: branch
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.11'
           cache: 'pip'
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest pytest-asyncio
 
-      - name: Run Tests
+      - name: Run smoke test
+        env:
+          SMOKE_TEST: '1'
+          MAX_STEPS: '5'
+          BATCH_SIZE: '2'
+          BLOCK_SIZE: '64'
+          PYTHONPATH: .
+          PYTHONUNBUFFERED: '1'
+        run: python train.py
+
+      - name: Count parameters
         env:
           PYTHONPATH: .
-        run: pytest --ignore=legacy/
+        run: python scripts/count_params.py
+
+  test:
+    name: "✅ Unit Tests"
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Run tests
+        env:
+          PYTHONPATH: .
+        run: pytest tests/ -v

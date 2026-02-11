@@ -1,67 +1,61 @@
-import os
+"""Seed the HuggingFace repository with a fresh MeridianFormer model."""
 
-from huggingface_hub import HfApi
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from huggingface_hub import HfApi, create_repo
 from transformers import AutoTokenizer
 
-from fin_ai.model.configuration_next import FinAINextConfig
-from fin_ai.model.modeling_next import FinAINextForCausalLM
+from meridian.model.configuration import MeridianConfig
+from meridian.model.modeling import MeridianForCausalLM
 
 
-def seed_repo():
+def main():
     token = os.getenv("HF_TOKEN")
-    repo_id = "MeridianAlgo/FinAI-Lite"
-    api = HfApi(token=token)
+    repo_id = "MeridianAlgo/MeridianFormer"
 
-    print(f"Nuking and Seeding {repo_id}...")
+    if not token:
+        print("✗ HF_TOKEN not set")
+        return
 
-    # 1. Nuke existing files if repo exists
+    # Create repo if it doesn't exist
     try:
-        files = api.list_repo_files(repo_id)
-        for file in files:
-            if file != ".gitattributes":
-                print(f"  - Deleting {file}")
-                api.delete_file(path_in_repo=file, repo_id=repo_id)
+        create_repo(repo_id, token=token, private=False, exist_ok=True)
+        print(f"✓ Repo {repo_id} ready")
     except Exception as e:
-        print(f"Repo might not exist or error: {e}")
-        api.create_repo(repo_id=repo_id, exist_ok=True)
+        print(f"Repo creation note: {e}")
 
-    # 2. Re-initialize Model & Config
-    config = FinAINextConfig(
-        vocab_size=151665,
-        hidden_size=1536,
-        num_layers=24,
-        liquid_state_dim=384,
-        gradient_checkpointing=True,
-        tie_word_embeddings=True,
-    )
-    model = FinAINextForCausalLM(config)
+    # Initialize model with full config
+    config = MeridianConfig()
+    model = MeridianForCausalLM(config)
 
-    # 3. Save locally temp
-    temp_dir = "./temp_seed"
-    os.makedirs(temp_dir, exist_ok=True)
-    model.save_pretrained(temp_dir, safe_serialization=True)
+    total_params = sum(p.numel() for p in model.parameters())
+    print(f"  Parameters: {total_params:,}")
 
-    # 4. Tokenizer
+    # Save locally
+    save_path = "./checkpoint"
+    os.makedirs(save_path, exist_ok=True)
+    model.save_pretrained(save_path, safe_serialization=True)
+
+    # Save tokenizer
     tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-0.5B")
-    tokenizer.save_pretrained(temp_dir)
+    if tokenizer.pad_token_id is None:
+        tokenizer.pad_token_id = tokenizer.eos_token_id
+    tokenizer.save_pretrained(save_path)
 
-    # 5. Upload everything
-    print("Uploading seed files...")
+    # Upload
+    api = HfApi()
     api.upload_folder(
-        folder_path=temp_dir,
+        folder_path=save_path,
         repo_id=repo_id,
-        commit_message="Nuke and Seed: Fresh Start",
+        path_in_repo="checkpoint",
+        commit_message="Initial MeridianFormer seed (300M params)",
+        token=token,
     )
-
-    # Cleanup
-    import shutil
-
-    shutil.rmtree(temp_dir)
-    print("Seeding complete.")
+    print(f"✓ Model seeded to {repo_id}")
 
 
 if __name__ == "__main__":
-    if not os.getenv("HF_TOKEN"):
-        print("HF_TOKEN not found in env")
-    else:
-        seed_repo()
+    main()

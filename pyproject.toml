@@ -1,28 +1,23 @@
-[build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
-
 [project]
-name = "fin_ai"
-version = "0.1.0"
-description = "FinAI-Next: Advanced Financial AI with Liquid BitNet"
-dependencies = [
-    "torch>=2.0.0",
-    "transformers>=4.35.0",
-    "datasets>=2.14.0",
-    "comet-ml>=3.35.0",
-    "tqdm>=4.66.0",
-    "python-dotenv",
-    "safetensors>=0.4.0",
-]
+name = "meridian-former"
+version = "1.0.0"
+description = "MeridianFormer: A 300M-param Sparse MoE Finance LLM trainable on CPU"
+requires-python = ">=3.10"
 
-[tool.setuptools]
-packages = ["fin_ai"]
+[tool.ruff]
+line-length = 100
+target-version = "py310"
 
-[tool.pytest.ini_options]
-pythonpath = ["."]
-testpaths = ["tests"]
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
 
 [tool.mypy]
-exclude = ["legacy/"]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
 ignore_missing_imports = true
