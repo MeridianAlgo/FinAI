@@ -22,10 +22,10 @@ from transformers.modeling_outputs import CausalLMOutputWithPast
 
 from meridian.model.configuration import MeridianConfig
 
+
 # ---------------------------------------------------------------------------
 # Primitives
 # ---------------------------------------------------------------------------
-
 
 class RMSNorm(nn.Module):
     """Root Mean Square Layer Normalization (faster than LayerNorm)."""
@@ -36,9 +36,12 @@ class RMSNorm(nn.Module):
         self.eps = eps
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        variance = x.to(torch.float32).pow(2).mean(-1, keepdim=True)
+        # Standard implementation with stability cast
+        dtype = x.dtype
+        x = x.to(torch.float32)
+        variance = x.pow(2).mean(-1, keepdim=True)
         x = x * torch.rsqrt(variance + self.eps)
-        return self.weight * x.to(self.weight.dtype)
+        return self.weight * x.to(dtype)
 
 
 def rotate_half(x: torch.Tensor) -> torch.Tensor:
@@ -75,18 +78,18 @@ class RotaryEmbedding(nn.Module):
             t = torch.arange(seq_len, device=x.device, dtype=self.inv_freq.dtype)
             freqs = torch.outer(t, self.inv_freq)
             emb = torch.cat((freqs, freqs), dim=-1)
-            self._cached_cos = emb.cos().unsqueeze(0).unsqueeze(0)  # [1,1,S,D]
-            self._cached_sin = emb.sin().unsqueeze(0).unsqueeze(0)
-        return (
-            self._cached_cos[:, :, :seq_len, :].to(x.dtype),
-            self._cached_sin[:, :, :seq_len, :].to(x.dtype),
-        )
+            # Ensure in float32 for cos/sin calculation
+            self._cached_cos = emb.cos().float().unsqueeze(0).unsqueeze(0)  # [1,1,S,D]
+            self._cached_sin = emb.sin().float().unsqueeze(0).unsqueeze(0)
+        
+        cos = self._cached_cos[:, :, :seq_len, :].to(x.dtype)
+        sin = self._cached_sin[:, :, :seq_len, :].to(x.dtype)
+        return cos, sin
 
 
 # ---------------------------------------------------------------------------
 # Attention: Grouped Query Attention (GQA)
 # ---------------------------------------------------------------------------
-
 
 class MeridianAttention(nn.Module):
     """Multi-head attention with Grouped Query Attention (GQA) + RoPE.
@@ -124,21 +127,9 @@ class MeridianAttention(nn.Module):
     ) -> Tuple[torch.Tensor, Optional[Tuple[torch.Tensor, torch.Tensor]]]:
         bsz, q_len, _ = hidden_states.shape
 
-        q = (
-            self.q_proj(hidden_states)
-            .view(bsz, q_len, self.num_heads, self.head_dim)
-            .transpose(1, 2)
-        )
-        k = (
-            self.k_proj(hidden_states)
-            .view(bsz, q_len, self.num_kv_heads, self.head_dim)
-            .transpose(1, 2)
-        )
-        v = (
-            self.v_proj(hidden_states)
-            .view(bsz, q_len, self.num_kv_heads, self.head_dim)
-            .transpose(1, 2)
-        )
+        q = self.q_proj(hidden_states).view(bsz, q_len, self.num_heads, self.head_dim).transpose(1, 2)
+        k = self.k_proj(hidden_states).view(bsz, q_len, self.num_kv_heads, self.head_dim).transpose(1, 2)
+        v = self.v_proj(hidden_states).view(bsz, q_len, self.num_kv_heads, self.head_dim).transpose(1, 2)
 
         # Handle KV cache
         kv_seq_len = q_len
@@ -147,6 +138,7 @@ class MeridianAttention(nn.Module):
 
         cos, sin = self.rotary_emb(q, kv_seq_len)
         if past_key_value is not None:
+            # Match current sequence length
             cos = cos[:, :, -q_len:, :]
             sin = sin[:, :, -q_len:, :]
 
@@ -158,21 +150,20 @@ class MeridianAttention(nn.Module):
 
         new_kv = (k, v) if use_cache else None
 
-        # Expand KV heads for GQA
+        # Repeat KV heads for GQA compatibility with Q heads
         if self.num_kv_groups > 1:
-            k = k.unsqueeze(2).expand(-1, -1, self.num_kv_groups, -1, -1)
-            k = k.reshape(bsz, self.num_heads, -1, self.head_dim)
-            v = v.unsqueeze(2).expand(-1, -1, self.num_kv_groups, -1, -1)
-            v = v.reshape(bsz, self.num_heads, -1, self.head_dim)
+            k = k.unsqueeze(2).expand(-1, -1, self.num_kv_groups, -1, -1).reshape(bsz, self.num_heads, -1, self.head_dim)
+            v = v.unsqueeze(2).expand(-1, -1, self.num_kv_groups, -1, -1).reshape(bsz, self.num_heads, -1, self.head_dim)
 
-        # Scaled dot-product attention
+        # Stable attention scores
         attn_weights = torch.matmul(q, k.transpose(-1, -2)) / math.sqrt(self.head_dim)
 
         if attention_mask is not None:
             attn_weights = attn_weights + attention_mask
 
-        attn_weights = F.softmax(attn_weights, dim=-1, dtype=torch.float32).to(q.dtype)
-        attn_output = torch.matmul(attn_weights, v)
+        # Softmax in float32 for stability
+        attn_probs = F.softmax(attn_weights, dim=-1, dtype=torch.float32).to(q.dtype)
+        attn_output = torch.matmul(attn_probs, v)
 
         attn_output = attn_output.transpose(1, 2).contiguous().view(bsz, q_len, -1)
         return self.o_proj(attn_output), new_kv
@@ -182,12 +173,10 @@ class MeridianAttention(nn.Module):
 # Feed-Forward: SwiGLU
 # ---------------------------------------------------------------------------
 
-
 class MeridianSwiGLU(nn.Module):
     """SwiGLU feed-forward network — state-of-the-art gated activation.
 
     SwiGLU(x) = (xW_gate . SiLU(xW_up)) . W_down
-    Strictly better than GELU/ReLU FFN for same param count.
     """
 
     def __init__(self, hidden_size: int, intermediate_size: int):
@@ -204,7 +193,6 @@ class MeridianSwiGLU(nn.Module):
 # Mixture of Experts (MoE) with Load-Balanced Routing
 # ---------------------------------------------------------------------------
 
-
 class ExpertRouter(nn.Module):
     """Top-k expert router with auxiliary load-balancing loss."""
 
@@ -214,150 +202,127 @@ class ExpertRouter(nn.Module):
         self.num_experts = num_experts
         self.num_experts_per_token = num_experts_per_token
 
-    def forward(
-        self, hidden_states: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def forward(self, hidden_states: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Returns (router_weights, expert_indices, aux_loss)."""
-        router_logits = self.gate(hidden_states)  # [B*S, E]
+        # Add small noise during training to prevent routing collapse (jitter)
+        if self.training:
+            noise = torch.randn_like(hidden_states) * 0.01
+            router_logits = self.gate(hidden_states + noise)
+        else:
+            router_logits = self.gate(hidden_states)
+
         router_probs = F.softmax(router_logits, dim=-1)
 
         # Top-k selection
         topk_weights, topk_indices = torch.topk(router_probs, self.num_experts_per_token, dim=-1)
-        topk_weights = topk_weights / topk_weights.sum(dim=-1, keepdim=True)  # Renormalize
+        
+        # Safe normalization for weights
+        weights_sum = topk_weights.sum(dim=-1, keepdim=True)
+        topk_weights = topk_weights / (weights_sum + 1e-8)
 
         # Load-balancing auxiliary loss (Switch Transformer style)
-        # Encourages uniform expert utilization
+        # 1. P(e) = Mean probability of choosing expert e
+        # 2. f(e) = Fraction of tokens routed to expert e
+        # Loss = num_experts * sum(f(e) * P(e))
+        
+        # Calculate f(e): fraction of tokens routed to each expert
+        # Use only first expert for f(e) calculation to keep it simple & standard
         tokens_per_expert = torch.zeros(self.num_experts, device=hidden_states.device)
         for i in range(self.num_experts):
-            tokens_per_expert[i] = (topk_indices == i).float().sum()
-        tokens_per_expert = tokens_per_expert / hidden_states.shape[0]
+            tokens_per_expert[i] = (topk_indices[:, 0] == i).float().sum()
+        f_e = tokens_per_expert / hidden_states.shape[0]
 
-        avg_probs = router_probs.mean(dim=0)
-        aux_loss = self.num_experts * (tokens_per_expert * avg_probs).sum()
+        # Calculate P(e): mean routing probability
+        P_e = router_probs.mean(dim=0)
+        
+        aux_loss = self.num_experts * (f_e * P_e).sum()
 
         return topk_weights, topk_indices, aux_loss
 
 
 class MeridianMoELayer(nn.Module):
-    """Sparse Mixture-of-Experts feed-forward layer.
-
-    Each token is routed to top-k experts. Only those experts compute,
-    making forward pass ~3x faster than dense equivalent.
-    """
+    """Sparse Mixture-of-Experts feed-forward layer."""
 
     def __init__(self, config: MeridianConfig):
         super().__init__()
-        self.experts = nn.ModuleList(
-            [
-                MeridianSwiGLU(config.hidden_size, config.expert_intermediate_size)
-                for _ in range(config.num_experts)
-            ]
-        )
+        self.experts = nn.ModuleList([
+            MeridianSwiGLU(config.hidden_size, config.expert_intermediate_size)
+            for _ in range(config.num_experts)
+        ])
         self.router = ExpertRouter(
             config.hidden_size, config.num_experts, config.num_experts_per_token
         )
         self.num_experts_per_token = config.num_experts_per_token
 
     def forward(self, hidden_states: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        batch_size, seq_len, hidden_dim = hidden_states.shape
-        flat_hidden = hidden_states.view(-1, hidden_dim)
+        orig_shape = hidden_states.shape
+        flat_hidden = hidden_states.view(-1, orig_shape[-1])
 
         router_weights, expert_indices, aux_loss = self.router(flat_hidden)
 
-        # Sparse computation: only run selected experts per token
+        # Sparse computation
         output = torch.zeros_like(flat_hidden)
+        
+        # Optimize: group tokens by expert to avoid redundant forward passes
         for expert_idx in range(len(self.experts)):
-            # Find tokens routed to this expert
-            mask = (expert_indices == expert_idx).any(dim=-1)
+            # Find tokens where this expert is among the top-k
+            mask = (expert_indices == expert_idx)
             if not mask.any():
                 continue
 
-            token_indices = mask.nonzero(as_tuple=True)[0]
-            expert_input = flat_hidden[token_indices]
-            expert_output = self.experts[expert_idx](expert_input)
+            # Identify which tokens (row indices) and which k-slot (col indices)
+            row_indices, k_slots = mask.nonzero(as_tuple=True)
+            
+            # Run expert once for all unique tokens that need it
+            unique_rows = row_indices.unique()
+            expert_input = flat_hidden[unique_rows]
+            expert_out = self.experts[expert_idx](expert_input)
+            
+            # Map unique output back to individual token/k-slot positions
+            # This is more efficient than looping over tokens
+            # We use the weights from the router
+            row_to_idx = {r.item(): i for i, r in enumerate(unique_rows)}
+            mapped_indices = torch.tensor([row_to_idx[r.item()] for r in row_indices], device=hidden_states.device)
+            
+            # Collect and add to final output
+            w = router_weights[row_indices, k_slots].unsqueeze(-1)
+            output.index_add_(0, row_indices, w * expert_out[mapped_indices])
 
-            # Weight by router probability
-            for k in range(self.num_experts_per_token):
-                k_mask = expert_indices[token_indices, k] == expert_idx
-                if k_mask.any():
-                    k_indices = token_indices[k_mask]
-                    weights = router_weights[k_indices, k].unsqueeze(-1)
-                    output[k_indices] += weights * expert_output[k_mask]
-
-        return output.view(batch_size, seq_len, hidden_dim), aux_loss
+        return output.view(*orig_shape), aux_loss
 
 
 # ---------------------------------------------------------------------------
-# Financial Numeracy Encoding (Novel)
+# Financial Numeracy Encoding
 # ---------------------------------------------------------------------------
-
 
 class NumeracyEncoder(nn.Module):
-    """Novel: Financial Numeracy Encoding.
-
-    Injects magnitude-aware signals for numeric tokens. Financial data is
-    inherently numeric — prices, ratios, percentages — yet standard
-    token embeddings treat "1.5" and "1500" as unrelated tokens.
-
-    This module adds a learned magnitude embedding based on the log-scale
-    of detected numeric token values, helping the model understand
-    quantitative relationships between financial figures.
-    """
+    """Magnitude-aware signals for numeric tokens."""
 
     def __init__(self, hidden_size: int, numeracy_dim: int = 64, vocab_size: int = 151_665):
         super().__init__()
-        # Log-magnitude buckets: [-inf, -6, -5, ..., 0, ..., 12, 13, +inf] → 22 buckets
-        self.num_buckets = 22
+        self.num_buckets = 32
         self.magnitude_embed = nn.Embedding(self.num_buckets, numeracy_dim)
         self.proj = nn.Linear(numeracy_dim, hidden_size, bias=False)
 
-        # Pre-compute digit token IDs (ASCII 0-9, period, minus, comma)
-        # These will be populated at first forward pass based on tokenizer
-        self._digit_tokens: Optional[set] = None
-        self._numeracy_dim = numeracy_dim
-
-    def _magnitude_bucket(self, value: float) -> int:
-        """Map a float value to a log-magnitude bucket."""
-        if value == 0:
-            return self.num_buckets // 2  # middle bucket
-        sign = 1 if value > 0 else -1
-        log_mag = math.log10(abs(value) + 1e-10)
-        # Clamp to [-6, 13] range then shift to [0, num_buckets-1]
-        bucket = int(log_mag + 7)
-        bucket = max(0, min(self.num_buckets - 1, bucket))
-        if sign < 0:
-            bucket = max(0, bucket - 1)
-        return bucket
-
-    def forward(self, hidden_states: torch.Tensor, input_ids: torch.Tensor) -> torch.Tensor:
-        """Add numeracy signals to hidden states.
-
-        For efficiency on CPU, we use a simplified approach:
-        detect digit-heavy tokens and add magnitude-aware embeddings.
-        """
-        batch_size, seq_len, _ = hidden_states.shape
-
-        # Simple heuristic: use token ID ranges that correspond to digits
-        # Tokens 15-24 often map to digits 0-9 in many tokenizers
-        # We use a learned embedding indexed by (token_id % num_buckets)
-        bucket_ids = input_ids % self.num_buckets  # [B, S]
-        numeracy_emb = self.magnitude_embed(bucket_ids)  # [B, S, numeracy_dim]
-        numeracy_signal = self.proj(numeracy_emb)  # [B, S, hidden_size]
-
-        # Scale down — numeracy is auxiliary signal, not primary
-        return hidden_states + 0.1 * numeracy_signal
+    def forward(
+        self, hidden_states: torch.Tensor, input_ids: torch.Tensor
+    ) -> torch.Tensor:
+        # Heuristic: Magnitude signal based on token proximity in vocab
+        # (Assuming numeric tokens are clustered)
+        bucket_ids = input_ids % self.num_buckets
+        numeracy_emb = self.magnitude_embed(bucket_ids)
+        numeracy_signal = self.proj(numeracy_emb)
+        
+        # Small auxiliary signal
+        return hidden_states + 0.05 * numeracy_signal
 
 
 # ---------------------------------------------------------------------------
 # Transformer Block
 # ---------------------------------------------------------------------------
 
-
 class MeridianDecoderLayer(nn.Module):
-    """Single transformer decoder layer.
-
-    Alternates between dense SwiGLU and MoE SwiGLU based on layer index.
-    """
+    """Single transformer decoder layer."""
 
     def __init__(self, config: MeridianConfig, layer_idx: int):
         super().__init__()
@@ -366,8 +331,8 @@ class MeridianDecoderLayer(nn.Module):
         self.input_layernorm = RMSNorm(config.hidden_size, config.rms_norm_eps)
         self.post_attention_layernorm = RMSNorm(config.hidden_size, config.rms_norm_eps)
 
-        # Alternate dense/MoE layers for efficiency
-        self.is_moe = layer_idx % config.moe_layer_frequency == 1
+        # Alternate dense/MoE layers
+        self.is_moe = (layer_idx % config.moe_layer_frequency == 1)
         if self.is_moe:
             self.moe = MeridianMoELayer(config)
         else:
@@ -406,21 +371,19 @@ class MeridianDecoderLayer(nn.Module):
 # Full Model
 # ---------------------------------------------------------------------------
 
-
 class MeridianModel(nn.Module):
-    """MeridianFormer backbone (embeddings + decoder layers + final norm)."""
+    """MeridianFormer backbone."""
 
     def __init__(self, config: MeridianConfig):
         super().__init__()
         self.config = config
         self.embed_tokens = nn.Embedding(config.vocab_size, config.hidden_size)
 
-        self.layers = nn.ModuleList(
-            [MeridianDecoderLayer(config, i) for i in range(config.num_layers)]
-        )
+        self.layers = nn.ModuleList([
+            MeridianDecoderLayer(config, i) for i in range(config.num_layers)
+        ])
         self.norm = RMSNorm(config.hidden_size, config.rms_norm_eps)
 
-        # Numeracy encoder (novel)
         self.numeracy = None
         if config.use_numeracy_encoding:
             self.numeracy = NumeracyEncoder(
@@ -438,34 +401,24 @@ class MeridianModel(nn.Module):
     ) -> Tuple[torch.Tensor, list, torch.Tensor]:
         hidden_states = self.embed_tokens(input_ids)
 
-        # Add numeracy encoding
         if self.numeracy is not None:
             hidden_states = self.numeracy(hidden_states, input_ids)
 
-        # Causal attention mask
+        # Causal mask construction
         bsz, seq_len = input_ids.shape
-        if attention_mask is None:
-            causal_mask = (
-                torch.triu(
-                    torch.full((seq_len, seq_len), float("-inf"), device=input_ids.device),
-                    diagonal=1,
-                )
-                .unsqueeze(0)
-                .unsqueeze(0)
-            )
+        causal_mask = torch.triu(
+            torch.full((seq_len, seq_len), float("-inf"), device=input_ids.device),
+            diagonal=1,
+        )
+        
+        if attention_mask is not None:
+            # Broadcast attention mask [B, S] -> [B, 1, S, S]
+            mask = (1.0 - attention_mask.unsqueeze(1).float()) * float("-inf")
+            # We add it to the causal mask. Row j needs to see only items <= j AND not masked.
+            # causal_mask is [S, S]. mask is [B, 1, S].
+            combined_mask = causal_mask.unsqueeze(0).unsqueeze(0) + mask.unsqueeze(2)
         else:
-            # Convert padding mask to causal mask
-            causal_mask = (
-                torch.triu(
-                    torch.full((seq_len, seq_len), float("-inf"), device=input_ids.device),
-                    diagonal=1,
-                )
-                .unsqueeze(0)
-                .unsqueeze(0)
-            )
-            # Apply padding mask
-            pad_mask = (1.0 - attention_mask.unsqueeze(1).unsqueeze(2).float()) * float("-inf")
-            causal_mask = causal_mask + pad_mask
+            combined_mask = causal_mask.unsqueeze(0).unsqueeze(0)
 
         all_kvs = []
         total_aux_loss = torch.tensor(0.0, device=hidden_states.device)
@@ -475,16 +428,12 @@ class MeridianModel(nn.Module):
 
             if self.gradient_checkpointing and self.training:
                 hidden_states, new_kv, aux_loss = torch.utils.checkpoint.checkpoint(
-                    layer,
-                    hidden_states,
-                    causal_mask,
-                    past_kv,
-                    use_cache,
+                    layer, hidden_states, combined_mask, past_kv, use_cache,
                     use_reentrant=False,
                 )
             else:
                 hidden_states, new_kv, aux_loss = layer(
-                    hidden_states, causal_mask, past_kv, use_cache
+                    hidden_states, combined_mask, past_kv, use_cache
                 )
 
             all_kvs.append(new_kv)
@@ -508,17 +457,27 @@ class MeridianForCausalLM(PreTrainedModel):
         self.model = MeridianModel(config)
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
-        # Initialize weights and apply final processing
         self.post_init()
 
     def _init_weights(self, module: nn.Module) -> None:
+        """Improved weight initialization for stable training."""
         std = self.config.initializer_range
         if isinstance(module, nn.Linear):
-            nn.init.normal_(module.weight, mean=0.0, std=std)
+            # Normal distribution based on Xavier/Kaiming principles
+            module.weight.data.normal_(mean=0.0, std=std)
             if module.bias is not None:
-                nn.init.zeros_(module.bias)
+                module.bias.data.zero_()
         elif isinstance(module, nn.Embedding):
-            nn.init.normal_(module.weight, mean=0.0, std=std)
+            module.weight.data.normal_(mean=0.0, std=std)
+            if module.padding_idx is not None:
+                module.weight.data[module.padding_idx].zero_()
+                
+        # Special initialization for residual connections: Normal(0, std / sqrt(2 * num_layers))
+        # This keeps the variance of activations constant across depth
+        scale = 1 / math.sqrt(2 * self.config.num_layers)
+        for name, p in self.named_parameters():
+            if "down_proj" in name or "o_proj" in name:
+                p.data.mul_(scale)
 
     def get_input_embeddings(self) -> nn.Embedding:
         return self.model.embed_tokens
@@ -549,15 +508,19 @@ class MeridianForCausalLM(PreTrainedModel):
 
         loss = None
         if labels is not None:
+            # Shift for causal training
             shift_logits = logits[..., :-1, :].contiguous()
             shift_labels = labels[..., 1:].contiguous()
+            
+            # Use float32 for cross entropy stability
             loss = F.cross_entropy(
-                shift_logits.view(-1, self.config.vocab_size),
+                shift_logits.view(-1, self.config.vocab_size).to(torch.float32),
                 shift_labels.view(-1),
                 ignore_index=-100,
-            )
-            # Add MoE load-balancing auxiliary loss
-            loss = loss + self.config.router_aux_loss_coef * aux_loss
+            ).to(logits.dtype)
+            
+            # Add auxiliary MoE loss
+            loss = loss + (self.config.router_aux_loss_coef * aux_loss.to(loss.dtype))
 
         return CausalLMOutputWithPast(
             loss=loss,
@@ -574,7 +537,6 @@ class MeridianForCausalLM(PreTrainedModel):
         top_p: float = 0.9,
         top_k: int = 50,
     ) -> torch.Tensor:
-        """Efficient autoregressive generation with KV-cache."""
         past_key_values = None
         generated = input_ids
 
@@ -584,16 +546,16 @@ class MeridianForCausalLM(PreTrainedModel):
             else:
                 curr_input = generated
 
-            outputs = self.forward(curr_input, past_key_values=past_key_values, use_cache=True)
+            outputs = self.forward(
+                curr_input, past_key_values=past_key_values, use_cache=True
+            )
             past_key_values = outputs.past_key_values
             next_logits = outputs.logits[:, -1, :] / temperature
 
-            # Top-k filtering
             if top_k > 0:
                 indices_to_remove = next_logits < torch.topk(next_logits, top_k)[0][..., -1, None]
                 next_logits[indices_to_remove] = float("-inf")
 
-            # Top-p (nucleus) filtering
             if top_p < 1.0:
                 sorted_logits, sorted_indices = torch.sort(next_logits, descending=True)
                 cumulative_probs = torch.cumsum(F.softmax(sorted_logits, dim=-1), dim=-1)

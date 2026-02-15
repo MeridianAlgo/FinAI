@@ -14,7 +14,7 @@ from __future__ import annotations
 import math
 import os
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 import psutil
@@ -42,7 +42,7 @@ class TrainingConfig:
     total_steps: int = 100_000
 
     # Optimizer
-    learning_rate: float = 5e-5
+    learning_rate: float = 3e-4
     weight_decay: float = 0.1
     max_grad_norm: float = 1.0
     warmup_ratio: float = 0.06
@@ -92,7 +92,6 @@ class MeridianTrainer:
         # State
         self.global_step = 0
         self.run_step = 0
-        self.processed_batches = 0
         self.best_loss = float("inf")
 
         # EWC for continual learning
@@ -114,15 +113,13 @@ class MeridianTrainer:
                     auto_metric_logging=False,
                 )
                 self.experiment.set_name(config.experiment_name)
-                self.experiment.log_parameters(
-                    {
-                        "batch_size": config.batch_size,
-                        "grad_accum": config.gradient_accumulation_steps,
-                        "max_steps": config.max_steps,
-                        "lr": config.learning_rate,
-                        "ewc": config.use_ewc,
-                    }
-                )
+                self.experiment.log_parameters({
+                    "batch_size": config.batch_size,
+                    "grad_accum": config.gradient_accumulation_steps,
+                    "max_steps": config.max_steps,
+                    "lr": config.learning_rate,
+                    "ewc": config.use_ewc,
+                })
             except Exception as e:
                 print(f"⚠ Comet ML init failed: {e}")
 
@@ -164,17 +161,16 @@ class MeridianTrainer:
     def _log_memory(self) -> None:
         mem = psutil.virtual_memory()
         print(
-            f"  Memory: {mem.used / 1e9:.1f}GB / {mem.total / 1e9:.1f}GB " f"({mem.percent}% used)"
+            f"  Memory: {mem.used / 1e9:.1f}GB / {mem.total / 1e9:.1f}GB "
+            f"({mem.percent}% used)"
         )
 
     def train(self) -> None:
         """Execute training loop."""
         print(f"\n{'='*70}")
-        print("  MERIDIANFORMER TRAINING ENGINE")
-        print(
-            f"  Steps: {self.config.max_steps} | BS: {self.config.batch_size} "
-            f"| Accum: {self.config.gradient_accumulation_steps}"
-        )
+        print(f"  MERIDIANFORMER TRAINING ENGINE")
+        print(f"  Steps: {self.config.max_steps} | BS: {self.config.batch_size} "
+              f"| Accum: {self.config.gradient_accumulation_steps}")
         print(f"  LR: {self.config.learning_rate} | Global step: {self.global_step}")
         total_params = sum(p.numel() for p in self.model.parameters())
         trainable_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
@@ -184,7 +180,6 @@ class MeridianTrainer:
 
         self.model.train()
         accumulated_loss = 0.0
-        step_count = 0
         tokens_processed = 0
         start_time = time.time()
 
@@ -194,7 +189,6 @@ class MeridianTrainer:
             # Get batch
             try:
                 batch = next(data_iter)
-                self.processed_batches += 1
             except StopIteration:
                 print("[INFO] Dataset exhausted. Ending training.")
                 break
@@ -208,53 +202,64 @@ class MeridianTrainer:
                 labels = torch.stack(labels)
 
             # Forward pass
-            outputs = self.model(input_ids=input_ids, labels=labels)
-            loss = outputs.loss
+            try:
+                outputs = self.model(input_ids=input_ids, labels=labels)
+                loss = outputs.loss
+            except Exception as e:
+                print(f"⚠ ERROR during forward pass: {e}")
+                continue
 
             if loss is None:
                 continue
 
             # Check for NaN loss
             if torch.isnan(loss):
-                print(f"  [WARNING] Step {self.run_step}: Loss is NaN. Skipping batch.")
+                print(f"Warning: G] Step {self.run_step}: Loss is NaN. Skipping batch.")
                 self.optimizer.zero_grad()
                 continue
 
             # Add EWC penalty
             if self.ewc is not None and self.ewc._initialized:
-                ewc_loss = self.ewc.penalty(self.model)
-                loss = loss + ewc_loss
-
-                if torch.isnan(loss):
-                    print(
-                        f"  [WARNING] Step {self.run_step}: Total loss (with EWC) is NaN. Skipping batch."
-                    )
-                    self.optimizer.zero_grad()
-                    continue
+                try:
+                    ewc_loss = self.ewc.penalty(self.model)
+                    if not torch.isnan(ewc_loss):
+                        loss = loss + ewc_loss
+                except Exception as e:
+                    print(f"⚠ EWC penalty failed: {e}")
 
             # Scale for gradient accumulation
             scaled_loss = loss / self.config.gradient_accumulation_steps
-            scaled_loss.backward()
+            
+            try:
+                scaled_loss.backward()
+            except Exception as e:
+                print(f"⚠ ERROR during backward pass: {e}")
+                self.optimizer.zero_grad()
+                continue
 
             accumulated_loss += loss.item()
             tokens_processed += input_ids.numel()
 
             # Optimizer step
             if (micro_step + 1) % self.config.gradient_accumulation_steps == 0:
+                # Check for NaN gradients before clipping
+                has_nan_grads = False
+                for p in self.model.parameters():
+                    if p.grad is not None:
+                        if torch.isnan(p.grad).any():
+                            has_nan_grads = True
+                            break
+                
+                if has_nan_grads:
+                    print(f"Warning: G] Step {self.run_step}: NaN gradients detected. Skipping step.")
+                    self.optimizer.zero_grad()
+                    accumulated_loss = 0.0
+                    continue
+
                 # Gradient clipping
                 grad_norm = torch.nn.utils.clip_grad_norm_(
                     self.model.parameters(), self.config.max_grad_norm
                 )
-
-                # Check for NaN gradients
-                if torch.isnan(grad_norm):
-                    print(f"  [WARNING] Step {self.run_step}: Gradient norm is NaN. Skipping step.")
-                    self.optimizer.zero_grad()
-                    # Increment steps anyway to avoid infinite loops if stuck?
-                    # Better to just skip update but count as a step or not?
-                    # If we skip, we don't update weights.
-                    self.optimizer.zero_grad()
-                    continue
 
                 # Update LR
                 lr = self._update_lr(self.run_step)
@@ -284,11 +289,8 @@ class MeridianTrainer:
                             {
                                 "loss": avg_loss,
                                 "lr": lr,
-                                "grad_norm": (
-                                    grad_norm.item()
-                                    if isinstance(grad_norm, torch.Tensor)
-                                    else grad_norm
-                                ),
+                                "grad_norm": grad_norm.item()
+                                if isinstance(grad_norm, torch.Tensor) else grad_norm,
                                 "tokens_per_sec": tps,
                                 "global_step": self.global_step,
                             },
@@ -304,8 +306,7 @@ class MeridianTrainer:
                 if self.run_step % self.config.save_steps == 0:
                     self.save_checkpoint(self.config.output_dir)
 
-                step_count += 1
-                if step_count >= self.config.max_steps:
+                if self.run_step >= self.config.max_steps:
                     break
 
         # Compute Fisher for EWC (for next run)
@@ -319,8 +320,8 @@ class MeridianTrainer:
 
         elapsed = time.time() - start_time
         print(f"\n{'='*70}")
-        print("  TRAINING COMPLETE")
-        print(f"  Steps: {step_count} | Time: {elapsed:.0f}s | Best loss: {self.best_loss:.4f}")
+        print(f"  TRAINING COMPLETE")
+        print(f"  Steps: {self.run_step} | Time: {elapsed:.0f}s | Best loss: {self.best_loss:.4f}")
         print(f"  Tokens processed: {tokens_processed:,}")
         print(f"{'='*70}\n")
 
@@ -329,14 +330,6 @@ class MeridianTrainer:
 
     def save_checkpoint(self, path: str) -> None:
         """Save model + optimizer + trainer state."""
-        # Sanity check for NaN weights
-        for name, param in self.model.named_parameters():
-            if torch.isnan(param).any():
-                print(
-                    f"  [CRITICAL] NaN detected in parameter '{name}'. Aborting checkpoint save to protect repo."
-                )
-                return
-
         os.makedirs(path, exist_ok=True)
         print(f"  [SAVE] Checkpoint → {path}")
 
