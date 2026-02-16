@@ -29,9 +29,9 @@ def main():
 
         components[component] = components.get(component, 0) + numel
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("  MeridianFormer Parameter Report")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
     print(f"  Total: {total:>15,}")
     print(f"  Total (M): {total / 1e6:>11.1f}M\n")
 
@@ -53,10 +53,10 @@ def main():
     active_expert_params = moe_expert_params * config.num_experts_per_token / config.num_experts
     active_total = dense_params + active_expert_params
 
-    print(f"\n  {'='*50}")
+    print(f"\n  {'=' * 50}")
     print(f"  Active params per token: {active_total:,.0f} ({active_total / 1e6:.1f}M)")
     print(f"  Speedup ratio: {total / active_total:.2f}x")
-    print(f"  {'='*50}\n")
+    print(f"  {'=' * 50}\n")
 
 
 if __name__ == "__main__":

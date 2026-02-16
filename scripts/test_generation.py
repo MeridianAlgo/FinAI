@@ -32,7 +32,7 @@ def main():
     ]
 
     for prompt in prompts:
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"Prompt: {prompt[:80]}...")
         tokens = tokenizer(prompt, return_tensors="pt")
         output = model.generate_text(tokens["input_ids"], max_new_tokens=128, temperature=0.7)

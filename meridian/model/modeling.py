@@ -22,10 +22,10 @@ from transformers.modeling_outputs import CausalLMOutputWithPast
 
 from meridian.model.configuration import MeridianConfig
 
-
 # ---------------------------------------------------------------------------
 # Primitives
 # ---------------------------------------------------------------------------
+
 
 class RMSNorm(nn.Module):
     """Root Mean Square Layer Normalization (faster than LayerNorm)."""
@@ -81,7 +81,7 @@ class RotaryEmbedding(nn.Module):
             # Ensure in float32 for cos/sin calculation
             self._cached_cos = emb.cos().float().unsqueeze(0).unsqueeze(0)  # [1,1,S,D]
             self._cached_sin = emb.sin().float().unsqueeze(0).unsqueeze(0)
-        
+
         cos = self._cached_cos[:, :, :seq_len, :].to(x.dtype)
         sin = self._cached_sin[:, :, :seq_len, :].to(x.dtype)
         return cos, sin
@@ -90,6 +90,7 @@ class RotaryEmbedding(nn.Module):
 # ---------------------------------------------------------------------------
 # Attention: Grouped Query Attention (GQA)
 # ---------------------------------------------------------------------------
+
 
 class MeridianAttention(nn.Module):
     """Multi-head attention with Grouped Query Attention (GQA) + RoPE.
@@ -127,9 +128,21 @@ class MeridianAttention(nn.Module):
     ) -> Tuple[torch.Tensor, Optional[Tuple[torch.Tensor, torch.Tensor]]]:
         bsz, q_len, _ = hidden_states.shape
 
-        q = self.q_proj(hidden_states).view(bsz, q_len, self.num_heads, self.head_dim).transpose(1, 2)
-        k = self.k_proj(hidden_states).view(bsz, q_len, self.num_kv_heads, self.head_dim).transpose(1, 2)
-        v = self.v_proj(hidden_states).view(bsz, q_len, self.num_kv_heads, self.head_dim).transpose(1, 2)
+        q = (
+            self.q_proj(hidden_states)
+            .view(bsz, q_len, self.num_heads, self.head_dim)
+            .transpose(1, 2)
+        )
+        k = (
+            self.k_proj(hidden_states)
+            .view(bsz, q_len, self.num_kv_heads, self.head_dim)
+            .transpose(1, 2)
+        )
+        v = (
+            self.v_proj(hidden_states)
+            .view(bsz, q_len, self.num_kv_heads, self.head_dim)
+            .transpose(1, 2)
+        )
 
         # Handle KV cache
         kv_seq_len = q_len
@@ -152,8 +165,16 @@ class MeridianAttention(nn.Module):
 
         # Repeat KV heads for GQA compatibility with Q heads
         if self.num_kv_groups > 1:
-            k = k.unsqueeze(2).expand(-1, -1, self.num_kv_groups, -1, -1).reshape(bsz, self.num_heads, -1, self.head_dim)
-            v = v.unsqueeze(2).expand(-1, -1, self.num_kv_groups, -1, -1).reshape(bsz, self.num_heads, -1, self.head_dim)
+            k = (
+                k.unsqueeze(2)
+                .expand(-1, -1, self.num_kv_groups, -1, -1)
+                .reshape(bsz, self.num_heads, -1, self.head_dim)
+            )
+            v = (
+                v.unsqueeze(2)
+                .expand(-1, -1, self.num_kv_groups, -1, -1)
+                .reshape(bsz, self.num_heads, -1, self.head_dim)
+            )
 
         # Stable attention scores
         attn_weights = torch.matmul(q, k.transpose(-1, -2)) / math.sqrt(self.head_dim)
@@ -172,6 +193,7 @@ class MeridianAttention(nn.Module):
 # ---------------------------------------------------------------------------
 # Feed-Forward: SwiGLU
 # ---------------------------------------------------------------------------
+
 
 class MeridianSwiGLU(nn.Module):
     """SwiGLU feed-forward network — state-of-the-art gated activation.
@@ -193,6 +215,7 @@ class MeridianSwiGLU(nn.Module):
 # Mixture of Experts (MoE) with Load-Balanced Routing
 # ---------------------------------------------------------------------------
 
+
 class ExpertRouter(nn.Module):
     """Top-k expert router with auxiliary load-balancing loss."""
 
@@ -202,7 +225,9 @@ class ExpertRouter(nn.Module):
         self.num_experts = num_experts
         self.num_experts_per_token = num_experts_per_token
 
-    def forward(self, hidden_states: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def forward(
+        self, hidden_states: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Returns (router_weights, expert_indices, aux_loss)."""
         # Add small noise during training to prevent routing collapse (jitter)
         if self.training:
@@ -215,7 +240,7 @@ class ExpertRouter(nn.Module):
 
         # Top-k selection
         topk_weights, topk_indices = torch.topk(router_probs, self.num_experts_per_token, dim=-1)
-        
+
         # Safe normalization for weights
         weights_sum = topk_weights.sum(dim=-1, keepdim=True)
         topk_weights = topk_weights / (weights_sum + 1e-8)
@@ -224,7 +249,7 @@ class ExpertRouter(nn.Module):
         # 1. P(e) = Mean probability of choosing expert e
         # 2. f(e) = Fraction of tokens routed to expert e
         # Loss = num_experts * sum(f(e) * P(e))
-        
+
         # Calculate f(e): fraction of tokens routed to each expert
         # Use only first expert for f(e) calculation to keep it simple & standard
         tokens_per_expert = torch.zeros(self.num_experts, device=hidden_states.device)
@@ -234,7 +259,7 @@ class ExpertRouter(nn.Module):
 
         # Calculate P(e): mean routing probability
         P_e = router_probs.mean(dim=0)
-        
+
         aux_loss = self.num_experts * (f_e * P_e).sum()
 
         return topk_weights, topk_indices, aux_loss
@@ -245,10 +270,12 @@ class MeridianMoELayer(nn.Module):
 
     def __init__(self, config: MeridianConfig):
         super().__init__()
-        self.experts = nn.ModuleList([
-            MeridianSwiGLU(config.hidden_size, config.expert_intermediate_size)
-            for _ in range(config.num_experts)
-        ])
+        self.experts = nn.ModuleList(
+            [
+                MeridianSwiGLU(config.hidden_size, config.expert_intermediate_size)
+                for _ in range(config.num_experts)
+            ]
+        )
         self.router = ExpertRouter(
             config.hidden_size, config.num_experts, config.num_experts_per_token
         )
@@ -262,28 +289,30 @@ class MeridianMoELayer(nn.Module):
 
         # Sparse computation
         output = torch.zeros_like(flat_hidden)
-        
+
         # Optimize: group tokens by expert to avoid redundant forward passes
         for expert_idx in range(len(self.experts)):
             # Find tokens where this expert is among the top-k
-            mask = (expert_indices == expert_idx)
+            mask = expert_indices == expert_idx
             if not mask.any():
                 continue
 
             # Identify which tokens (row indices) and which k-slot (col indices)
             row_indices, k_slots = mask.nonzero(as_tuple=True)
-            
+
             # Run expert once for all unique tokens that need it
             unique_rows = row_indices.unique()
             expert_input = flat_hidden[unique_rows]
             expert_out = self.experts[expert_idx](expert_input)
-            
+
             # Map unique output back to individual token/k-slot positions
             # This is more efficient than looping over tokens
             # We use the weights from the router
             row_to_idx = {r.item(): i for i, r in enumerate(unique_rows)}
-            mapped_indices = torch.tensor([row_to_idx[r.item()] for r in row_indices], device=hidden_states.device)
-            
+            mapped_indices = torch.tensor(
+                [row_to_idx[r.item()] for r in row_indices], device=hidden_states.device
+            )
+
             # Collect and add to final output
             w = router_weights[row_indices, k_slots].unsqueeze(-1)
             output.index_add_(0, row_indices, w * expert_out[mapped_indices])
@@ -295,6 +324,7 @@ class MeridianMoELayer(nn.Module):
 # Financial Numeracy Encoding
 # ---------------------------------------------------------------------------
 
+
 class NumeracyEncoder(nn.Module):
     """Magnitude-aware signals for numeric tokens."""
 
@@ -304,15 +334,13 @@ class NumeracyEncoder(nn.Module):
         self.magnitude_embed = nn.Embedding(self.num_buckets, numeracy_dim)
         self.proj = nn.Linear(numeracy_dim, hidden_size, bias=False)
 
-    def forward(
-        self, hidden_states: torch.Tensor, input_ids: torch.Tensor
-    ) -> torch.Tensor:
+    def forward(self, hidden_states: torch.Tensor, input_ids: torch.Tensor) -> torch.Tensor:
         # Heuristic: Magnitude signal based on token proximity in vocab
         # (Assuming numeric tokens are clustered)
         bucket_ids = input_ids % self.num_buckets
         numeracy_emb = self.magnitude_embed(bucket_ids)
         numeracy_signal = self.proj(numeracy_emb)
-        
+
         # Small auxiliary signal
         return hidden_states + 0.05 * numeracy_signal
 
@@ -320,6 +348,7 @@ class NumeracyEncoder(nn.Module):
 # ---------------------------------------------------------------------------
 # Transformer Block
 # ---------------------------------------------------------------------------
+
 
 class MeridianDecoderLayer(nn.Module):
     """Single transformer decoder layer."""
@@ -332,7 +361,7 @@ class MeridianDecoderLayer(nn.Module):
         self.post_attention_layernorm = RMSNorm(config.hidden_size, config.rms_norm_eps)
 
         # Alternate dense/MoE layers
-        self.is_moe = (layer_idx % config.moe_layer_frequency == 1)
+        self.is_moe = layer_idx % config.moe_layer_frequency == 1
         if self.is_moe:
             self.moe = MeridianMoELayer(config)
         else:
@@ -371,6 +400,7 @@ class MeridianDecoderLayer(nn.Module):
 # Full Model
 # ---------------------------------------------------------------------------
 
+
 class MeridianModel(nn.Module):
     """MeridianFormer backbone."""
 
@@ -379,9 +409,9 @@ class MeridianModel(nn.Module):
         self.config = config
         self.embed_tokens = nn.Embedding(config.vocab_size, config.hidden_size)
 
-        self.layers = nn.ModuleList([
-            MeridianDecoderLayer(config, i) for i in range(config.num_layers)
-        ])
+        self.layers = nn.ModuleList(
+            [MeridianDecoderLayer(config, i) for i in range(config.num_layers)]
+        )
         self.norm = RMSNorm(config.hidden_size, config.rms_norm_eps)
 
         self.numeracy = None
@@ -410,7 +440,7 @@ class MeridianModel(nn.Module):
             torch.full((seq_len, seq_len), float("-inf"), device=input_ids.device),
             diagonal=1,
         )
-        
+
         if attention_mask is not None:
             # Broadcast attention mask [B, S] -> [B, 1, S, S]
             mask = (1.0 - attention_mask.unsqueeze(1).float()) * float("-inf")
@@ -428,7 +458,11 @@ class MeridianModel(nn.Module):
 
             if self.gradient_checkpointing and self.training:
                 hidden_states, new_kv, aux_loss = torch.utils.checkpoint.checkpoint(
-                    layer, hidden_states, combined_mask, past_kv, use_cache,
+                    layer,
+                    hidden_states,
+                    combined_mask,
+                    past_kv,
+                    use_cache,
                     use_reentrant=False,
                 )
             else:
@@ -471,7 +505,7 @@ class MeridianForCausalLM(PreTrainedModel):
             module.weight.data.normal_(mean=0.0, std=std)
             if module.padding_idx is not None:
                 module.weight.data[module.padding_idx].zero_()
-                
+
         # Special initialization for residual connections: Normal(0, std / sqrt(2 * num_layers))
         # This keeps the variance of activations constant across depth
         scale = 1 / math.sqrt(2 * self.config.num_layers)
@@ -511,14 +545,14 @@ class MeridianForCausalLM(PreTrainedModel):
             # Shift for causal training
             shift_logits = logits[..., :-1, :].contiguous()
             shift_labels = labels[..., 1:].contiguous()
-            
+
             # Use float32 for cross entropy stability
             loss = F.cross_entropy(
                 shift_logits.view(-1, self.config.vocab_size).to(torch.float32),
                 shift_labels.view(-1),
                 ignore_index=-100,
             ).to(logits.dtype)
-            
+
             # Add auxiliary MoE loss
             loss = loss + (self.config.router_aux_loss_coef * aux_loss.to(loss.dtype))
 
@@ -546,9 +580,7 @@ class MeridianForCausalLM(PreTrainedModel):
             else:
                 curr_input = generated
 
-            outputs = self.forward(
-                curr_input, past_key_values=past_key_values, use_cache=True
-            )
+            outputs = self.forward(curr_input, past_key_values=past_key_values, use_cache=True)
             past_key_values = outputs.past_key_values
             next_logits = outputs.logits[:, -1, :] / temperature
 
