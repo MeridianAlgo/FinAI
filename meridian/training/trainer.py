@@ -295,9 +295,11 @@ class MeridianTrainer:
                                 {
                                     "loss": avg_loss,
                                     "lr": lr,
-                                    "grad_norm": grad_norm.item()
-                                    if isinstance(grad_norm, torch.Tensor)
-                                    else grad_norm,
+                                    "grad_norm": (
+                                        grad_norm.item()
+                                        if isinstance(grad_norm, torch.Tensor)
+                                        else grad_norm
+                                    ),
                                     "tokens_per_sec": tps,
                                     "global_step": self.global_step,
                                 },
