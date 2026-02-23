@@ -89,7 +89,7 @@ class FinanceDataPipeline:
                     print(f"  Retry {attempt + 1} for {ds_config['name']}: {e}")
                     time.sleep(5)
                 else:
-                    print(f"  ✗ Failed to load {ds_config['name']}: {e}")
+                    print(f"  [FAIL] Failed to load {ds_config['name']}: {e}")
                     return None
 
     def _format_text(self, item: dict, ds_config: dict) -> str:
@@ -123,10 +123,10 @@ class FinanceDataPipeline:
                     per_ds_skip = int(self.skip_items * ds_config["weight"])
                     dataset = dataset.skip(per_ds_skip)
                 streams.append((iter(dataset), ds_config))
-                print(f"  ✓ Loaded {ds_config['name']} (weight: {ds_config['weight']})")
+                print(f"  [OK] Loaded {ds_config['name']} (weight: {ds_config['weight']})")
 
         if not streams:
-            print("  ✗ No datasets loaded! Falling back to synthetic data.")
+            print("  [FAIL] No datasets loaded! Falling back to synthetic data.")
             yield from self._synthetic_fallback()
             return
 

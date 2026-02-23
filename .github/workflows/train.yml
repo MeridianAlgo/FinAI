@@ -11,9 +11,9 @@ on:
         type: boolean
         default: false
       max_steps:
-        description: 'Training steps per run (default: 200)'
+        description: 'Training steps per run (default: 50)'
         type: string
-        default: '200'
+        default: '50'
 
 concurrency:
   group: meridian-train-${{ github.ref }}
@@ -93,7 +93,7 @@ jobs:
           from huggingface_hub import snapshot_download, list_repo_files
           import os, shutil
 
-          repo_id = 'MeridianAlgo/FinAI-Lite'
+          repo_id = 'MeridianAlgo/FinAI-SMoE-650M'
           token = os.getenv('HF_TOKEN')
 
           try:
@@ -138,7 +138,7 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           COMET_API_KEY: ${{ secrets.COMET_API_KEY }}
           SMOKE_TEST: '0'
-          MAX_STEPS: ${{ github.event.inputs.max_steps || '200' }}
+          MAX_STEPS: ${{ github.event.inputs.max_steps || '50' }}
           TOTAL_STEPS: '100000'
           GRAD_ACCUM: '4'
           BATCH_SIZE: '2'
@@ -165,11 +165,11 @@ jobs:
               exit(0)
 
           api = HfApi()
-          print('Uploading to MeridianAlgo/FinAI-Lite...')
+          print('Uploading to MeridianAlgo/FinAI-SMoE-650M...')
           try:
               api.upload_folder(
                   folder_path='./checkpoint',
-                  repo_id='MeridianAlgo/FinAI-Lite',
+                  repo_id='MeridianAlgo/FinAI-SMoE-650M',
                   path_in_repo='checkpoint',
                   commit_message='Hourly training update [skip ci]',
                   token=os.getenv('HF_TOKEN')

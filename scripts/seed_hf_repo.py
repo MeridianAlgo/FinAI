@@ -2,19 +2,21 @@
 
 import os
 import sys
+import torch
+from dotenv import load_dotenv
+
+load_dotenv()
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from huggingface_hub import HfApi, create_repo
 from transformers import AutoTokenizer
 
-from meridian.model.configuration import MeridianConfig
-from meridian.model.modeling import MeridianForCausalLM
-
 
 def main():
     token = os.getenv("HF_TOKEN")
-    repo_id = "MeridianAlgo/FinAI-Lite"
+    repo_id = "MeridianAlgo/FinAI-SMoE-650M"
+    base_model_id = "hpcai-tech/openmoe-base"
 
     if not token:
         print("✗ HF_TOKEN not set")
@@ -27,20 +29,32 @@ def main():
     except Exception as e:
         print(f"Repo creation note: {e}")
 
-    # Initialize model with full config
-    config = MeridianConfig()
-    model = MeridianForCausalLM(config)
+    # Initialize model from OpenMoE base
+    print(f"  Fetching base model {base_model_id} architecture...")
+    from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
+    
+    config = AutoConfig.from_pretrained(base_model_id, trust_remote_code=True)
+    if hasattr(config, "hidden_act") and config.hidden_act == "swiglu":
+        config.hidden_act = "silu"
+
+    model = AutoModelForCausalLM.from_pretrained(
+        base_model_id, 
+        config=config,
+        trust_remote_code=True,
+        torch_dtype=torch.float32,
+        low_cpu_mem_usage=True,
+        ignore_mismatched_sizes=True
+    )
+    tokenizer = AutoTokenizer.from_pretrained(base_model_id, trust_remote_code=True)
 
     total_params = sum(p.numel() for p in model.parameters())
-    print(f"  Parameters: {total_params:,}")
+    print(f"  Total parameters: {total_params:,}")
 
     # Save locally
     save_path = "./checkpoint"
     os.makedirs(save_path, exist_ok=True)
-    model.save_pretrained(save_path, safe_serialization=True)
-
-    # Save tokenizer
-    tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-0.5B")
+    model.save_pretrained(save_path, safe_serialization=False)
+    
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token_id = tokenizer.eos_token_id
     tokenizer.save_pretrained(save_path)
@@ -51,7 +65,7 @@ def main():
         folder_path=save_path,
         repo_id=repo_id,
         path_in_repo="checkpoint",
-        commit_message="Initial MeridianFormer seed (300M params)",
+        commit_message=f"Initial Meridian-SMoE seed (Base: {base_model_id})",
         token=token,
     )
     print(f"✓ Model seeded to {repo_id}")

@@ -101,7 +101,7 @@ class MeridianTrainer:
             ewc_path = os.path.join(config.output_dir, "ewc_state.pt")
             if os.path.exists(ewc_path):
                 self.ewc.load(ewc_path)
-                print("✓ Loaded EWC state from previous run")
+                print("[OK] Loaded EWC state from previous run")
 
         # Comet ML
         self.experiment: Optional[Experiment] = None
@@ -123,7 +123,7 @@ class MeridianTrainer:
                     }
                 )
             except Exception as e:
-                print(f"⚠ Comet ML init failed: {e}")
+                print(f"[WARN] Comet ML init failed: {e}")
 
     def _get_param_groups(self) -> list:
         """Separate parameters for weight decay (skip biases & norms)."""
@@ -185,6 +185,7 @@ class MeridianTrainer:
         start_time = time.time()
 
         data_iter = iter(self.dataloader)
+        first_batch_logged = False
 
         try:
             for micro_step in range(
@@ -198,23 +199,34 @@ class MeridianTrainer:
                     break
 
                 input_ids = batch["input_ids"]
+                attention_mask = batch.get("attention_mask")
                 labels = batch.get("labels", input_ids.clone())
 
                 if isinstance(input_ids, list):
                     input_ids = torch.stack(input_ids)
                 if isinstance(labels, list):
                     labels = torch.stack(labels)
+                if attention_mask is not None and isinstance(attention_mask, list):
+                    attention_mask = torch.stack(attention_mask)
 
                 # Forward pass
                 try:
-                    outputs = self.model(input_ids=input_ids, labels=labels)
+                    outputs = self.model(
+                        input_ids=input_ids, 
+                        attention_mask=attention_mask, 
+                        labels=labels
+                    )
                     loss = outputs.loss
                 except Exception as e:
-                    print(f"⚠ ERROR during forward pass: {e}")
+                    print(f"[ERROR] ERROR during forward pass: {e}")
                     continue
 
                 if loss is None:
                     continue
+
+                if not first_batch_logged:
+                    print(f"\n  [CASCADE CHECK] Initial Loss of this run: {loss.item():.4f}")
+                    first_batch_logged = True
 
                 # Check for NaN loss
                 if torch.isnan(loss):
@@ -229,7 +241,7 @@ class MeridianTrainer:
                         if not torch.isnan(ewc_loss):
                             loss = loss + ewc_loss
                     except Exception as e:
-                        print(f"⚠ EWC penalty failed: {e}")
+                        print(f"[WARN] EWC penalty failed: {e}")
 
                 # Scale for gradient accumulation
                 scaled_loss = loss / self.config.gradient_accumulation_steps
@@ -237,7 +249,7 @@ class MeridianTrainer:
                 try:
                     scaled_loss.backward()
                 except Exception as e:
-                    print(f"⚠ ERROR during backward pass: {e}")
+                    print(f"[ERROR] ERROR during backward pass: {e}")
                     self.optimizer.zero_grad()
                     continue
 
@@ -331,7 +343,7 @@ class MeridianTrainer:
             ewc_path = os.path.join(self.config.output_dir, "ewc_state.pt")
             os.makedirs(self.config.output_dir, exist_ok=True)
             self.ewc.save(ewc_path)
-            print("✓ Fisher matrix saved for continual learning")
+            print("[OK] Fisher matrix saved for continual learning")
 
         elapsed = time.time() - start_time
         print(f"\n{'=' * 70}")
@@ -343,21 +355,28 @@ class MeridianTrainer:
         if self.experiment:
             self.experiment.end()
 
-    def save_checkpoint(self, path: str) -> None:
+    def save_checkpoint(self, path: str, skip_optimizer: bool = False) -> None:
         """Save model + optimizer + trainer state."""
         os.makedirs(path, exist_ok=True)
-        print(f"  [SAVE] Checkpoint → {path}")
-
-        # Save model via HF format (safetensors)
-        self.model.save_pretrained(path, safe_serialization=True)
+        
+        # Save model via HF format
+        # Disabling safe_serialization to avoid mmap lock issues on Windows
+        self.model.save_pretrained(path, safe_serialization=False)
 
         # Save trainer state
+        # The optimizer state is 2GB+, so we allow skipping it for fast testing
         trainer_state = {
             "global_step": self.global_step,
             "run_step": self.run_step,
             "best_loss": self.best_loss,
-            "optimizer_state_dict": self.optimizer.state_dict(),
         }
+        
+        if not skip_optimizer:
+            print(f"  [SAVE] Checkpoint (including 2GB+ optimizer) → {path}")
+            trainer_state["optimizer_state_dict"] = self.optimizer.state_dict()
+        else:
+            print(f"  [SAVE] Checkpoint (weights only, skipping 2GB optimizer) → {path}")
+            
         torch.save(trainer_state, os.path.join(path, "trainer_state.pt"))
 
     def load_checkpoint(self, path: str) -> bool:
@@ -375,11 +394,11 @@ class MeridianTrainer:
             if "optimizer_state_dict" in state:
                 try:
                     self.optimizer.load_state_dict(state["optimizer_state_dict"])
-                    print(f"  ✓ Optimizer state restored (global step {self.global_step})")
+                    print(f"  [OK] Optimizer state restored (global step {self.global_step})")
                 except Exception as e:
-                    print(f"  ⚠ Optimizer state mismatch, reinitializing: {e}")
+                    print(f"  [WARN] Optimizer state mismatch, reinitializing: {e}")
 
             return True
         except Exception as e:
-            print(f"  ✗ Failed to load trainer state: {e}")
+            print(f"  [FAIL] Failed to load trainer state: {e}")
             return False

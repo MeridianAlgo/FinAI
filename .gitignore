@@ -4,6 +4,7 @@
 # Model Checkpoints (stored on HF Hub)
 checkpoints/
 /checkpoint/
+/checkpoint_trained/
 /model/
 *.safetensors
 *.bin

@@ -1,7 +1,7 @@
 [project]
-name = "meridian-former"
+name = "meridian-smoe"
 version = "1.0.0"
-description = "MeridianFormer: A 300M-param Sparse MoE Finance LLM trainable on CPU"
+description = "Meridian-SMoE: A 650M-param Sparse MoE Financial Intelligence LLM"
 requires-python = ">=3.10"
 
 [tool.ruff]

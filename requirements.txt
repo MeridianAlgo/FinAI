@@ -1,5 +1,5 @@
 # MeridianFormer - Finance LLM Dependencies
-torch>=2.1.0
+torch>=2.6.0
 transformers>=4.40.0
 datasets>=2.18.0
 tokenizers>=0.15.0
