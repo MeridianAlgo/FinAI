@@ -3,10 +3,6 @@ name: Meridian.AI Lint
 on:
   push:
     branches: [main]
-    paths:
-      - 'meridian/**'
-      - 'train.py'
-      - 'requirements.txt'
   pull_request:
     branches: [main]
 
