@@ -11,17 +11,17 @@ It introduces an innovative training paradigm optimized for continuous, hourly e
 
 ---
 
-## 🚀 Model Access & Hugging Face Deployment
+## Model Access & Hugging Face Deployment
 
 The latest live training checkpoints and full model weights are perpetually synchronized and stored on the Hugging Face Hub. 
 
-🔗 **Hugging Face Repository**: [https://huggingface.co/MeridianAlgo/MeridianAI](https://huggingface.co/MeridianAlgo/MeridianAI)
+ **Hugging Face Repository**: [https://huggingface.co/MeridianAlgo/MeridianAI](https://huggingface.co/MeridianAlgo/MeridianAI)
 
 You can download the model instantly using the `huggingface_hub` Python toolkit or directly through standard `transformers` pipelines.
 
 ---
 
-## 🧠 Architecture and Technical Foundations
+##  Architecture and Technical Foundations
 
 Meridian.AI leverages a custom Sparse Mixture-of-Experts architecture to maximize knowledge capacity while maintaining extreme efficiency during inference and training loops.
 
@@ -36,7 +36,7 @@ Unlike generic general-purpose models, Meridian.AI boasts embedded numeracy enco
 
 ---
 
-## 📊 Model Specifications
+## Model Specifications
 
 | Feature | Specification |
 | :--- | :--- |
@@ -50,7 +50,7 @@ Unlike generic general-purpose models, Meridian.AI boasts embedded numeracy enco
 
 ---
 
-## 🔄 Automated Lifecycle & Deployment
+##  Automated Lifecycle & Deployment
 
 The repository possesses a fully autonomous lifecycle governed by GitHub Actions:
 *   **Hourly Continual Learning**: Automated pipeline spins up every hour, pulls the dataset, and trains the model continuously on CPU workflows without interruption.
@@ -59,7 +59,7 @@ The repository possesses a fully autonomous lifecycle governed by GitHub Actions
 
 ---
 
-## 🛠️ Getting Started
+##  Getting Started
 
 ### Environment Setup
 ```bash
@@ -75,7 +75,7 @@ python train.py
 
 ---
 
-## 📜 License
+##  License
 This project is completely open source and distributed under the **MIT License**.
 
 made with love by meridianalgo 🩵
