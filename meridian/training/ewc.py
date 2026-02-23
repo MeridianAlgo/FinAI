@@ -72,16 +72,17 @@ class ElasticWeightConsolidation:
                             fisher[name] += param.grad.data.pow(2).to(torch.bfloat16)
 
                     model.zero_grad(set_to_none=True)
-                
+
                 # Explicitly clear intermediate tensors
                 del outputs
             except Exception as e:
                 print(f"[WARN] EWC sample failed: {e}")
                 model.zero_grad(set_to_none=True)
-            
+
             count += 1
             if count % 20 == 0:
                 import gc
+
                 gc.collect()
 
         # Average
