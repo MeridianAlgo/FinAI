@@ -11,9 +11,9 @@ on:
         type: boolean
         default: false
       max_steps:
-        description: 'Training steps per run (default: 1000)'
+        description: 'Training steps per run (default: 50)'
         type: string
-        default: '1000'
+        default: '50'
 
 concurrency:
   group: meridian-train-${{ github.ref }}
@@ -138,7 +138,7 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           COMET_API_KEY: ${{ secrets.COMET_API_KEY }}
           SMOKE_TEST: '0'
-          MAX_STEPS: ${{ github.event.inputs.max_steps || '1000' }}
+          MAX_STEPS: ${{ github.event.inputs.max_steps || '50' }}
           TOTAL_STEPS: '100000'
           GRAD_ACCUM: '4'
           BATCH_SIZE: '2'
