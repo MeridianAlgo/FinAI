@@ -1,4 +1,4 @@
-name: MeridianFormer Hourly Training
+name: Meridian.AI Train
 
 on:
   schedule:
@@ -192,7 +192,7 @@ jobs:
         if: always()
         run: |
           git config --local user.email "action@github.com"
-          git config --local user.name "MeridianFormer Bot"
+          git config --local user.name "Meridian.AI Bot"
           git add .
           git diff --staged --quiet || git commit -m "chore: sync dataset state & formatting [skip ci]"
           git pull --rebase -X theirs origin main || (git rebase --abort && git pull --no-rebase origin main)

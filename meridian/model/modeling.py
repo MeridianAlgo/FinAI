@@ -1,4 +1,4 @@
-"""MeridianFormer — A 300M Sparse MoE Finance LLM.
+"""Meridian.AI — A 300M Sparse MoE Finance LLM.
 
 Novel architecture combining:
  1. Sparse Mixture-of-Experts (SMoE) with load-balanced top-k routing
@@ -404,7 +404,7 @@ class MeridianDecoderLayer(nn.Module):
 
 
 class MeridianModel(nn.Module):
-    """MeridianFormer backbone."""
+    """Meridian.AI backbone."""
 
     def __init__(self, config: MeridianConfig):
         super().__init__()
@@ -482,7 +482,7 @@ class MeridianModel(nn.Module):
 
 
 class MeridianForCausalLM(PreTrainedModel):
-    """MeridianFormer for causal language modeling."""
+    """Meridian.AI for causal language modeling."""
 
     config_class = MeridianConfig
     base_model_prefix = "model"

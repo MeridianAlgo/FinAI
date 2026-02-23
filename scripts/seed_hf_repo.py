@@ -1,4 +1,4 @@
-"""Seed the HuggingFace repository with a fresh MeridianFormer model."""
+"""Seed the HuggingFace repository with a fresh Meridian.AI model."""
 
 import os
 import sys

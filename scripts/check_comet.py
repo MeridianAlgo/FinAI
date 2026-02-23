@@ -3,7 +3,7 @@ from comet_ml import API
 api = API(api_key="dh60vNAugr3oTEfZeN9taJOr1")
 
 workspace = "meridianalgo"  # Corrected workspace name
-project_name = "meridian-former"
+project_name = "meridian-ai"
 
 experiments = api.get_experiments(workspace, project_name)
 

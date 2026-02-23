@@ -1,4 +1,4 @@
-"""MeridianFormer Trainer — CPU-optimized continual training engine.
+"""Meridian.AI Trainer — CPU-optimized continual training engine.
 
 Key features:
  - Memory-aware adaptive batch sizing (auto-detects available RAM)
@@ -62,12 +62,12 @@ class TrainingConfig:
     ewc_samples: int = 200
 
     # Experiment tracking
-    project_name: str = "meridian-former"
+    project_name: str = "meridian-ai"
     experiment_name: str = "hourly-train"
 
 
 class MeridianTrainer:
-    """CPU-optimized training engine for MeridianFormer."""
+    """CPU-optimized training engine for Meridian.AI."""
 
     def __init__(
         self,
@@ -167,7 +167,7 @@ class MeridianTrainer:
     def train(self) -> None:
         """Execute training loop."""
         print(f"\n{'=' * 70}")
-        print("  MERIDIANFORMER TRAINING ENGINE")
+        print("  MERIDIAN.AI TRAINING ENGINE")
         print(
             f"  Steps: {self.config.max_steps} | BS: {self.config.batch_size} "
             f"| Accum: {self.config.gradient_accumulation_steps}"

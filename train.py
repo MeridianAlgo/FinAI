@@ -1,4 +1,4 @@
-"""MeridianFormer Training Script.
+"""Meridian.AI Training Script.
 
 Orchestrates:
  1. Model initialization / checkpoint resume

@@ -1,4 +1,4 @@
-"""MeridianFormer data pipeline."""
+"""Meridian.AI data pipeline."""
 
 from meridian.data.pipeline import FinanceDataPipeline, create_dataloader
 

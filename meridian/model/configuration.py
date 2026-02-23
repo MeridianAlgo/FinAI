@@ -1,4 +1,4 @@
-"""MeridianFormer Configuration.
+"""Meridian.AI Configuration.
 
 Architecture highlights:
  - Sparse Mixture-of-Experts (SMoE) with top-k routing
@@ -13,7 +13,7 @@ from transformers import PretrainedConfig
 
 
 class MeridianConfig(PretrainedConfig):
-    """Configuration for MeridianFormer."""
+    """Configuration for Meridian.AI."""
 
     model_type = "meridian"
 

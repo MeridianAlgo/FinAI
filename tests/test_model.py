@@ -1,4 +1,4 @@
-"""Tests for MeridianFormer model architecture."""
+"""Tests for Meridian.AI model architecture."""
 
 import pytest
 import torch

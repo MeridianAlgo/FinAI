@@ -1,4 +1,4 @@
-# MeridianFormer - Finance LLM Dependencies
+# Meridian.AI - Finance LLM Dependencies
 torch>=2.6.0
 transformers>=4.40.0
 datasets>=2.18.0

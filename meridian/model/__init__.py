@@ -1,4 +1,4 @@
-"""MeridianFormer model components."""
+"""Meridian.AI model components."""
 
 from meridian.model.configuration import MeridianConfig
 from meridian.model.modeling import MeridianForCausalLM

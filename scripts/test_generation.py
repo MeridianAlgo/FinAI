@@ -1,4 +1,4 @@
-"""Test generation from a trained MeridianFormer model."""
+"""Test generation from a trained Meridian.AI model."""
 
 import os
 import sys
