@@ -112,6 +112,7 @@ class MeridianAttention(nn.Module):
         self.k_proj = nn.Linear(self.hidden_size, self.num_kv_heads * self.head_dim, bias=False)
         self.v_proj = nn.Linear(self.hidden_size, self.num_kv_heads * self.head_dim, bias=False)
         self.o_proj = nn.Linear(self.num_heads * self.head_dim, self.hidden_size, bias=False)
+        self.o_proj._is_residual = True
 
         self.rotary_emb = RotaryEmbedding(
             self.head_dim,
@@ -206,6 +207,7 @@ class MeridianSwiGLU(nn.Module):
         self.gate_proj = nn.Linear(hidden_size, intermediate_size, bias=False)
         self.up_proj = nn.Linear(hidden_size, intermediate_size, bias=False)
         self.down_proj = nn.Linear(intermediate_size, hidden_size, bias=False)
+        self.down_proj._is_residual = True
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.down_proj(F.silu(self.gate_proj(x)) * self.up_proj(x))
@@ -442,11 +444,13 @@ class MeridianModel(nn.Module):
         )
 
         if attention_mask is not None:
-            # Broadcast attention mask [B, S] -> [B, 1, S, S]
-            mask = (1.0 - attention_mask.unsqueeze(1).float()) * float("-inf")
-            # We add it to the causal mask. Row j needs to see only items <= j AND not masked.
-            # causal_mask is [S, S]. mask is [B, 1, S].
-            combined_mask = causal_mask.unsqueeze(0).unsqueeze(0) + mask.unsqueeze(2)
+            # Avoid NaN by multiplying 0.0 with -inf. Use finfo.min instead, or just boolean masking.
+            inv_mask = 1.0 - attention_mask.to(hidden_states.dtype)
+            mask_value = torch.finfo(hidden_states.dtype).min
+            padding_mask = inv_mask * mask_value
+            combined_mask = causal_mask.unsqueeze(0).unsqueeze(0) + padding_mask.unsqueeze(
+                1
+            ).unsqueeze(2)
         else:
             combined_mask = causal_mask.unsqueeze(0).unsqueeze(0)
 
@@ -498,20 +502,18 @@ class MeridianForCausalLM(PreTrainedModel):
         std = self.config.initializer_range
         if isinstance(module, nn.Linear):
             # Normal distribution based on Xavier/Kaiming principles
-            module.weight.data.normal_(mean=0.0, std=std)
+            if getattr(module, "_is_residual", False):
+                module.weight.data.normal_(
+                    mean=0.0, std=std / math.sqrt(2 * self.config.num_layers)
+                )
+            else:
+                module.weight.data.normal_(mean=0.0, std=std)
             if module.bias is not None:
                 module.bias.data.zero_()
         elif isinstance(module, nn.Embedding):
             module.weight.data.normal_(mean=0.0, std=std)
             if module.padding_idx is not None:
                 module.weight.data[module.padding_idx].zero_()
-
-        # Special initialization for residual connections: Normal(0, std / sqrt(2 * num_layers))
-        # This keeps the variance of activations constant across depth
-        scale = 1 / math.sqrt(2 * self.config.num_layers)
-        for name, p in self.named_parameters():
-            if "down_proj" in name or "o_proj" in name:
-                p.data.mul_(scale)
 
     def get_input_embeddings(self) -> nn.Embedding:
         return self.model.embed_tokens

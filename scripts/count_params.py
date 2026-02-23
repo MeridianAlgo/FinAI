@@ -18,6 +18,9 @@ def main():
     from transformers import AutoConfig, AutoModelForCausalLM
 
     config = AutoConfig.from_pretrained(model_id, trust_remote_code=True)
+    if hasattr(config, "hidden_act") and config.hidden_act == "swiglu":
+        config.hidden_act = "silu"
+
     model = AutoModelForCausalLM.from_config(config, trust_remote_code=True)
 
     total = 0
