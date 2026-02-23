@@ -33,7 +33,7 @@ from meridian.training.trainer import MeridianTrainer, TrainingConfig
 
 def main():
     print("=" * 70)
-    print("  MeridianFormer v1.0 — Finance LLM Training")
+    print("  MeridianAI v1.0 — Finance LLM Training")
     print("  Architecture: Sparse MoE + GQA + RoPE + SwiGLU + Numeracy Encoding")
     print("=" * 70)
 

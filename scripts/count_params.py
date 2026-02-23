@@ -1,7 +1,9 @@
 """Count model parameters by component for analysis."""
 
-import os
 import sys
+from dotenv import load_dotenv
+
+load_dotenv()
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -33,7 +35,7 @@ def main():
         components[component] = components.get(component, 0) + numel
 
     print(f"\n{'=' * 60}")
-    print("  Meridian-SMoE Parameter Report")
+    print("  MeridianAI Parameter Report")
     print(f"{'=' * 60}\n")
     print(f"  Total: {total:>15,}")
     print(f"  Total (M): {total / 1e6:>11.1f}M\n")
@@ -55,8 +57,10 @@ def main():
         else:
             non_moe_params += param.numel()
 
-    print(f"\n  {'=' * 50}")
-    print(f"  Architecture: Sparse Mixture-of-Experts (OpenMoE-Base)")
+    print(f"\n  {'=' * 70}")
+    print("  MeridianAI v1.0 — Finance LLM Training")
+    print("  Architecture: Sparse MoE + GQA + RoPE + SwiGLU + Numeracy Encoding")
+    print(f"  {'=' * 70}")
     print(f"  Efficiency: optimized for CPU inference.")
     print(f"  {'=' * 50}\n")
 

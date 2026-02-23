@@ -15,8 +15,12 @@ from transformers import AutoTokenizer
 
 def main():
     token = os.getenv("HF_TOKEN")
-    repo_id = "MeridianAlgo/FinAI-SMoE-650M"
+    repo_id = "MeridianAlgo/MeridianAI"
     base_model_id = "hpcai-tech/openmoe-base"
+
+    print(f"\n{'=' * 60}")
+    print("  MeridianAI Parameter Report")
+    print(f"{'=' * 60}\n")
 
     if not token:
         print("✗ HF_TOKEN not set")
@@ -65,7 +69,7 @@ def main():
         folder_path=save_path,
         repo_id=repo_id,
         path_in_repo="checkpoint",
-        commit_message=f"Initial Meridian-SMoE seed (Base: {base_model_id})",
+        commit_message=f"Initial MeridianAI seed (Base: {base_model_id})",
         token=token,
     )
     print(f"✓ Model seeded to {repo_id}")
