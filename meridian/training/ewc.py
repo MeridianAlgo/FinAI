@@ -62,16 +62,27 @@ class ElasticWeightConsolidation:
             if isinstance(labels, list):
                 labels = torch.stack(labels)
 
-            outputs = model(input_ids=input_ids, labels=labels)
-            if outputs.loss is not None:
-                outputs.loss.backward()
+            try:
+                outputs = model(input_ids=input_ids, labels=labels)
+                if outputs.loss is not None:
+                    outputs.loss.backward()
 
-                for name, param in model.named_parameters():
-                    if param.requires_grad and param.grad is not None:
-                        fisher[name] += param.grad.data.pow(2)
+                    for name, param in model.named_parameters():
+                        if param.requires_grad and param.grad is not None:
+                            fisher[name] += param.grad.data.pow(2)
 
-                model.zero_grad()
+                    model.zero_grad(set_to_none=True)
+                
+                # Explicitly clear intermediate tensors
+                del outputs
+            except Exception as e:
+                print(f"[WARN] EWC sample failed: {e}")
+                model.zero_grad(set_to_none=True)
+            
             count += 1
+            if count % 20 == 0:
+                import gc
+                gc.collect()
 
         # Average
         for name in fisher:

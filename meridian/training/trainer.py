@@ -59,7 +59,7 @@ class TrainingConfig:
     # EWC
     use_ewc: bool = True
     ewc_lambda: float = 100.0
-    ewc_samples: int = 200
+    ewc_samples: int = 80
 
     # Experiment tracking
     project_name: str = "meridian-ai"
@@ -336,12 +336,22 @@ class MeridianTrainer:
 
         # Compute Fisher for EWC (for next run)
         if self.ewc is not None:
+            import gc
+
+            # Free up memory before heavy Fisher computation
+            self.optimizer.zero_grad(set_to_none=True)
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+
             print("\n[EWC] Computing Fisher Information Matrix for next run...")
+            self._log_memory()
             self.ewc.compute_fisher(self.model, self.dataloader, self.config.ewc_samples)
             ewc_path = os.path.join(self.config.output_dir, "ewc_state.pt")
             os.makedirs(self.config.output_dir, exist_ok=True)
             self.ewc.save(ewc_path)
             print("[OK] Fisher matrix saved for continual learning")
+            self._log_memory()
 
         elapsed = time.time() - start_time
         print(f"\n{'=' * 70}")
