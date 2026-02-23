@@ -47,7 +47,7 @@ class ElasticWeightConsolidation:
 
         for name, param in model.named_parameters():
             if param.requires_grad:
-                fisher[name] = torch.zeros_like(param.data)
+                fisher[name] = torch.zeros_like(param.data, dtype=torch.bfloat16)
 
         count = 0
         for batch in dataloader:
@@ -69,7 +69,7 @@ class ElasticWeightConsolidation:
 
                     for name, param in model.named_parameters():
                         if param.requires_grad and param.grad is not None:
-                            fisher[name] += param.grad.data.pow(2)
+                            fisher[name] += param.grad.data.pow(2).to(torch.bfloat16)
 
                     model.zero_grad(set_to_none=True)
                 
@@ -90,7 +90,7 @@ class ElasticWeightConsolidation:
 
         self.fisher_diag = fisher
         self.prev_params = {
-            name: param.data.clone()
+            name: param.data.clone().to(torch.bfloat16)
             for name, param in model.named_parameters()
             if param.requires_grad
         }
@@ -105,8 +105,8 @@ class ElasticWeightConsolidation:
         loss = torch.tensor(0.0, device=next(model.parameters()).device)
         for name, param in model.named_parameters():
             if name in self.fisher_diag and name in self.prev_params:
-                fisher = self.fisher_diag[name].to(param.device)
-                prev = self.prev_params[name].to(param.device)
+                fisher = self.fisher_diag[name].to(param.device, dtype=param.dtype)
+                prev = self.prev_params[name].to(param.device, dtype=param.dtype)
                 loss += (fisher * (param - prev).pow(2)).sum()
 
         return 0.5 * self.ewc_lambda * loss

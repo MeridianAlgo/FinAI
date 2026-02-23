@@ -163,6 +163,13 @@ def main():
             ignore_mismatched_sizes=True,
         )
 
+    if os.getenv("GRADIENT_CHECKPOINTING", "0") == "1":
+        try:
+            model.gradient_checkpointing_enable()
+            print("  [OK] Gradient Checkpointing enabled")
+        except Exception as e:
+            print(f"  [WARN] Failed to enable gradient checkpointing: {e}")
+
     total_params = sum(p.numel() for p in model.parameters())
     print(f"  Total parameters: {total_params:,}")
 
