@@ -212,9 +212,7 @@ class MeridianTrainer:
                 # Forward pass
                 try:
                     outputs = self.model(
-                        input_ids=input_ids, 
-                        attention_mask=attention_mask, 
-                        labels=labels
+                        input_ids=input_ids, attention_mask=attention_mask, labels=labels
                     )
                     loss = outputs.loss
                 except Exception as e:
@@ -358,7 +356,7 @@ class MeridianTrainer:
     def save_checkpoint(self, path: str, skip_optimizer: bool = False) -> None:
         """Save model + optimizer + trainer state."""
         os.makedirs(path, exist_ok=True)
-        
+
         # Save model via HF format
         # Disabling safe_serialization to avoid mmap lock issues on Windows
         self.model.save_pretrained(path, safe_serialization=False)
@@ -370,13 +368,13 @@ class MeridianTrainer:
             "run_step": self.run_step,
             "best_loss": self.best_loss,
         }
-        
+
         if not skip_optimizer:
             print(f"  [SAVE] Checkpoint (including 2GB+ optimizer) → {path}")
             trainer_state["optimizer_state_dict"] = self.optimizer.state_dict()
         else:
             print(f"  [SAVE] Checkpoint (weights only, skipping 2GB optimizer) → {path}")
-            
+
         torch.save(trainer_state, os.path.join(path, "trainer_state.pt"))
 
     def load_checkpoint(self, path: str) -> bool:

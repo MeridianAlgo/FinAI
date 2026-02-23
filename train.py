@@ -9,6 +9,7 @@ Orchestrates:
 
 import json
 import os
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -95,9 +96,9 @@ def main():
     state_files = [
         os.path.join(checkpoint_path, "dataset_state.json"),
         state_path,
-        "dataset_state.json"
+        "dataset_state.json",
     ]
-    
+
     found_items = []
     for sp in state_files:
         if os.path.exists(sp):
@@ -109,7 +110,7 @@ def main():
                     print(f"  Found state in {sp}: {val}")
             except Exception:
                 pass
-    
+
     if found_items:
         processed_items = max(found_items)
         print(f"  Resuming from maximum dataset index: {processed_items}")
@@ -130,11 +131,12 @@ def main():
         print(f"  Loading checkpoint from {checkpoint_path}...")
         try:
             from transformers import AutoModelForCausalLM
+
             model = AutoModelForCausalLM.from_pretrained(
-                checkpoint_path, 
+                checkpoint_path,
                 trust_remote_code=True,
-                torch_dtype=torch.float32, # CPU-friendly
-                low_cpu_mem_usage=True
+                torch_dtype=torch.float32,  # CPU-friendly
+                low_cpu_mem_usage=True,
             )
             print("  [OK] Checkpoint loaded - continuing training")
             model_loaded = True
@@ -143,19 +145,19 @@ def main():
 
     if not model_loaded:
         print(f"  Loading pre-trained model {model_id} from HuggingFace...")
-        from transformers import AutoModelForCausalLM, AutoConfig
-        
+        from transformers import AutoConfig, AutoModelForCausalLM
+
         config = AutoConfig.from_pretrained(model_id, trust_remote_code=True)
         if hasattr(config, "hidden_act") and config.hidden_act == "swiglu":
             config.hidden_act = "silu"
 
         model = AutoModelForCausalLM.from_pretrained(
-            model_id, 
+            model_id,
             config=config,
             trust_remote_code=True,
             torch_dtype=torch.float32,
             low_cpu_mem_usage=True,
-            ignore_mismatched_sizes=True
+            ignore_mismatched_sizes=True,
         )
 
     total_params = sum(p.numel() for p in model.parameters())
@@ -205,12 +207,12 @@ def main():
     # 8. Train!
     # 8. Continual Training Loop
     import time
-    
+
     run_count = 1
     while True:
         print(f"\n{'='*20} STARTING TRAINING RUN #{run_count} {'='*20}")
         print(f"  Start Time: {time.strftime('%Y-%m-%d %H:%M:%S')}")
-        
+
         # Fresh dataloader with current state
         dataloader = create_dataloader(
             tokenizer,
@@ -218,7 +220,7 @@ def main():
             block_size=block_size,
             skip_items=processed_items,
         )
-        trainer.dataloader = dataloader # Update trainer's dataloader
+        trainer.dataloader = dataloader  # Update trainer's dataloader
 
         try:
             trainer.train()
@@ -228,6 +230,7 @@ def main():
         except Exception as e:
             print(f"\n  ERROR during training: {e}")
             import traceback
+
             traceback.print_exc()
 
         # Save checkpoint (SKIPPING OPTIMIZER for fast tests)
@@ -247,23 +250,25 @@ def main():
             ) * train_config.gradient_accumulation_steps
 
         items_processed = batches_processed * train_config.batch_size
-        processed_items += items_processed # Update for next loop
+        processed_items += items_processed  # Update for next loop
 
         for sp in [state_path, os.path.join(checkpoint_path, "dataset_state.json")]:
             with open(sp, "w") as f:
                 json.dump({"processed_items": processed_items}, f)
 
         print(f"  [OK] Dataset state saved (total processed: {processed_items:,})")
-        
+
         # Update initial global step for next iteration calculation if needed
         initial_global_step = trainer.global_step
 
         print(f"\n  TRAINING RUN #{run_count} COMPLETE.")
-        print(f"  Waiting 5 seconds before next run...")
-        print(f"  Next run at roughly: {time.strftime('%H:%M:%S', time.localtime(time.time() + 5))}")
-        
+        print("  Waiting 5 seconds before next run...")
+        print(
+            f"  Next run at roughly: {time.strftime('%H:%M:%S', time.localtime(time.time() + 5))}"
+        )
+
         run_count += 1
-        time.sleep(5) # Fast wait for test
+        time.sleep(5)  # Fast wait for test
 
 
 if __name__ == "__main__":

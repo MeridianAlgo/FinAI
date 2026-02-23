@@ -2,6 +2,7 @@
 
 import os
 import sys
+
 import torch
 from dotenv import load_dotenv
 
@@ -35,19 +36,19 @@ def main():
 
     # Initialize model from OpenMoE base
     print(f"  Fetching base model {base_model_id} architecture...")
-    from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
-    
+    from transformers import AutoConfig, AutoModelForCausalLM
+
     config = AutoConfig.from_pretrained(base_model_id, trust_remote_code=True)
     if hasattr(config, "hidden_act") and config.hidden_act == "swiglu":
         config.hidden_act = "silu"
 
     model = AutoModelForCausalLM.from_pretrained(
-        base_model_id, 
+        base_model_id,
         config=config,
         trust_remote_code=True,
         torch_dtype=torch.float32,
         low_cpu_mem_usage=True,
-        ignore_mismatched_sizes=True
+        ignore_mismatched_sizes=True,
     )
     tokenizer = AutoTokenizer.from_pretrained(base_model_id, trust_remote_code=True)
 
@@ -58,7 +59,7 @@ def main():
     save_path = "./checkpoint"
     os.makedirs(save_path, exist_ok=True)
     model.save_pretrained(save_path, safe_serialization=False)
-    
+
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token_id = tokenizer.eos_token_id
     tokenizer.save_pretrained(save_path)
