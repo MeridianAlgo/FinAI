@@ -12,7 +12,7 @@ on:
 
 jobs:
   lint:
-    name: "🔍 Lint & Format"
+    name: "Lint & Format"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -32,7 +32,7 @@ jobs:
         run: ruff check .
 
   smoke-test:
-    name: "🧪 Smoke Test"
+    name: "Smoke Test"
     needs: lint
     runs-on: ubuntu-latest
     steps:
@@ -64,7 +64,7 @@ jobs:
         run: python scripts/count_params.py
 
   test:
-    name: "✅ Unit Tests"
+    name: "Unit Tests"
     needs: lint
     runs-on: ubuntu-latest
     steps:

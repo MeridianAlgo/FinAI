@@ -5,13 +5,12 @@ import sys
 
 import torch
 from dotenv import load_dotenv
+from huggingface_hub import HfApi, create_repo
+from transformers import AutoTokenizer
 
 load_dotenv()
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from huggingface_hub import HfApi, create_repo
-from transformers import AutoTokenizer
 
 
 def main():
@@ -24,13 +23,13 @@ def main():
     print(f"{'=' * 60}\n")
 
     if not token:
-        print("✗ HF_TOKEN not set")
+        print("[FAIL] HF_TOKEN not set")
         return
 
     # Create repo if it doesn't exist
     try:
         create_repo(repo_id, token=token, private=False, exist_ok=True)
-        print(f"✓ Repo {repo_id} ready")
+        print(f"[OK] Repo {repo_id} ready")
     except Exception as e:
         print(f"Repo creation note: {e}")
 
@@ -73,7 +72,7 @@ def main():
         commit_message=f"Initial MeridianAI seed (Base: {base_model_id})",
         token=token,
     )
-    print(f"✓ Model seeded to {repo_id}")
+    print(f"[OK] Model seeded to {repo_id}")
 
 
 if __name__ == "__main__":

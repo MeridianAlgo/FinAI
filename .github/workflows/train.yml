@@ -21,7 +21,7 @@ concurrency:
 
 jobs:
   seed:
-    name: "🔧 Nuke & Seed HF"
+    name: "Nuke & Seed HF"
     if: github.event.inputs.force_seed == 'true'
     runs-on: ubuntu-latest
     environment: HuggingFace Hub
@@ -44,7 +44,7 @@ jobs:
         run: python scripts/seed_hf_repo.py
 
   train:
-    name: "🚀 Hourly Training Run"
+    name: "Hourly Training Run"
     needs: seed
     if: |
       always() && 
@@ -112,13 +112,13 @@ jobs:
                       if os.path.exists('./checkpoint'):
                           shutil.rmtree('./checkpoint')
                       shutil.move(os.path.join(temp_dir, 'checkpoint'), './checkpoint')
-                      print('✓ Checkpoint pulled')
+                      print('Checkpoint pulled')
 
                   for cf in ['model.safetensors', 'trainer_state.pt', 'config.json', 'ewc_state.pt']:
                       path = os.path.join('./checkpoint', cf)
                       if os.path.exists(path):
                           size_mb = os.path.getsize(path) / (1024 * 1024)
-                          print(f'  ✓ {cf} ({size_mb:.2f} MB)')
+                          print(f'  - {cf} ({size_mb:.2f} MB)')
 
                   if os.path.exists(temp_dir):
                       shutil.rmtree(temp_dir)
@@ -174,9 +174,9 @@ jobs:
                   commit_message='Hourly training update [skip ci]',
                   token=os.getenv('HF_TOKEN')
               )
-              print('✓ Upload successful')
+              print('Upload successful')
           except Exception as e:
-              print(f'✗ Upload failed: {e}')
+              print(f'Upload failed: {e}')
               exit(1)
           "
 

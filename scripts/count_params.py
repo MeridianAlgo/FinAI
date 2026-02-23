@@ -1,5 +1,6 @@
 """Count model parameters by component for analysis."""
 
+import os
 import sys
 
 from dotenv import load_dotenv
@@ -41,13 +42,6 @@ def main():
     for comp, count in sorted(components.items(), key=lambda x: -x[1]):
         pct = 100.0 * count / total
         print(f"  {comp:<35} {count:>12,} ({pct:>5.1f}%)")
-
-    # Smart MoE active param detection
-    moe_expert_layers = [
-        m
-        for m in model.modules()
-        if "MoE" in m.__class__.__name__ or m.__class__.__name__ == "OpenMoELayer"
-    ]
 
     # Default to 196M active params if detection fails, or try generic check
     moe_params = 0

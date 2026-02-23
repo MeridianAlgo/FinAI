@@ -8,17 +8,10 @@ Orchestrates:
 """
 
 import json
+import multiprocessing
 import os
-
-from dotenv import load_dotenv
-
-load_dotenv()
-
-# Windows multiprocessing fix
-if os.name == "nt":
-    import multiprocessing
-
-    multiprocessing.set_start_method("spawn", force=True)
+import time
+import traceback
 
 try:
     import comet_ml  # noqa: F401
@@ -26,10 +19,21 @@ except Exception:
     pass
 
 import torch
+from dotenv import load_dotenv
 from transformers import AutoTokenizer
 
 from meridian.data.pipeline import create_dataloader, create_smoke_dataloader
+from meridian.model import MeridianConfig, MeridianForCausalLM
 from meridian.training.trainer import MeridianTrainer, TrainingConfig
+
+load_dotenv()
+
+# Windows multiprocessing fix
+if os.name == "nt":
+    try:
+        multiprocessing.set_start_method("spawn", force=True)
+    except RuntimeError:
+        pass
 
 
 def main():
@@ -85,7 +89,7 @@ def main():
 
         trainer = MeridianTrainer(model, dl, train_config)
         trainer.train()
-        print("\n✓ Smoke test passed!")
+        print("\n[OK] Smoke test passed!")
         return
 
     # ── Full Training Mode ───────────────────────────────────────────────
@@ -125,7 +129,6 @@ def main():
     model_loaded = False
     checkpoint_path = "./checkpoint"
     checkpoint_weights = os.path.join(checkpoint_path, "model.safetensors")
-    trainer_state = os.path.join(checkpoint_path, "trainer_state.pt")
 
     if os.path.exists(checkpoint_weights):
         print(f"  Loading checkpoint from {checkpoint_path}...")
@@ -206,8 +209,6 @@ def main():
 
     # 8. Train!
     # 8. Continual Training Loop
-    import time
-
     run_count = 1
     while True:
         print(f"\n{'='*20} STARTING TRAINING RUN #{run_count} {'='*20}")
@@ -229,8 +230,6 @@ def main():
             break
         except Exception as e:
             print(f"\n  ERROR during training: {e}")
-            import traceback
-
             traceback.print_exc()
 
         # Save checkpoint (SKIPPING OPTIMIZER for fast tests)
