@@ -126,23 +126,27 @@ class ElasticWeightConsolidation:
             return torch.tensor(0.0)
 
         total_penalty = torch.tensor(0.0, device=next(model.parameters()).device)
-        
+
         # We use a loop that avoids creating a massive computation graph node
         # if there are many small parameters, though usually it's better to just
         # sum them up. The main bottleneck is the temporary tensor (param - prev)^2.
-        
+
         for name, param in model.named_parameters():
             if name in self.fisher_diag and name in self.prev_params:
                 # Get Fisher and Prev, ensuring they match param device/dtype
-                fisher = self.fisher_diag[name].to(device=param.device, dtype=param.dtype, non_blocking=True)
-                prev = self.prev_params[name].to(device=param.device, dtype=param.dtype, non_blocking=True)
-                
+                fisher = self.fisher_diag[name].to(
+                    device=param.device, dtype=param.dtype, non_blocking=True
+                )
+                prev = self.prev_params[name].to(
+                    device=param.device, dtype=param.dtype, non_blocking=True
+                )
+
                 # Element-wise squared difference weighted by Fisher
                 # This still creates one temporary tensor per parameter
-                diff = (param - prev)
+                diff = param - prev
                 penalty = (fisher * diff.pow(2)).sum()
                 total_penalty = total_penalty + penalty
-                
+
                 # Help GC
                 del fisher, prev, diff, penalty
 
@@ -151,10 +155,7 @@ class ElasticWeightConsolidation:
     def save(self, path: str) -> None:
         """Save Fisher + previous params for next training run."""
         # Ensure we don't save with cross-thread locks
-        state = {
-            "fisher": self.fisher_diag,
-            "prev_params": self.prev_params
-        }
+        state = {"fisher": self.fisher_diag, "prev_params": self.prev_params}
         torch.save(state, path)
 
     def load(self, path: str) -> None:

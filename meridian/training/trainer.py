@@ -218,7 +218,9 @@ class MeridianTrainer:
                         input_ids=input_ids, attention_mask=attention_mask, labels=labels
                     )
                     loss = outputs.loss
-                    print(f"  [DEBUG] Micro-step {micro_step}: Forward pass complete. Loss: {loss.item():.4f}")
+                    print(
+                        f"  [DEBUG] Micro-step {micro_step}: Forward pass complete. Loss: {loss.item():.4f}"
+                    )
                 except Exception as e:
                     print(f"[ERROR] ERROR during forward pass: {e}")
                     continue
@@ -299,7 +301,7 @@ class MeridianTrainer:
                     self.global_step += 1
                     self.run_step += 1
                     avg_loss = accumulated_loss / self.config.gradient_accumulation_steps
-                    
+
                     self._log_memory()
 
                     # Logging
