@@ -193,7 +193,9 @@ class MeridianTrainer:
             ):
                 # Get batch
                 try:
+                    print(f"  [DEBUG] Micro-step {micro_step}: Fetching batch...")
                     batch = next(data_iter)
+                    print(f"  [DEBUG] Micro-step {micro_step}: Batch received.")
                 except StopIteration:
                     print("[INFO] Dataset exhausted. Ending training.")
                     break
@@ -211,10 +213,12 @@ class MeridianTrainer:
 
                 # Forward pass
                 try:
+                    print(f"  [DEBUG] Micro-step {micro_step}: Starting forward pass...")
                     outputs = self.model(
                         input_ids=input_ids, attention_mask=attention_mask, labels=labels
                     )
                     loss = outputs.loss
+                    print(f"  [DEBUG] Micro-step {micro_step}: Forward pass complete. Loss: {loss.item():.4f}")
                 except Exception as e:
                     print(f"[ERROR] ERROR during forward pass: {e}")
                     continue
@@ -235,9 +239,11 @@ class MeridianTrainer:
                 # Add EWC penalty
                 if self.ewc is not None and self.ewc._initialized:
                     try:
+                        print("  [DEBUG] Computing EWC penalty...")
                         ewc_loss = self.ewc.penalty(self.model)
                         if not torch.isnan(ewc_loss):
                             loss = loss + ewc_loss
+                            print(f"  [DEBUG] EWC penalty added: {ewc_loss.item():.6f}")
                     except Exception as e:
                         print(f"[WARN] EWC penalty failed: {e}")
 
@@ -245,7 +251,9 @@ class MeridianTrainer:
                 scaled_loss = loss / self.config.gradient_accumulation_steps
 
                 try:
+                    print("  [DEBUG] Starting backward pass...")
                     scaled_loss.backward()
+                    print("  [DEBUG] Backward pass complete.")
                 except Exception as e:
                     print(f"[ERROR] ERROR during backward pass: {e}")
                     self.optimizer.zero_grad()
@@ -256,6 +264,7 @@ class MeridianTrainer:
 
                 # Optimizer step
                 if (micro_step + 1) % self.config.gradient_accumulation_steps == 0:
+                    print(f"  [DEBUG] Step {self.run_step}: Starting optimization step...")
                     # Check for NaN gradients before clipping
                     has_nan_grads = False
                     for p in self.model.parameters():
@@ -273,19 +282,25 @@ class MeridianTrainer:
                         continue
 
                     # Gradient clipping
+                    print(f"  [DEBUG] Step {self.run_step}: Clipping gradients...")
                     grad_norm = torch.nn.utils.clip_grad_norm_(
                         self.model.parameters(), self.config.max_grad_norm
                     )
+                    print(f"  [DEBUG] Step {self.run_step}: Grad norm: {grad_norm:.3f}")
 
                     # Update LR
                     lr = self._update_lr(self.run_step)
 
+                    print(f"  [DEBUG] Step {self.run_step}: Optimizer step...")
                     self.optimizer.step()
                     self.optimizer.zero_grad()
+                    print(f"  [DEBUG] Step {self.run_step}: Optimization complete.")
 
                     self.global_step += 1
                     self.run_step += 1
                     avg_loss = accumulated_loss / self.config.gradient_accumulation_steps
+                    
+                    self._log_memory()
 
                     # Logging
                     if self.run_step % self.config.log_steps == 0:

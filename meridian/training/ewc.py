@@ -61,9 +61,11 @@ class ElasticWeightConsolidation:
         log_mem("Starting dataloader loop")
         for batch in dataloader:
             if count >= max_samples:
+                print(f"    [DEBUG] EWC: Reached max_samples ({max_samples}). Stopping.")
                 break
 
-            log_mem(f"Loaded batch {count+1}/{max_samples}")
+            print(f"    [DEBUG] EWC: Processing sample {count+1}/{max_samples}...")
+            log_mem(f"Sample {count+1}")
 
             input_ids = batch["input_ids"]
             labels = batch.get("labels", input_ids.clone())
@@ -74,30 +76,36 @@ class ElasticWeightConsolidation:
                 labels = torch.stack(labels)
 
             try:
+                print(f"    [DEBUG] EWC Sample {count+1}: Forward pass...")
                 outputs = model(input_ids=input_ids, labels=labels)
                 if outputs.loss is not None:
+                    print(f"    [DEBUG] EWC Sample {count+1}: Backward pass...")
                     outputs.loss.backward()
 
+                    print(f"    [DEBUG] EWC Sample {count+1}: Accumulating Fisher diag...")
                     for name, param in model.named_parameters():
                         if param.requires_grad and param.grad is not None:
                             fisher[name] += param.grad.data.pow(2).to(torch.bfloat16)
 
+                    print(f"    [DEBUG] EWC Sample {count+1}: Zeroing grads...")
                     model.zero_grad(set_to_none=True)
 
                 # Explicitly clear intermediate tensors
+                print(f"    [DEBUG] EWC Sample {count+1}: Clearing tensors...")
                 del outputs
                 del input_ids
                 del labels
-                log_mem(f"Cleared intermediate tensors for batch {count+1}")
             except Exception as e:
                 print(f"[WARN] EWC sample failed: {e}")
                 model.zero_grad(set_to_none=True)
 
             count += 1
             if count % 5 == 0:
+                print(f"    [DEBUG] EWC: Periodic GC collect at sample {count}...")
                 import gc
 
                 gc.collect()
+                log_mem(f"After GC (Sample {count})")
 
         # Average
         for name in fisher:
@@ -113,29 +121,50 @@ class ElasticWeightConsolidation:
         model.train()
 
     def penalty(self, model: nn.Module) -> torch.Tensor:
-        """Compute EWC penalty loss."""
+        """Compute EWC penalty loss with memory-efficient accumulation."""
         if not self._initialized:
             return torch.tensor(0.0)
 
-        loss = torch.tensor(0.0, device=next(model.parameters()).device)
+        total_penalty = torch.tensor(0.0, device=next(model.parameters()).device)
+        
+        # We use a loop that avoids creating a massive computation graph node
+        # if there are many small parameters, though usually it's better to just
+        # sum them up. The main bottleneck is the temporary tensor (param - prev)^2.
+        
         for name, param in model.named_parameters():
             if name in self.fisher_diag and name in self.prev_params:
-                fisher = self.fisher_diag[name].to(param.device, dtype=param.dtype)
-                prev = self.prev_params[name].to(param.device, dtype=param.dtype)
-                loss += (fisher * (param - prev).pow(2)).sum()
+                # Get Fisher and Prev, ensuring they match param device/dtype
+                fisher = self.fisher_diag[name].to(device=param.device, dtype=param.dtype, non_blocking=True)
+                prev = self.prev_params[name].to(device=param.device, dtype=param.dtype, non_blocking=True)
+                
+                # Element-wise squared difference weighted by Fisher
+                # This still creates one temporary tensor per parameter
+                diff = (param - prev)
+                penalty = (fisher * diff.pow(2)).sum()
+                total_penalty = total_penalty + penalty
+                
+                # Help GC
+                del fisher, prev, diff, penalty
 
-        return 0.5 * self.ewc_lambda * loss
+        return 0.5 * self.ewc_lambda * total_penalty
 
     def save(self, path: str) -> None:
         """Save Fisher + previous params for next training run."""
-        torch.save(
-            {"fisher": self.fisher_diag, "prev_params": self.prev_params},
-            path,
-        )
+        # Ensure we don't save with cross-thread locks
+        state = {
+            "fisher": self.fisher_diag,
+            "prev_params": self.prev_params
+        }
+        torch.save(state, path)
 
     def load(self, path: str) -> None:
         """Load Fisher + previous params from previous training run."""
-        data = torch.load(path, map_location="cpu", weights_only=True)
-        self.fisher_diag = data["fisher"]
-        self.prev_params = data["prev_params"]
-        self._initialized = True
+        # Use weights_only=True for security and speed
+        try:
+            data = torch.load(path, map_location="cpu", weights_only=True)
+            self.fisher_diag = data["fisher"]
+            self.prev_params = data["prev_params"]
+            self._initialized = True
+        except Exception as e:
+            print(f"  [WARN] Failed to load EWC state: {e}")
+            self._initialized = False

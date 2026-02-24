@@ -131,7 +131,7 @@ def main():
     checkpoint_weights = os.path.join(checkpoint_path, "model.safetensors")
 
     if os.path.exists(checkpoint_weights):
-        print(f"  Loading checkpoint from {checkpoint_path}...")
+        print(f"  [DEBUG] Found model weights at {checkpoint_weights}. Loading...")
         try:
             from transformers import AutoModelForCausalLM
 
@@ -145,6 +145,8 @@ def main():
             model_loaded = True
         except Exception as e:
             print(f"  [FAIL] Checkpoint load failed: {e}")
+    else:
+        print(f"  [DEBUG] No checkpoint weights found at {checkpoint_weights}.")
 
     if not model_loaded:
         print(f"  Loading pre-trained model {model_id} from HuggingFace...")
@@ -205,14 +207,18 @@ def main():
     )
 
     # 7. Create trainer & load state
+    print("  [DEBUG] Initializing MeridianTrainer...")
     trainer = MeridianTrainer(model, dataloader, train_config)
 
     initial_global_step = 0
     if model_loaded:
+        print(f"  [DEBUG] Restoration: Attempting to load trainer state from {checkpoint_path}...")
         success = trainer.load_checkpoint(checkpoint_path)
         if success:
             initial_global_step = trainer.global_step
             print(f"  [OK] Trainer state restored (global step {initial_global_step})")
+        else:
+            print(f"  [DEBUG] Restoration: No trainer state found in {checkpoint_path}.")
 
     # 8. Train!
     # 8. Single Training Run
