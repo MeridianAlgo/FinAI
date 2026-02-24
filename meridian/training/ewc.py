@@ -49,10 +49,20 @@ class ElasticWeightConsolidation:
             if param.requires_grad:
                 fisher[name] = torch.zeros_like(param.data, dtype=torch.bfloat16)
 
+        import psutil
+        def log_mem(prefix):
+            mem = psutil.virtual_memory()
+            print(f"    [EWC RAM] {prefix}: {mem.used / 1e9:.1f}GB ({mem.percent}%)")
+
+        log_mem("Allocated fisher bfloat16 tensors")
+        
         count = 0
+        log_mem("Starting dataloader loop")
         for batch in dataloader:
             if count >= max_samples:
                 break
+            
+            log_mem(f"Loaded batch {count+1}/{max_samples}")
 
             input_ids = batch["input_ids"]
             labels = batch.get("labels", input_ids.clone())
@@ -75,12 +85,15 @@ class ElasticWeightConsolidation:
 
                 # Explicitly clear intermediate tensors
                 del outputs
+                del input_ids
+                del labels
+                log_mem(f"Cleared intermediate tensors for batch {count+1}")
             except Exception as e:
                 print(f"[WARN] EWC sample failed: {e}")
                 model.zero_grad(set_to_none=True)
 
             count += 1
-            if count % 20 == 0:
+            if count % 5 == 0:
                 import gc
 
                 gc.collect()

@@ -338,6 +338,12 @@ class MeridianTrainer:
         if self.ewc is not None:
             import gc
 
+            # Explicitly delete lingering loop variables to free up large gradient graphs
+            try:
+                del data_iter, batch, input_ids, attention_mask, labels, outputs, loss, scaled_loss
+            except NameError:
+                pass
+
             # Free up memory before heavy Fisher computation
             self.optimizer.zero_grad(set_to_none=True)
             gc.collect()
