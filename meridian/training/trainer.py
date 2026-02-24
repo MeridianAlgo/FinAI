@@ -266,12 +266,14 @@ class MeridianTrainer:
                     try:
                         print("  [DEBUG] Applying manual EWC gradients...")
                         # Scale EWC grad by accumulation steps to match main grad
-                        self.ewc.apply_gradients(self.model, scale=1.0 / self.config.gradient_accumulation_steps)
+                        self.ewc.apply_gradients(
+                            self.model, scale=1.0 / self.config.gradient_accumulation_steps
+                        )
                         print("  [DEBUG] Manual EWC gradients applied.")
                     except Exception as e:
                         print(f"[ERROR] Failed to apply manual EWC gradients: {e}")
 
-                accumulated_loss += (loss.item() + current_ewc_loss)
+                accumulated_loss += loss.item() + current_ewc_loss
                 tokens_processed += input_ids.numel()
 
                 # Optimizer step
