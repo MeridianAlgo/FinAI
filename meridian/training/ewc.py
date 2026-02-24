@@ -120,33 +120,50 @@ class ElasticWeightConsolidation:
         self._initialized = True
         model.train()
 
-    def penalty(self, model: nn.Module) -> torch.Tensor:
-        """Compute EWC penalty loss with memory-efficient accumulation."""
+    def penalty_value(self, model: nn.Module) -> float:
+        """Compute EWC penalty value for logging ONLY (no autograd)."""
         if not self._initialized:
-            return torch.tensor(0.0)
+            return 0.0
 
-        total_penalty = torch.tensor(0.0, device=next(model.parameters()).device)
-        
-        # We use a loop that avoids creating a massive computation graph node
-        # if there are many small parameters, though usually it's better to just
-        # sum them up. The main bottleneck is the temporary tensor (param - prev)^2.
-        
-        for name, param in model.named_parameters():
-            if name in self.fisher_diag and name in self.prev_params:
-                # Get Fisher and Prev, ensuring they match param device/dtype
-                fisher = self.fisher_diag[name].to(device=param.device, dtype=param.dtype, non_blocking=True)
-                prev = self.prev_params[name].to(device=param.device, dtype=param.dtype, non_blocking=True)
-                
-                # Element-wise squared difference weighted by Fisher
-                # This still creates one temporary tensor per parameter
-                diff = (param - prev)
-                penalty = (fisher * diff.pow(2)).sum()
-                total_penalty = total_penalty + penalty
-                
-                # Help GC
-                del fisher, prev, diff, penalty
+        total_penalty = 0.0
+        with torch.no_grad():
+            for name, param in model.named_parameters():
+                if name in self.fisher_diag and name in self.prev_params:
+                    # Non-blocking transfer for speed
+                    fisher = self.fisher_diag[name].to(device=param.device, dtype=param.dtype, non_blocking=True)
+                    prev = self.prev_params[name].to(device=param.device, dtype=param.dtype, non_blocking=True)
+                    
+                    # Compute (w - w_old)^2 * Fisher
+                    # We use a very tight loop to minimize memory high-water mark
+                    p = (fisher * (param - prev).pow(2)).sum().item()
+                    total_penalty += p
+                    
+                    del fisher, prev
 
         return 0.5 * self.ewc_lambda * total_penalty
+
+    def apply_gradients(self, model: nn.Module, scale: float = 1.0) -> None:
+        """Apply EWC gradients manually to current parameter gradients.
+        
+        This avoids the massive memory overhead of building the autograd 
+        graph for the EWC penalty across 478M parameters.
+        
+        Gradient of EWC Loss: lambda * Fisher * (param - prev_param)
+        """
+        if not self._initialized:
+            return
+
+        with torch.no_grad():
+            for name, param in model.named_parameters():
+                if param.grad is not None and name in self.fisher_diag and name in self.prev_params:
+                    fisher = self.fisher_diag[name].to(device=param.device, dtype=param.dtype, non_blocking=True)
+                    prev = self.prev_params[name].to(device=param.device, dtype=param.dtype, non_blocking=True)
+                    
+                    # Update grad: grad = grad + scale * lambda * fisher * (param - prev)
+                    # We do it in-place to save memory
+                    param.grad.add_(fisher * (param - prev), alpha=self.ewc_lambda * scale)
+                    
+                    del fisher, prev
 
     def save(self, path: str) -> None:
         """Save Fisher + previous params for next training run."""

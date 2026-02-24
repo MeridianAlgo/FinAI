@@ -236,30 +236,40 @@ class MeridianTrainer:
                     self.optimizer.zero_grad()
                     continue
 
-                # Add EWC penalty
+                # Calculate EWC penalty value for logging (no autograd)
+                current_ewc_loss = 0.0
                 if self.ewc is not None and self.ewc._initialized:
                     try:
-                        print("  [DEBUG] Computing EWC penalty...")
-                        ewc_loss = self.ewc.penalty(self.model)
-                        if not torch.isnan(ewc_loss):
-                            loss = loss + ewc_loss
-                            print(f"  [DEBUG] EWC penalty added: {ewc_loss.item():.6f}")
+                        print("  [DEBUG] Computing EWC penalty (no_grad)...")
+                        current_ewc_loss = self.ewc.penalty_value(self.model)
+                        if not first_batch_logged:
+                            print(f"  [DEBUG] initial EWC penalty: {current_ewc_loss:.6f}")
                     except Exception as e:
-                        print(f"[WARN] EWC penalty failed: {e}")
+                        print(f"[WARN] EWC penalty calculation failed: {e}")
 
                 # Scale for gradient accumulation
                 scaled_loss = loss / self.config.gradient_accumulation_steps
 
                 try:
-                    print("  [DEBUG] Starting backward pass...")
+                    print("  [DEBUG] Starting main backward pass...")
                     scaled_loss.backward()
-                    print("  [DEBUG] Backward pass complete.")
+                    print("  [DEBUG] Main backward pass complete.")
                 except Exception as e:
                     print(f"[ERROR] ERROR during backward pass: {e}")
                     self.optimizer.zero_grad()
                     continue
 
-                accumulated_loss += loss.item()
+                # Apply EWC gradients manually (extreme memory optimization)
+                if self.ewc is not None and self.ewc._initialized:
+                    try:
+                        print("  [DEBUG] Applying manual EWC gradients...")
+                        # Scale EWC grad by accumulation steps to match main grad
+                        self.ewc.apply_gradients(self.model, scale=1.0 / self.config.gradient_accumulation_steps)
+                        print("  [DEBUG] Manual EWC gradients applied.")
+                    except Exception as e:
+                        print(f"[ERROR] Failed to apply manual EWC gradients: {e}")
+
+                accumulated_loss += (loss.item() + current_ewc_loss)
                 tokens_processed += input_ids.numel()
 
                 # Optimizer step
