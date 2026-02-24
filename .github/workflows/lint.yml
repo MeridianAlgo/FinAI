@@ -33,9 +33,11 @@ jobs:
         run: ruff check . --fix
 
       - name: Commit and Push Changes
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add .
           git diff --staged --quiet || git commit -m "style: auto-format and lint [skip ci]"
-          git push origin HEAD
+          git push https://$GH_PAT@github.com/MeridianAlgo/FinAI.git HEAD:${{ github.head_ref || github.ref_name }}
