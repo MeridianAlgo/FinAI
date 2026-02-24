@@ -215,9 +215,8 @@ def main():
             print(f"  [OK] Trainer state restored (global step {initial_global_step})")
 
     # 8. Train!
-    # 8. Continual Training Loop
-    run_count = 1
-    while True:
+    # 8. Single Training Run
+    for run_count in range(1, 2):
         print(f"\n{'='*20} STARTING TRAINING RUN #{run_count} {'='*20}")
         print(f"  Start Time: {time.strftime('%Y-%m-%d %H:%M:%S')}")
 
@@ -240,12 +239,11 @@ def main():
             traceback.print_exc()
 
         # Save checkpoint (SKIPPING OPTIMIZER for fast tests)
-        trained_checkpoint = "./checkpoint_trained"
-        print(f"\n  Saving checkpoint to {trained_checkpoint}...")
-        trainer.save_checkpoint(trained_checkpoint, skip_optimizer=True)
+        print(f"\n  Saving checkpoint to {checkpoint_path}...")
+        trainer.save_checkpoint(checkpoint_path, skip_optimizer=True)
 
         if tokenizer:
-            tokenizer.save_pretrained(trained_checkpoint)
+            tokenizer.save_pretrained(checkpoint_path)
 
         # Update dataset state
         if hasattr(trainer, "processed_batches"):
@@ -268,13 +266,6 @@ def main():
         initial_global_step = trainer.global_step
 
         print(f"\n  TRAINING RUN #{run_count} COMPLETE.")
-        print("  Waiting 5 seconds before next run...")
-        print(
-            f"  Next run at roughly: {time.strftime('%H:%M:%S', time.localtime(time.time() + 5))}"
-        )
-
-        run_count += 1
-        time.sleep(5)  # Fast wait for test
 
 
 if __name__ == "__main__":
