@@ -50,18 +50,19 @@ class ElasticWeightConsolidation:
                 fisher[name] = torch.zeros_like(param.data, dtype=torch.bfloat16)
 
         import psutil
+
         def log_mem(prefix):
             mem = psutil.virtual_memory()
             print(f"    [EWC RAM] {prefix}: {mem.used / 1e9:.1f}GB ({mem.percent}%)")
 
         log_mem("Allocated fisher bfloat16 tensors")
-        
+
         count = 0
         log_mem("Starting dataloader loop")
         for batch in dataloader:
             if count >= max_samples:
                 break
-            
+
             log_mem(f"Loaded batch {count+1}/{max_samples}")
 
             input_ids = batch["input_ids"]
