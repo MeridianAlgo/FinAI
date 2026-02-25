@@ -129,20 +129,18 @@ class ElasticWeightConsolidation:
         with torch.no_grad():
             for name, param in model.named_parameters():
                 if name in self.fisher_diag and name in self.prev_params:
-                    # Non-blocking transfer for speed
-                    fisher = self.fisher_diag[name].to(
-                        device=param.device, dtype=param.dtype, non_blocking=True
-                    )
-                    prev = self.prev_params[name].to(
-                        device=param.device, dtype=param.dtype, non_blocking=True
-                    )
+                    # Cast stored bfloat16 tensors to param dtype in-place view
+                    # (no copy if already matching dtype/device)
+                    fisher = self.fisher_diag[name].to(dtype=param.dtype)
+                    prev = self.prev_params[name].to(dtype=param.dtype)
 
-                    # Compute (w - w_old)^2 * Fisher
-                    # We use a very tight loop to minimize memory high-water mark
-                    p = (fisher * (param - prev).pow(2)).sum().item()
-                    total_penalty += p
+                    # diff = (w - w_old), computed in-place to avoid a 3rd tensor
+                    diff = param.detach().sub(prev)
+                    diff.mul_(diff)          # diff = diff^2  (in-place)
+                    diff.mul_(fisher)        # diff = fisher * diff^2  (in-place)
+                    total_penalty += diff.sum().item()
 
-                    del fisher, prev
+                    del fisher, prev, diff
 
         return 0.5 * self.ewc_lambda * total_penalty
 
@@ -157,21 +155,19 @@ class ElasticWeightConsolidation:
         if not self._initialized:
             return
 
+        alpha = self.ewc_lambda * scale
         with torch.no_grad():
             for name, param in model.named_parameters():
                 if param.grad is not None and name in self.fisher_diag and name in self.prev_params:
-                    fisher = self.fisher_diag[name].to(
-                        device=param.device, dtype=param.dtype, non_blocking=True
-                    )
-                    prev = self.prev_params[name].to(
-                        device=param.device, dtype=param.dtype, non_blocking=True
-                    )
+                    fisher = self.fisher_diag[name].to(dtype=param.dtype)
+                    prev = self.prev_params[name].to(dtype=param.dtype)
 
-                    # Update grad: grad = grad + scale * lambda * fisher * (param - prev)
-                    # We do it in-place to save memory
-                    param.grad.add_(fisher * (param - prev), alpha=self.ewc_lambda * scale)
+                    # ewc_grad = fisher * (param - prev), added in-place to existing gradient
+                    diff = param.detach().sub(prev)
+                    diff.mul_(fisher)
+                    param.grad.add_(diff, alpha=alpha)
 
-                    del fisher, prev
+                    del fisher, prev, diff
 
     def save(self, path: str) -> None:
         """Save Fisher + previous params for next training run."""
