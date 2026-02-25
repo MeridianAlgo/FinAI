@@ -325,7 +325,9 @@ class MeridianTrainer:
 
                     self.global_step += 1
                     self.run_step += 1
-                    avg_loss = (accumulated_loss + accumulated_ewc_loss) / self.config.gradient_accumulation_steps
+                    avg_loss = (
+                        accumulated_loss + accumulated_ewc_loss
+                    ) / self.config.gradient_accumulation_steps
 
                     self._log_memory()
 
