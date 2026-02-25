@@ -136,8 +136,8 @@ class ElasticWeightConsolidation:
 
                     # diff = (w - w_old), computed in-place to avoid a 3rd tensor
                     diff = param.detach().sub(prev)
-                    diff.mul_(diff)          # diff = diff^2  (in-place)
-                    diff.mul_(fisher)        # diff = fisher * diff^2  (in-place)
+                    diff.mul_(diff)  # diff = diff^2  (in-place)
+                    diff.mul_(fisher)  # diff = fisher * diff^2  (in-place)
                     total_penalty += diff.sum().item()
 
                     del fisher, prev, diff
