@@ -181,11 +181,14 @@ class MeridianTrainer:
 
         self.model.train()
         accumulated_loss = 0.0
+        accumulated_ewc_loss = 0.0
         tokens_processed = 0
         start_time = time.time()
 
         data_iter = iter(self.dataloader)
         first_batch_logged = False
+
+        import gc
 
         try:
             for micro_step in range(
@@ -238,17 +241,6 @@ class MeridianTrainer:
                     self.optimizer.zero_grad()
                     continue
 
-                # Calculate EWC penalty value for logging (no autograd)
-                current_ewc_loss = 0.0
-                if self.ewc is not None and self.ewc._initialized:
-                    try:
-                        print("  [DEBUG] Computing EWC penalty (no_grad)...")
-                        current_ewc_loss = self.ewc.penalty_value(self.model)
-                        if not first_batch_logged:
-                            print(f"  [DEBUG] initial EWC penalty: {current_ewc_loss:.6f}")
-                    except Exception as e:
-                        print(f"[WARN] EWC penalty calculation failed: {e}")
-
                 # Scale for gradient accumulation
                 scaled_loss = loss / self.config.gradient_accumulation_steps
 
@@ -258,8 +250,11 @@ class MeridianTrainer:
                     print("  [DEBUG] Main backward pass complete.")
                 except Exception as e:
                     print(f"[ERROR] ERROR during backward pass: {e}")
-                    self.optimizer.zero_grad()
+                    self.optimizer.zero_grad(set_to_none=True)
                     continue
+                finally:
+                    # Free computation graph & intermediate tensors immediately
+                    del scaled_loss, outputs
 
                 # Apply EWC gradients manually (extreme memory optimization)
                 if self.ewc is not None and self.ewc._initialized:
@@ -273,8 +268,12 @@ class MeridianTrainer:
                     except Exception as e:
                         print(f"[ERROR] Failed to apply manual EWC gradients: {e}")
 
-                accumulated_loss += loss.item() + current_ewc_loss
+                accumulated_loss += loss.item()
+                del loss
                 tokens_processed += input_ids.numel()
+                del input_ids, labels
+                if attention_mask is not None:
+                    del attention_mask
 
                 # Optimizer step
                 if (micro_step + 1) % self.config.gradient_accumulation_steps == 0:
@@ -291,9 +290,20 @@ class MeridianTrainer:
                         print(
                             f"Warning: G] Step {self.run_step}: NaN gradients detected. Skipping step."
                         )
-                        self.optimizer.zero_grad()
+                        self.optimizer.zero_grad(set_to_none=True)
                         accumulated_loss = 0.0
+                        accumulated_ewc_loss = 0.0
                         continue
+
+                    # Compute EWC penalty once per optimizer step (not per micro-step)
+                    current_ewc_loss = 0.0
+                    if self.ewc is not None and self.ewc._initialized:
+                        try:
+                            print("  [DEBUG] Computing EWC penalty (no_grad)...")
+                            current_ewc_loss = self.ewc.penalty_value(self.model)
+                        except Exception as e:
+                            print(f"[WARN] EWC penalty calculation failed: {e}")
+                    accumulated_ewc_loss += current_ewc_loss
 
                     # Gradient clipping
                     print(f"  [DEBUG] Step {self.run_step}: Clipping gradients...")
@@ -307,12 +317,15 @@ class MeridianTrainer:
 
                     print(f"  [DEBUG] Step {self.run_step}: Optimizer step...")
                     self.optimizer.step()
-                    self.optimizer.zero_grad()
+                    self.optimizer.zero_grad(set_to_none=True)
                     print(f"  [DEBUG] Step {self.run_step}: Optimization complete.")
+
+                    # Force GC after each optimizer step to reclaim memory
+                    gc.collect()
 
                     self.global_step += 1
                     self.run_step += 1
-                    avg_loss = accumulated_loss / self.config.gradient_accumulation_steps
+                    avg_loss = (accumulated_loss + accumulated_ewc_loss) / self.config.gradient_accumulation_steps
 
                     self._log_memory()
 
@@ -349,6 +362,7 @@ class MeridianTrainer:
                         self.best_loss = avg_loss
 
                     accumulated_loss = 0.0
+                    accumulated_ewc_loss = 0.0
 
                     # Save checkpoint
                     if self.run_step % self.config.save_steps == 0:
