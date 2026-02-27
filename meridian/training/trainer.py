@@ -59,7 +59,7 @@ class TrainingConfig:
     # EWC
     use_ewc: bool = True
     ewc_lambda: float = 100.0
-    ewc_samples: int = 80
+    ewc_samples: int = 20
 
     # Experiment tracking
     project_name: str = "meridian-ai"
@@ -79,15 +79,44 @@ class MeridianTrainer:
         self.dataloader = dataloader
         self.config = config
 
-        # Optimizer: AdamW with decoupled weight decay
-        param_groups = self._get_param_groups()
-        self.optimizer = torch.optim.AdamW(
-            param_groups,
-            lr=config.learning_rate,
-            betas=(0.9, 0.95),  # Llama-3 style betas
-            weight_decay=config.weight_decay,
-            fused=False,  # CPU doesn't support fused
-        )
+        # Mandatory for 16GB runners: reduce activation memory.
+        if hasattr(self.model, "gradient_checkpointing_enable"):
+            try:
+                self.model.gradient_checkpointing_enable()
+                if hasattr(self.model, "config") and hasattr(self.model.config, "use_cache"):
+                    self.model.config.use_cache = False
+                print("[INFO] Gradient checkpointing enabled")
+            except Exception as e:
+                print(f"[WARN] Failed to enable gradient checkpointing: {e}")
+
+        # Optimizer
+        # NOTE: AdamW is memory-heavy on CPU for large models (m/v states ~= 2x params).
+        # For 16GB GitHub runners, allow switching to Adafactor to reduce optimizer-state RAM.
+        optimizer_name = os.getenv("OPTIMIZER", "adamw").strip().lower()
+        if optimizer_name == "adafactor":
+            from transformers.optimization import Adafactor
+
+            self.optimizer = Adafactor(
+                self.model.parameters(),
+                lr=config.learning_rate,
+                relative_step=False,
+                scale_parameter=True,
+                warmup_init=False,
+                weight_decay=config.weight_decay,
+                clip_threshold=1.0,
+            )
+            print("[INFO] Optimizer: Adafactor (low-memory)")
+        else:
+            # Optimizer: AdamW with decoupled weight decay
+            param_groups = self._get_param_groups()
+            self.optimizer = torch.optim.AdamW(
+                param_groups,
+                lr=config.learning_rate,
+                betas=(0.9, 0.95),  # Llama-3 style betas
+                weight_decay=config.weight_decay,
+                fused=False,  # CPU doesn't support fused
+            )
+            print("[INFO] Optimizer: AdamW")
 
         # State
         self.global_step = 0
@@ -166,6 +195,8 @@ class MeridianTrainer:
 
     def _memory_guard(self) -> bool:
         """Return True if training should stop to avoid OOM."""
+        if os.getenv("HARD_RAM_GUARD", "0") != "1":
+            return False
         max_gb = float(os.getenv("MAX_RAM_GB", "0"))
         max_pct = float(os.getenv("MAX_RAM_PCT", "0"))
         if max_gb <= 0 and max_pct <= 0:
@@ -181,8 +212,39 @@ class MeridianTrainer:
             return True
         return False
 
+    def _soft_cap_should_throttle(self) -> bool:
+        soft_gb = float(os.getenv("SOFT_RAM_GB", "0"))
+        soft_pct = float(os.getenv("SOFT_RAM_PCT", "0"))
+        if soft_gb <= 0 and soft_pct <= 0:
+            return False
+        mem = psutil.virtual_memory()
+        used_gb = mem.used / 1e9
+        return (soft_gb > 0 and used_gb >= soft_gb) or (soft_pct > 0 and mem.percent >= soft_pct)
+
+    def _truncate_batch(
+        self,
+        input_ids: torch.Tensor,
+        labels: torch.Tensor,
+        attention_mask: Optional[torch.Tensor],
+        new_len: int,
+    ) -> tuple[torch.Tensor, torch.Tensor, Optional[torch.Tensor]]:
+        if new_len <= 0:
+            return input_ids, labels, attention_mask
+        if input_ids.dim() == 2 and input_ids.size(1) > new_len:
+            input_ids = input_ids[:, -new_len:]
+            labels = labels[:, -new_len:]
+            if attention_mask is not None and attention_mask.dim() == 2:
+                attention_mask = attention_mask[:, -new_len:]
+        return input_ids, labels, attention_mask
+
     def train(self) -> None:
         """Execute training loop."""
+        debug = os.getenv("DEBUG_STEPS", "0") == "1"
+
+        def dprint(msg: str) -> None:
+            if debug:
+                print(msg)
+
         print(f"\n{'=' * 70}")
         print("  MERIDIAN.AI TRAINING ENGINE")
         print(
@@ -218,16 +280,18 @@ class MeridianTrainer:
                     return
                 # Get batch
                 try:
-                    print(f"  [DEBUG] Micro-step {micro_step}: Fetching batch...")
+                    dprint(f"  [DEBUG] Micro-step {micro_step}: Fetching batch...")
                     batch = next(data_iter)
-                    print(f"  [DEBUG] Micro-step {micro_step}: Batch received.")
+                    dprint(f"  [DEBUG] Micro-step {micro_step}: Batch received.")
                 except StopIteration:
                     print("[INFO] Dataset exhausted. Ending training.")
                     break
 
                 input_ids = batch["input_ids"]
                 attention_mask = batch.get("attention_mask")
-                labels = batch.get("labels", input_ids.clone())
+                labels = batch.get("labels")
+                if labels is None:
+                    labels = input_ids
 
                 if isinstance(input_ids, list):
                     input_ids = torch.stack(input_ids)
@@ -236,14 +300,43 @@ class MeridianTrainer:
                 if attention_mask is not None and isinstance(attention_mask, list):
                     attention_mask = torch.stack(attention_mask)
 
+                # Hard-guard: check again after batch materialization (optional)
+                if self._memory_guard():
+                    self.save_checkpoint(self.config.output_dir, skip_optimizer=True)
+                    if self.experiment:
+                        self.experiment.end()
+                    return
+
+                # Soft RAM cap: dynamically reduce sequence length instead of stopping the run.
+                # This reduces activation memory and keeps the process alive on 16GB runners.
+                if self._soft_cap_should_throttle():
+                    original_len = int(input_ids.shape[1]) if input_ids.dim() == 2 else -1
+                    min_len = int(os.getenv("MIN_THROTTLE_SEQ_LEN", "128"))
+                    new_len = max(min_len, int(original_len * 0.75)) if original_len > 0 else original_len
+                    if original_len > 0 and new_len < original_len:
+                        print(
+                            f"[THROTTLE] RAM high. Truncating seq_len {original_len} -> {new_len} (micro_step={micro_step})"
+                        )
+                        input_ids, labels, attention_mask = self._truncate_batch(
+                            input_ids, labels, attention_mask, new_len
+                        )
+                        gc.collect()
+
                 # Forward pass
                 try:
-                    print(f"  [DEBUG] Micro-step {micro_step}: Starting forward pass...")
+                    # Hard-guard: check right before forward (optional)
+                    if self._memory_guard():
+                        self.save_checkpoint(self.config.output_dir, skip_optimizer=True)
+                        if self.experiment:
+                            self.experiment.end()
+                        return
+
+                    dprint(f"  [DEBUG] Micro-step {micro_step}: Starting forward pass...")
                     outputs = self.model(
                         input_ids=input_ids, attention_mask=attention_mask, labels=labels
                     )
                     loss = outputs.loss
-                    print(
+                    dprint(
                         f"  [DEBUG] Micro-step {micro_step}: Forward pass complete. Loss: {loss.item():.4f}"
                     )
                 except Exception as e:
@@ -267,9 +360,9 @@ class MeridianTrainer:
                 scaled_loss = loss / self.config.gradient_accumulation_steps
 
                 try:
-                    print("  [DEBUG] Starting main backward pass...")
+                    dprint("  [DEBUG] Starting main backward pass...")
                     scaled_loss.backward()
-                    print("  [DEBUG] Main backward pass complete.")
+                    dprint("  [DEBUG] Main backward pass complete.")
                 except Exception as e:
                     print(f"[ERROR] ERROR during backward pass: {e}")
                     self.optimizer.zero_grad(set_to_none=True)
@@ -281,12 +374,12 @@ class MeridianTrainer:
                 # Apply EWC gradients manually (extreme memory optimization)
                 if self.ewc is not None and self.ewc._initialized:
                     try:
-                        print("  [DEBUG] Applying manual EWC gradients...")
+                        dprint("  [DEBUG] Applying manual EWC gradients...")
                         # Scale EWC grad by accumulation steps to match main grad
                         self.ewc.apply_gradients(
                             self.model, scale=1.0 / self.config.gradient_accumulation_steps
                         )
-                        print("  [DEBUG] Manual EWC gradients applied.")
+                        dprint("  [DEBUG] Manual EWC gradients applied.")
                     except Exception as e:
                         print(f"[ERROR] Failed to apply manual EWC gradients: {e}")
 
@@ -299,7 +392,7 @@ class MeridianTrainer:
 
                 # Optimizer step
                 if (micro_step + 1) % self.config.gradient_accumulation_steps == 0:
-                    print(f"  [DEBUG] Step {self.run_step}: Starting optimization step...")
+                    dprint(f"  [DEBUG] Step {self.run_step}: Starting optimization step...")
                     # Check for NaN gradients before clipping
                     has_nan_grads = False
                     for p in self.model.parameters():
@@ -321,29 +414,31 @@ class MeridianTrainer:
                     current_ewc_loss = 0.0
                     if self.ewc is not None and self.ewc._initialized:
                         try:
-                            print("  [DEBUG] Computing EWC penalty (no_grad)...")
+                            dprint("  [DEBUG] Computing EWC penalty (no_grad)...")
                             current_ewc_loss = self.ewc.penalty_value(self.model)
                         except Exception as e:
                             print(f"[WARN] EWC penalty calculation failed: {e}")
                     accumulated_ewc_loss += current_ewc_loss
 
                     # Gradient clipping
-                    print(f"  [DEBUG] Step {self.run_step}: Clipping gradients...")
+                    dprint(f"  [DEBUG] Step {self.run_step}: Clipping gradients...")
                     grad_norm = torch.nn.utils.clip_grad_norm_(
                         self.model.parameters(), self.config.max_grad_norm
                     )
-                    print(f"  [DEBUG] Step {self.run_step}: Grad norm: {grad_norm:.3f}")
+                    dprint(f"  [DEBUG] Step {self.run_step}: Grad norm: {grad_norm:.3f}")
 
                     # Update LR
                     lr = self._update_lr(self.run_step)
 
-                    print(f"  [DEBUG] Step {self.run_step}: Optimizer step...")
+                    dprint(f"  [DEBUG] Step {self.run_step}: Optimizer step...")
                     self.optimizer.step()
                     self.optimizer.zero_grad(set_to_none=True)
-                    print(f"  [DEBUG] Step {self.run_step}: Optimization complete.")
+                    dprint(f"  [DEBUG] Step {self.run_step}: Optimization complete.")
 
-                    # Force GC after each optimizer step to reclaim memory
-                    gc.collect()
+                    # GC can be very slow on CPU; make it configurable.
+                    gc_every = int(os.getenv("GC_EVERY_STEPS", "5"))
+                    if gc_every > 0 and (self.run_step % gc_every == 0):
+                        gc.collect()
 
                     self.global_step += 1
                     self.run_step += 1
@@ -351,10 +446,9 @@ class MeridianTrainer:
                         accumulated_loss + accumulated_ewc_loss
                     ) / self.config.gradient_accumulation_steps
 
-                    self._log_memory()
-
                     # Logging
                     if self.run_step % self.config.log_steps == 0:
+                        self._log_memory()
                         elapsed = time.time() - start_time
                         tps = tokens_processed / elapsed if elapsed > 0 else 0
                         print(
@@ -410,7 +504,7 @@ class MeridianTrainer:
             return
 
         # Compute Fisher for EWC (for next run)
-        if self.ewc is not None:
+        if self.ewc is not None and os.getenv("SKIP_FISHER", "0") != "1":
             import gc
 
             # Explicitly delete lingering loop variables to free up large gradient graphs
@@ -424,6 +518,14 @@ class MeridianTrainer:
             gc.collect()
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
+
+            # Optional: free optimizer memory before Fisher compute on low-RAM machines
+            if os.getenv("FREE_OPTIMIZER_BEFORE_FISHER", "1") == "1":
+                try:
+                    del self.optimizer
+                except Exception:
+                    pass
+                gc.collect()
 
             print("\n[EWC] Computing Fisher Information Matrix for next run...")
             self._log_memory()
@@ -448,9 +550,16 @@ class MeridianTrainer:
         """Save model + optimizer + trainer state."""
         os.makedirs(path, exist_ok=True)
 
-        # Save model via HF format
-        # Disabling safe_serialization to avoid mmap lock issues on Windows
-        self.model.save_pretrained(path, safe_serialization=False)
+        # Save model
+        # Default: HF save_pretrained (used on Actions/Linux)
+        # Local Windows can hit mmap locking issues; allow forcing a torch.save bin path.
+        if os.getenv("FORCE_BIN_SAVE", "0") == "1":
+            if hasattr(self.model, "config"):
+                self.model.config.save_pretrained(path)
+            torch.save(self.model.state_dict(), os.path.join(path, "pytorch_model.bin"))
+        else:
+            # Disabling safe_serialization to avoid mmap lock issues on Windows
+            self.model.save_pretrained(path, safe_serialization=False)
 
         # Save trainer state
         # The optimizer state is 2GB+, so we allow skipping it for fast testing
@@ -461,10 +570,10 @@ class MeridianTrainer:
         }
 
         if not skip_optimizer:
-            print(f"  [SAVE] Checkpoint (including 2GB+ optimizer) → {path}")
+            print(f"  [SAVE] Checkpoint (including 2GB+ optimizer) -> {path}")
             trainer_state["optimizer_state_dict"] = self.optimizer.state_dict()
         else:
-            print(f"  [SAVE] Checkpoint (weights only, skipping 2GB optimizer) → {path}")
+            print(f"  [SAVE] Checkpoint (weights only, skipping 2GB optimizer) -> {path}")
 
         torch.save(trainer_state, os.path.join(path, "trainer_state.pt"))
 

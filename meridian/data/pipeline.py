@@ -7,7 +7,7 @@ Dataset mix:
  - 40% FinanceAlpaca (financial QA & instructions)
  - 30% OpenMathInstruct (math reasoning — critical for finance)
  - 30% FineWeb-Edu (general knowledge foundation)
-
+ - and more
 This mix ensures the model excels at finance + math while maintaining
 broad language understanding.
 """
@@ -446,7 +446,7 @@ class FinanceDataPipeline:
         self.skip_items = skip_items
         self.max_bytes_per_run = max_bytes_per_run
         self.items_processed = 0
-        self.datasets = self.LIGHT_DATASETS if int(os.getenv("USE_LIGHT_DATASETS", "0")) == 1 else self.DATASETS
+        self.datasets = self.LIGHT_DATASETS if int(os.getenv("USE_LIGHT_DATASETS", "1")) == 1 else self.DATASETS
 
     def _load_stream(self, ds_config: dict):
         """Load a streaming dataset with retries."""
@@ -571,12 +571,23 @@ class FinanceDataPipeline:
                 text,
                 truncation=True,
                 max_length=self.block_size,
-                padding="max_length",
+                padding=False,
                 return_tensors="pt",
             )
 
             input_ids = tokens["input_ids"].squeeze(0)
-            attention_mask = tokens["attention_mask"].squeeze(0)
+
+            pad_id = self.tokenizer.pad_token_id
+            if pad_id is None:
+                pad_id = 0
+
+            # Pad only up to the nearest multiple of 8 (less waste than max_length padding)
+            seq_len = int(input_ids.size(0))
+            pad_to = min(self.block_size, ((seq_len + 7) // 8) * 8)
+            if seq_len < pad_to:
+                input_ids = torch.nn.functional.pad(input_ids, (0, pad_to - seq_len), value=pad_id)
+
+            attention_mask = (input_ids != pad_id).long()
             labels = input_ids.clone()
 
             # Mask padding tokens in labels
@@ -622,7 +633,7 @@ def create_dataloader(
     batch_size: int = 2,
     block_size: int = 512,
     skip_items: int = 0,
-    max_bytes: int = 50 * 1024 * 1024,
+    max_bytes: int = 15 * 1024 * 1024,
 ) -> torch.utils.data.DataLoader:
     """Create the finance-focused training DataLoader."""
     pipeline = FinanceDataPipeline(
@@ -633,7 +644,60 @@ def create_dataloader(
     )
 
     dataset = _IterableDataset(pipeline.stream)
-    return torch.utils.data.DataLoader(dataset, batch_size=batch_size)
+
+    def collate_fn(batch):
+        pad_id = tokenizer.pad_token_id
+        if pad_id is None:
+            pad_id = tokenizer.eos_token_id
+        if pad_id is None:
+            pad_id = 0
+
+        # Find max length in this batch (cap to block_size, pad to multiple of 8)
+        max_len = 0
+        for ex in batch:
+            l = int(ex["input_ids"].numel())
+            if l > max_len:
+                max_len = l
+        max_len = min(int(block_size), max_len)
+        max_len = max(1, ((max_len + 7) // 8) * 8)
+        max_len = min(int(block_size), max_len)
+
+        input_ids_out = []
+        attn_out = []
+        labels_out = []
+        processed_idx_out = []
+        for ex in batch:
+            ids = ex["input_ids"][:max_len]
+            labels = ex["labels"][:max_len]
+            pad_amt = max_len - int(ids.numel())
+            if pad_amt > 0:
+                ids = torch.nn.functional.pad(ids, (0, pad_amt), value=pad_id)
+                labels = torch.nn.functional.pad(labels, (0, pad_amt), value=-100)
+
+            attn = (ids != pad_id).long()
+
+            input_ids_out.append(ids)
+            labels_out.append(labels)
+            attn_out.append(attn)
+            if "processed_idx" in ex:
+                processed_idx_out.append(ex["processed_idx"])
+
+        out = {
+            "input_ids": torch.stack(input_ids_out, dim=0),
+            "attention_mask": torch.stack(attn_out, dim=0),
+            "labels": torch.stack(labels_out, dim=0),
+        }
+        if processed_idx_out:
+            out["processed_idx"] = torch.tensor(processed_idx_out, dtype=torch.long)
+        return out
+
+    return torch.utils.data.DataLoader(
+        dataset,
+        batch_size=batch_size,
+        num_workers=0,
+        pin_memory=False,
+        collate_fn=collate_fn,
+    )
 
 
 def create_smoke_dataloader(
@@ -651,4 +715,9 @@ def create_smoke_dataloader(
             }
 
     dataset = _IterableDataset(gen)
-    return torch.utils.data.DataLoader(dataset, batch_size=batch_size)
+    return torch.utils.data.DataLoader(
+        dataset,
+        batch_size=batch_size,
+        num_workers=0,
+        pin_memory=False,
+    )

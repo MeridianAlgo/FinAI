@@ -1,6 +1,6 @@
 [project]
 name = "meridian-smoe"
-version = "1.1.0"
+version = "5.0.0"
 description = "Meridian-SMoE: A 650M-param Sparse MoE Financial Intelligence LLM"
 requires-python = ">=3.10"
 

@@ -42,6 +42,20 @@ def main():
     print("  Architecture: Sparse MoE + GQA + RoPE + SwiGLU + Numeracy Encoding")
     print("=" * 70)
 
+    # FAST_MODE is for quick local debugging on CPU (keeps the real model, but avoids heavy pipelines)
+    if os.getenv("FAST_MODE", "0") == "1":
+        os.environ.setdefault("USE_LIGHT_DATASETS", "1")
+        os.environ.setdefault("MAX_STEPS", "5")
+        os.environ.setdefault("BATCH_SIZE", "1")
+        os.environ.setdefault("GRAD_ACCUM", "1")
+        os.environ.setdefault("BLOCK_SIZE", "32")
+        os.environ.setdefault("MAX_BYTES", str(2 * 1024 * 1024))
+        os.environ.setdefault("USE_EWC", "0")
+        os.environ.setdefault("EWC_SAMPLES", "0")
+        os.environ.setdefault("FREE_OPTIMIZER_BEFORE_FISHER", "1")
+        os.environ.setdefault("SKIP_FISHER", "1")
+        os.environ.setdefault("DEBUG_STEPS", "0")
+
     smoke_test = os.getenv("SMOKE_TEST", "0") == "1"
     checkpoint_path = os.getenv("CHECKPOINT_PATH", "./checkpoint")
     state_path = "dataset_state.json"
@@ -132,6 +146,9 @@ def main():
     checkpoint_path = os.getenv("CHECKPOINT_PATH", "./checkpoint")
     checkpoint_weights = os.path.join(checkpoint_path, "model.safetensors")
 
+    requested_dtype = os.getenv("DTYPE", "bfloat16").lower()
+    use_bf16 = requested_dtype in {"bf16", "bfloat16"}
+
     if os.path.exists(checkpoint_weights):
         print(f"  [DEBUG] Found model weights at {checkpoint_weights}. Loading...")
         try:
@@ -140,13 +157,24 @@ def main():
             model = AutoModelForCausalLM.from_pretrained(
                 checkpoint_path,
                 trust_remote_code=True,
-                dtype=torch.float32,  # CPU-friendly
+                torch_dtype=torch.bfloat16 if use_bf16 else torch.float32,
                 low_cpu_mem_usage=True,
             )
             print("  [OK] Checkpoint loaded - continuing training")
             model_loaded = True
         except Exception as e:
-            print(f"  [FAIL] Checkpoint load failed: {e}")
+            if use_bf16:
+                print(f"  [WARN] bf16 resume load failed ({e}). Falling back to float32.")
+                model = AutoModelForCausalLM.from_pretrained(
+                    checkpoint_path,
+                    trust_remote_code=True,
+                    torch_dtype=torch.float32,
+                    low_cpu_mem_usage=True,
+                )
+                print("  [OK] Checkpoint loaded (float32 fallback) - continuing training")
+                model_loaded = True
+            else:
+                print(f"  [FAIL] Checkpoint load failed: {e}")
     else:
         print(f"  [DEBUG] No checkpoint weights found at {checkpoint_weights}.")
 
@@ -158,16 +186,30 @@ def main():
         if hasattr(config, "hidden_act") and config.hidden_act == "swiglu":
             config.hidden_act = "silu"
 
-        model = AutoModelForCausalLM.from_pretrained(
-            model_id,
-            config=config,
-            trust_remote_code=True,
-            dtype=torch.float32,
-            low_cpu_mem_usage=True,
-            ignore_mismatched_sizes=True,
-        )
+        try:
+            model = AutoModelForCausalLM.from_pretrained(
+                model_id,
+                config=config,
+                trust_remote_code=True,
+                torch_dtype=torch.bfloat16 if use_bf16 else torch.float32,
+                low_cpu_mem_usage=True,
+                ignore_mismatched_sizes=True,
+            )
+        except Exception as e:
+            if use_bf16:
+                print(f"  [WARN] bf16 load failed ({e}). Falling back to float32.")
+                model = AutoModelForCausalLM.from_pretrained(
+                    model_id,
+                    config=config,
+                    trust_remote_code=True,
+                    torch_dtype=torch.float32,
+                    low_cpu_mem_usage=True,
+                    ignore_mismatched_sizes=True,
+                )
+            else:
+                raise
 
-    if os.getenv("GRADIENT_CHECKPOINTING", "0") == "1":
+    if os.getenv("GRADIENT_CHECKPOINTING", "1") == "1":
         try:
             model.gradient_checkpointing_enable()
             if hasattr(model, "config") and hasattr(model.config, "use_cache"):
@@ -186,13 +228,15 @@ def main():
         tokenizer.pad_token_id = tokenizer.eos_token_id
 
     # 5. Data pipeline
-    block_size = int(os.getenv("BLOCK_SIZE", "512"))
+    block_size = int(os.getenv("BLOCK_SIZE", "64"))
     batch_size = int(os.getenv("BATCH_SIZE", "2"))
+    max_bytes = int(os.getenv("MAX_BYTES", str(15 * 1024 * 1024)))
     dataloader = create_dataloader(
         tokenizer,
         batch_size=batch_size,
         block_size=block_size,
         skip_items=processed_items,
+        max_bytes=max_bytes,
     )
 
     # 6. Training configuration
@@ -208,6 +252,7 @@ def main():
         save_steps=int(os.getenv("SAVE_STEPS", "50")),
         use_ewc=os.getenv("USE_EWC", "1") == "1",
         ewc_lambda=float(os.getenv("EWC_LAMBDA", "100.0")),
+        ewc_samples=int(os.getenv("EWC_SAMPLES", "20")),
     )
 
     # 7. Create trainer & load state
@@ -236,6 +281,7 @@ def main():
             batch_size=batch_size,
             block_size=block_size,
             skip_items=processed_items,
+            max_bytes=max_bytes,
         )
         trainer.dataloader = dataloader  # Update trainer's dataloader
 

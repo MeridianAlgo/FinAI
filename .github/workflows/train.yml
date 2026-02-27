@@ -11,9 +11,9 @@ on:
         type: boolean
         default: false
       max_steps:
-        description: 'Training steps per run (default: 50)'
+        description: 'Training steps per run (default: 150)'
         type: string
-        default: '50'
+        default: '150'
 
 concurrency:
   group: meridian-train-${{ github.ref }}
@@ -68,15 +68,6 @@ jobs:
         with:
           python-version: '3.11'
           cache: 'pip'
-
-      - name: Cache Dependencies
-        uses: actions/cache@v4
-        id: cache-deps
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-meridian-${{ hashFiles('requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-meridian-
 
       - name: Install Dependencies
         run: |
@@ -142,18 +133,28 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           COMET_API_KEY: ${{ secrets.COMET_API_KEY }}
           TOKENIZER_ID: 'google/umt5-small'
+          DTYPE: 'float32'
           SKIP_OPTIMIZER_SAVE: '1'
-          MAX_RAM_GB: '14'
-          MAX_RAM_PCT: '92'
-          SMOKE_TEST: '0'
-          MAX_STEPS: ${{ github.event.inputs.max_steps || '50' }}
+          HARD_RAM_GUARD: '1'
+          MAX_RAM_GB: '13.0'
+          SOFT_RAM_GB: '11.0'
+          SOFT_RAM_PCT: '72'
+          MIN_THROTTLE_SEQ_LEN: '32'
+          DEBUG_STEPS: '0'
+          MAX_STEPS: ${{ github.event.inputs.max_steps || '150' }}
           TOTAL_STEPS: '100000'
-          GRAD_ACCUM: '4'
+          GRAD_ACCUM: '8'
           BATCH_SIZE: '1'
           LEARNING_RATE: '1e-5'
-          BLOCK_SIZE: '256'
+          BLOCK_SIZE: '64'
+          MAX_BYTES: '15728640'
           USE_EWC: '1'
-          GRADIENT_CHECKPOINTING: '1'
+          EWC_SAMPLES: '10'
+          GRADIENT_CHECKPOINTING: '0'
+          OPTIMIZER: 'adafactor'
+          FREE_OPTIMIZER_BEFORE_FISHER: '1'
+          FISHER_SEQ_LEN: '32'
+          FISHER_THRESHOLD: '1e-6'
           PYTHONPATH: .
           PYTHONUNBUFFERED: '1'
         run: |
@@ -187,14 +188,6 @@ jobs:
               print(f'Upload failed: {e}')
               exit(1)
           "
-
-      - name: Save Training Artifact
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: meridian-checkpoint-${{ github.run_number }}
-          path: checkpoint/
-          retention-days: 3
 
       - name: Sync Dataset State
         if: always()
