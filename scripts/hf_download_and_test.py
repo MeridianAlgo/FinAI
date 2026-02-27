@@ -65,7 +65,9 @@ def main() -> None:
         print("OUTPUT:")
         continuation = text[len(prompt) :] if text.startswith(prompt) else text
         print(continuation)
-        print(f"[DEBUG] input_len={input_len} output_len={output_len} new_tokens={output_len - input_len}")
+        print(
+            f"[DEBUG] input_len={input_len} output_len={output_len} new_tokens={output_len - input_len}"
+        )
         if output_len > input_len:
             print(f"[DEBUG] generated_token_ids_tail={out[0, input_len: input_len + 16].tolist()}")
         print(f"[DEBUG] decoded_with_special_repr={text_with_special!r}")
