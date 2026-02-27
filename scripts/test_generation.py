@@ -5,7 +5,6 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from pathlib import Path
 
 import torch
 from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
@@ -53,7 +52,9 @@ def main():
         input_len = int(tokens["input_ids"].shape[-1])
         with torch.no_grad():
             if hasattr(model, "generate_text"):
-                output_ids = model.generate_text(tokens["input_ids"], max_new_tokens=128, temperature=0.7)
+                output_ids = model.generate_text(
+                    tokens["input_ids"], max_new_tokens=128, temperature=0.7
+                )
             else:
                 output_ids = model.generate(
                     input_ids=tokens["input_ids"],
@@ -73,7 +74,9 @@ def main():
         continuation = text[len(prompt) :] if text.startswith(prompt) else text
 
         print(f"Output: {continuation.strip()}")
-        print(f"[DEBUG] input_len={input_len} output_len={output_len} new_tokens={output_len - input_len}")
+        print(
+            f"[DEBUG] input_len={input_len} output_len={output_len} new_tokens={output_len - input_len}"
+        )
         print(f"[DEBUG] decoded_with_special_repr={text_with_special!r}")
         print(f"[DEBUG] continuation_repr={continuation!r}")
 

@@ -446,7 +446,9 @@ class FinanceDataPipeline:
         self.skip_items = skip_items
         self.max_bytes_per_run = max_bytes_per_run
         self.items_processed = 0
-        self.datasets = self.LIGHT_DATASETS if int(os.getenv("USE_LIGHT_DATASETS", "0")) == 1 else self.DATASETS
+        self.datasets = (
+            self.LIGHT_DATASETS if int(os.getenv("USE_LIGHT_DATASETS", "0")) == 1 else self.DATASETS
+        )
 
     def _load_stream(self, ds_config: dict):
         """Load a streaming dataset with retries."""
