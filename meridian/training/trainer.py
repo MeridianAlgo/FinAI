@@ -263,6 +263,9 @@ class MeridianTrainer:
         accumulated_ewc_loss = 0.0
         tokens_processed = 0
         start_time = time.time()
+        
+        initial_loss_val = None
+        final_loss_val = None
 
         data_iter = iter(self.dataloader)
         first_batch_logged = False
@@ -347,7 +350,8 @@ class MeridianTrainer:
                     continue
 
                 if not first_batch_logged:
-                    print(f"\n  [CASCADE CHECK] Initial Loss of this run: {loss.item():.4f}")
+                    initial_loss_val = loss.item()
+                    print(f"\n  [CASCADE CHECK] Initial Loss of this run: {initial_loss_val:.4f}")
                     first_batch_logged = True
 
                 # Check for NaN loss
@@ -445,6 +449,7 @@ class MeridianTrainer:
                     avg_loss = (
                         accumulated_loss + accumulated_ewc_loss
                     ) / self.config.gradient_accumulation_steps
+                    final_loss_val = avg_loss
 
                     # Logging
                     if self.run_step % self.config.log_steps == 0:
@@ -540,6 +545,10 @@ class MeridianTrainer:
         print(f"\n{'=' * 70}")
         print("  TRAINING COMPLETE")
         print(f"  Steps: {self.run_step} | Time: {elapsed:.0f}s | Best loss: {self.best_loss:.4f}")
+        if initial_loss_val is not None:
+            final_print_val = final_loss_val if final_loss_val is not None else initial_loss_val
+            diff = final_print_val - initial_loss_val
+            print(f"  Initial loss: {initial_loss_val:.4f} | Final loss: {final_print_val:.4f} | Diff: {diff:+.4f}")
         print(f"  Tokens processed: {tokens_processed:,}")
         print(f"{'=' * 70}\n")
 
