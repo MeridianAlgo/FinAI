@@ -6,6 +6,9 @@ checkpoints/
 /checkpoint/
 /checkpoint_trained/
 /model/
+checkpoint_test*/
+openmoe_base_snapshot/
+temp_download/
 *.safetensors
 *.bin
 pytorch_model.bin

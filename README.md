@@ -1,81 +1,189 @@
-# Meridian.AI: Financial Intelligence MoE Model
-
-[![Meridian.AI Train](https://github.com/MeridianAlgo/FinAI/actions/workflows/train.yml/badge.svg)](https://github.com/MeridianAlgo/FinAI/actions/workflows/train.yml)
-[![Meridian.AI Lint](https://github.com/MeridianAlgo/FinAI/actions/workflows/lint.yml/badge.svg)](https://github.com/MeridianAlgo/FinAI/actions/workflows/lint.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Python: 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/downloads/)
-
-**Meridian.AI** is a high-performance financial language model utilizing a **Grouped Query Attention (GQA)** backed **Sparse Mixture-of-Experts (SMoE)** architecture. Based on the OpenMoE-650M foundation, the model is specifically engineered for financial intelligence, high-precision quantitative reasoning, algorithmic math tasks, and capital markets analytics.
-
-It introduces an innovative training paradigm optimized for continuous, hourly execution on standard CPU runners, enabled through the application of **Elastic Weight Consolidation (EWC)** to prevent catastrophic forgetting.
-
+---
+license: mit
+base_model: hpcai-tech/openmoe-base
+tags:
+  - finance
+  - mixture-of-experts
+  - openmoe
+  - umt5
+language:
+  - en
 ---
 
-## Model Access & Hugging Face Deployment
+# Meridian.AI
 
-The latest live training checkpoints and full model weights are perpetually synchronized and stored on the Hugging Face Hub. 
+Meridian.AI is an experimental finance-focused sparse Mixture-of-Experts (MoE) causal language model trained via continual updates.
 
- **Hugging Face Repository**: [https://huggingface.co/MeridianAlgo/MeridianAI](https://huggingface.co/MeridianAlgo/MeridianAI)
+This repository is designed to run on commodity CPU hardware (including GitHub Actions runners) and continuously improve the model over time.
 
-You can download the model instantly using the `huggingface_hub` Python toolkit or directly through standard `transformers` pipelines.
+## Intended use
 
----
+Use this model for:
 
-##  Architecture and Technical Foundations
+- Financial Q&A style prompting
+- Basic quantitative finance explanations
+- Summarization/classification-style finance text tasks
 
-Meridian.AI leverages a custom Sparse Mixture-of-Experts architecture to maximize knowledge capacity while maintaining extreme efficiency during inference and training loops.
+This model is intended for research and prototyping. It is not intended to provide financial advice.
 
-### 1. Sparse Mixture-of-Experts (SMoE)
-The model functions on a highly sparse active parameter plane. By utilizing a sparse gateway system with distinct experts and activating only a small subset of parameters per token, the model achieves the representational capacity of a much larger dense network without the associated computational cost. This makes it ideal for rapid deployment on standard CPU environments.
+## Base model + tokenizer
 
-### 2. Elastic Weight Consolidation (EWC)
-To support perpetual hourly learning natively inside GitHub Actions, the model utilizes EWC (Elastic Weight Consolidation). This technique calculates the Fisher Information Matrix to identify weights critical to previously learned financial knowledge. During incremental training, an active penalty restricts changes in these vital weights, ensuring the model retains its core financial reasoning capabilities while safely adapting to new real-time market data.
+- **Base model weights**: `hpcai-tech/openmoe-base`
+- **Tokenizer**: `google/umt5-small` (256k vocab, SentencePiece/umT5)
 
-### 3. Quantitative Reasoning & Numeracy Encoders
-Unlike generic general-purpose models, Meridian.AI boasts embedded numeracy encoders mapping magnitude signals directly into the dense representation. It is continuously fine-tuned on a specialized curriculum of financial instruction sets, real-time news data, and mathematical reasoning arrays to ensure immense precision when handling quantitative logic and complex financial analysis.
+This repo includes a working umT5 tokenizer at the root so `AutoTokenizer.from_pretrained("MeridianAlgo/MeridianAI")` works.
 
----
+## Architecture overview
 
-## Model Specifications
+Meridian.AI is a sparse Mixture-of-Experts (MoE) transformer:
 
-| Feature | Specification |
-| :--- | :--- |
-| **Model Name** | Meridian.AI |
-| **Base Architecture** | OpenMoE-650M (Sparse MoE) |
-| **Total Parameters** | ~830M |
-| **Active Parameters** | ~100M-200M per token |
-| **Training Paradigm** | Hourly Continual Learning + EWC |
-| **Domain** | Finance, Algorithmic Trading, Math |
-| **Execution** | CPU-Optimized Pipeline |
+- **Sparse routing**: only a small subset of expert parameters are activated per token.
+- **Grouped Query Attention (GQA)**: reduces attention compute cost.
+- **RoPE**: rotary positional embeddings.
+- **Numeracy features**: additional components intended to improve numeric reasoning on finance tasks.
 
----
+Even when a model is trained for finance, general text quality depends heavily on the base model and the stability of continual training.
 
-##  Automated Lifecycle & Deployment
+## How to use (Transformers)
 
-The repository possesses a fully autonomous lifecycle governed by GitHub Actions:
-*   **Hourly Continual Learning**: Automated pipeline spins up every hour, pulls the dataset, and trains the model continuously on CPU workflows without interruption.
-*   **HuggingFace Integration**: Uninterrupted checkpoint synchronization pushing updated `safetensors` to the Hub post-training.
-*   **Persistent State Management**: Manages and preserves Fisher Information state mappings and Comet ML iterations across stateless runner instances.
+The model weights are stored under the `checkpoint/` subfolder.
 
----
+```python
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
-##  Getting Started
+repo_id = "MeridianAlgo/MeridianAI"
 
-### Environment Setup
-```bash
-# Clone the repository and install the custom dependencies
-python -m pip install -r requirements.txt
+tokenizer = AutoTokenizer.from_pretrained(repo_id)
+model = AutoModelForCausalLM.from_pretrained(
+    repo_id,
+    subfolder="checkpoint",
+    trust_remote_code=True,
+    dtype=torch.float32,
+    low_cpu_mem_usage=True,
+    ignore_mismatched_sizes=True,
+)
+model.eval()
+
+prompt = """### Instruction:
+Explain what a P/E ratio is and how it is used.
+
+### Response:
+"""
+
+inputs = tokenizer(prompt, return_tensors="pt")
+out = model.generate(
+    **inputs,
+    max_new_tokens=128,
+    do_sample=True,
+    temperature=0.85,
+    top_p=0.92,
+    repetition_penalty=1.25,
+    no_repeat_ngram_size=3,
+    pad_token_id=tokenizer.pad_token_id,
+    eos_token_id=tokenizer.eos_token_id,
+)
+
+print(tokenizer.decode(out[0], skip_special_tokens=True))
 ```
 
-### Continual Training Loop
-The `train.py` script manages the primary continual learning loop. Set your environments and execute the automated hourly runner format:
-```bash
-python train.py
+### Generation tips (reduce repetition)
+
+Because continual training can introduce repetition loops, start with:
+
+- `repetition_penalty=1.2` to `1.4`
+- `no_repeat_ngram_size=3`
+- `temperature=0.7` to `0.95`
+- `top_p=0.85` to `0.95`
+
+If you see repeated tokens/phrases, increase `repetition_penalty` and decrease `temperature`.
+
+## Training data
+
+Training uses streaming mixes of finance datasets (FinanceMTEB family) plus optional larger corpora depending on environment configuration.
+
+### Lightweight mode
+
+To keep each dataset small (e.g. under ~15MB) and avoid large downloads, the code supports a light-datasets-only mode:
+
+- `USE_LIGHT_DATASETS=1`
+
+This uses a curated set of small FinanceMTEB datasets (sentiment, ESG, FOMC, fraud, complaints, small QA).
+
+### Formatting
+
+Instruction-style datasets are formatted as:
+
+```
+### Instruction:
+<instruction>
+
+### Response:
+<response><eos>
 ```
 
----
+Classification datasets are converted into instruction/response examples with a label-only response.
 
-##  License
-This project is completely open source and distributed under the **MIT License**.
+EOS tokens are appended to help the model learn when to stop generation.
 
-made with love by meridianalgo 🩵
+## Training on GitHub Actions (memory-safe)
+
+GitHub-hosted runners have limited RAM. The trainer supports the following environment variables:
+
+- `SKIP_OPTIMIZER_SAVE=1` (recommended): avoids saving the 2GB+ optimizer state.
+- `MAX_RAM_PCT=90` or `MAX_RAM_GB=14`: will save a weights-only checkpoint and stop before an OOM.
+
+If you enable gradient checkpointing, `use_cache` is automatically disabled.
+
+### Recommended Actions runner settings
+
+If you are using a 2-core / 16GB runner, a conservative starting point:
+
+- `BATCH_SIZE=1`
+- `GRAD_ACCUM=4`
+- `BLOCK_SIZE=128` to `256`
+- `LEARNING_RATE=1e-5`
+- `MAX_STEPS=20` to `50`
+
+If you still see OOMs, reduce `BLOCK_SIZE` first.
+
+### Checkpoint layout on the Hub
+
+This Hugging Face repo contains:
+
+- Root tokenizer files (umt5)
+- A `checkpoint/` folder with the latest model weights + config
+
+This means:
+
+- Tokenizer: `AutoTokenizer.from_pretrained("MeridianAlgo/MeridianAI")`
+- Model: `AutoModelForCausalLM.from_pretrained("MeridianAlgo/MeridianAI", subfolder="checkpoint", ...)`
+
+## Evaluation
+
+If you want to track whether training is improving (and not collapsing), periodically run a fixed set of prompts and record:
+
+- Repetition rate (e.g. fraction of repeated 3-grams)
+- Numeric accuracy on a small set of math/finance questions
+- Qualitative Q&A quality
+
+The repo includes scripts to run basic prompt tests.
+
+## Limitations
+
+- This is a continually trained experimental model and may exhibit repetition.
+- Not financial advice.
+- Outputs may be incorrect or outdated.
+
+## Roadmap
+
+Potential next improvements:
+
+- Add stronger evaluation gates to prevent uploading collapsed checkpoints
+- Add curated finance instruction sets (filings, earnings calls, QA)
+- Improve chat formatting / system prompts
+- Add safe serialization and sharding options for faster uploads
+
+## Source code
+
+Training pipeline and scripts live in the GitHub repo: https://github.com/MeridianAlgo/FinAI

@@ -164,6 +164,23 @@ class MeridianTrainer:
         mem = psutil.virtual_memory()
         print(f"  Memory: {mem.used / 1e9:.1f}GB / {mem.total / 1e9:.1f}GB ({mem.percent}% used)")
 
+    def _memory_guard(self) -> bool:
+        """Return True if training should stop to avoid OOM."""
+        max_gb = float(os.getenv("MAX_RAM_GB", "0"))
+        max_pct = float(os.getenv("MAX_RAM_PCT", "0"))
+        if max_gb <= 0 and max_pct <= 0:
+            return False
+
+        mem = psutil.virtual_memory()
+        used_gb = mem.used / 1e9
+        if (max_gb > 0 and used_gb >= max_gb) or (max_pct > 0 and mem.percent >= max_pct):
+            print(
+                f"\n[GUARD] Memory limit reached ({used_gb:.1f}GB, {mem.percent:.1f}%). "
+                "Saving weights-only checkpoint and stopping early."
+            )
+            return True
+        return False
+
     def train(self) -> None:
         """Execute training loop."""
         print(f"\n{'=' * 70}")
@@ -194,6 +211,11 @@ class MeridianTrainer:
             for micro_step in range(
                 self.config.max_steps * self.config.gradient_accumulation_steps
             ):
+                if self._memory_guard():
+                    self.save_checkpoint(self.config.output_dir, skip_optimizer=True)
+                    if self.experiment:
+                        self.experiment.end()
+                    return
                 # Get batch
                 try:
                     print(f"  [DEBUG] Micro-step {micro_step}: Fetching batch...")
@@ -368,13 +390,21 @@ class MeridianTrainer:
 
                     # Save checkpoint
                     if self.run_step % self.config.save_steps == 0:
-                        self.save_checkpoint(self.config.output_dir)
+                        skip_opt = os.getenv("SKIP_OPTIMIZER_SAVE", "0") == "1"
+                        self.save_checkpoint(self.config.output_dir, skip_optimizer=skip_opt)
+
+                    if self._memory_guard():
+                        self.save_checkpoint(self.config.output_dir, skip_optimizer=True)
+                        if self.experiment:
+                            self.experiment.end()
+                        return
 
                     if self.run_step >= self.config.max_steps:
                         break
         except KeyboardInterrupt:
             print("\n[INTERRUPT] Training stopped by user. Saving progress...")
-            self.save_checkpoint(self.config.output_dir)
+            skip_opt = os.getenv("SKIP_OPTIMIZER_SAVE", "0") == "1"
+            self.save_checkpoint(self.config.output_dir, skip_optimizer=skip_opt)
             if self.experiment:
                 self.experiment.end()
             return

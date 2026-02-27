@@ -27,6 +27,8 @@ jobs:
     environment: HuggingFace Hub
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_PAT }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -40,6 +42,7 @@ jobs:
       - name: Nuke & Seed
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          TOKENIZER_ID: 'google/umt5-small'
           PYTHONPATH: .
         run: python scripts/seed_hf_repo.py
 
@@ -58,6 +61,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.GH_PAT }}
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
@@ -137,13 +141,17 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           COMET_API_KEY: ${{ secrets.COMET_API_KEY }}
+          TOKENIZER_ID: 'google/umt5-small'
+          SKIP_OPTIMIZER_SAVE: '1'
+          MAX_RAM_GB: '14'
+          MAX_RAM_PCT: '92'
           SMOKE_TEST: '0'
           MAX_STEPS: ${{ github.event.inputs.max_steps || '50' }}
           TOTAL_STEPS: '100000'
           GRAD_ACCUM: '4'
-          BATCH_SIZE: '2'
-          LEARNING_RATE: '5e-5'
-          BLOCK_SIZE: '512'
+          BATCH_SIZE: '1'
+          LEARNING_RATE: '1e-5'
+          BLOCK_SIZE: '256'
           USE_EWC: '1'
           GRADIENT_CHECKPOINTING: '1'
           PYTHONPATH: .

@@ -43,7 +43,7 @@ def main():
     print("=" * 70)
 
     smoke_test = os.getenv("SMOKE_TEST", "0") == "1"
-    checkpoint_path = "./checkpoint"
+    checkpoint_path = os.getenv("CHECKPOINT_PATH", "./checkpoint")
     state_path = "dataset_state.json"
 
     # ── Smoke Test Mode ──────────────────────────────────────────────────
@@ -123,11 +123,13 @@ def main():
 
     # 2. Configuration — Using OpenMoE-Base (650M Sparse MoE)
     model_id = "hpcai-tech/openmoe-base"
+    tokenizer_id = os.getenv("TOKENIZER_ID", "google/umt5-small")
     print(f"\n[INFO] Using base model: {model_id}")
+    print(f"[INFO] Using tokenizer: {tokenizer_id}")
 
     # 3. Model initialization or resume
     model_loaded = False
-    checkpoint_path = "./checkpoint"
+    checkpoint_path = os.getenv("CHECKPOINT_PATH", "./checkpoint")
     checkpoint_weights = os.path.join(checkpoint_path, "model.safetensors")
 
     if os.path.exists(checkpoint_weights):
@@ -138,7 +140,7 @@ def main():
             model = AutoModelForCausalLM.from_pretrained(
                 checkpoint_path,
                 trust_remote_code=True,
-                torch_dtype=torch.float32,  # CPU-friendly
+                dtype=torch.float32,  # CPU-friendly
                 low_cpu_mem_usage=True,
             )
             print("  [OK] Checkpoint loaded - continuing training")
@@ -160,7 +162,7 @@ def main():
             model_id,
             config=config,
             trust_remote_code=True,
-            torch_dtype=torch.float32,
+            dtype=torch.float32,
             low_cpu_mem_usage=True,
             ignore_mismatched_sizes=True,
         )
@@ -168,6 +170,8 @@ def main():
     if os.getenv("GRADIENT_CHECKPOINTING", "0") == "1":
         try:
             model.gradient_checkpointing_enable()
+            if hasattr(model, "config") and hasattr(model.config, "use_cache"):
+                model.config.use_cache = False
             print("  [OK] Gradient Checkpointing enabled")
         except Exception as e:
             print(f"  [WARN] Failed to enable gradient checkpointing: {e}")
@@ -176,8 +180,8 @@ def main():
     print(f"  Total parameters: {total_params:,}")
 
     # 4. Tokenizer
-    print(f"  Loading tokenizer from {model_id}...")
-    tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
+    print(f"  Loading tokenizer from {tokenizer_id}...")
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_id)
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token_id = tokenizer.eos_token_id
 

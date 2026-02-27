@@ -14,6 +14,7 @@ broad language understanding.
 
 from __future__ import annotations
 
+import os
 import time
 from typing import Iterator
 
@@ -36,7 +37,7 @@ class FinanceDataPipeline:
             "split": "train",
             "text_field": "output",  # Financial instructions
             "instruction_field": "instruction",
-            "weight": 0.40,
+            "weight": 0.30,
         },
         {
             "name": "nvidia/OpenMathInstruct-2",
@@ -44,7 +45,7 @@ class FinanceDataPipeline:
             "split": "train_1M",
             "text_field": "generated_solution",
             "instruction_field": "problem",
-            "weight": 0.30,
+            "weight": 0.25,
         },
         {
             "name": "HuggingFaceFW/fineweb-edu",
@@ -52,7 +53,384 @@ class FinanceDataPipeline:
             "split": "train",
             "text_field": "text",
             "instruction_field": None,
-            "weight": 0.30,
+            "weight": 0.20,
+        },
+        {
+            "name": "FinanceMTEB/financial_phrasebank",
+            "config": None,
+            "split": "train",
+            "text_field": "text",
+            "instruction_field": None,
+            "label_field": "label",
+            "label_map": {0: "negative", 1: "neutral", 2: "positive"},
+            "prompt_template": "Classify the sentiment (negative/neutral/positive) of the following financial sentence.\n\nSentence:\n{text}",
+            "weight": 0.010,
+        },
+        {
+            "name": "FinanceMTEB/FinSent",
+            "config": None,
+            "split": "train",
+            "text_field": "text",
+            "instruction_field": None,
+            "label_field": "label",
+            "label_map": {0: "negative", 1: "neutral", 2: "positive"},
+            "prompt_template": "Classify the sentiment (negative/neutral/positive) of the following sentence.\n\nSentence:\n{text}",
+            "weight": 0.010,
+        },
+        {
+            "name": "FinanceMTEB/OpenFinDataSentiment",
+            "config": None,
+            "split": "train",
+            "text_field": "text",
+            "instruction_field": None,
+            "label_field": "label",
+            "label_map": {0: "negative", 1: "neutral", 2: "positive"},
+            "prompt_template": "Classify the sentiment (negative/neutral/positive) of the following financial text.\n\nText:\n{text}",
+            "weight": 0.010,
+        },
+        {
+            "name": "FinanceMTEB/FiQA_ABSA",
+            "config": None,
+            "split": "train",
+            "text_field": "text",
+            "instruction_field": None,
+            "label_field": "label",
+            "label_map": {0: "negative", 1: "neutral", 2: "positive"},
+            "prompt_template": "Classify the sentiment (negative/neutral/positive) expressed in the following finance-related text.\n\nText:\n{text}",
+            "weight": 0.010,
+        },
+        {
+            "name": "FinanceMTEB/SemEva2017_Headline",
+            "config": None,
+            "split": "train",
+            "text_field": "text",
+            "instruction_field": None,
+            "label_field": "label",
+            "label_map": {0: "negative", 1: "neutral", 2: "positive"},
+            "prompt_template": "Classify the sentiment (negative/neutral/positive) of the following headline.\n\nHeadline:\n{text}",
+            "weight": 0.010,
+        },
+        {
+            "name": "FinanceMTEB/ESG",
+            "config": None,
+            "split": "train",
+            "text_field": "text",
+            "instruction_field": None,
+            "label_field": "label",
+            "prompt_template": "Given the following text, classify it into the appropriate ESG-related category.\n\nText:\n{text}",
+            "weight": 0.010,
+        },
+        {
+            "name": "FinanceMTEB/FOMC",
+            "config": None,
+            "split": "train",
+            "text_field": "text",
+            "instruction_field": None,
+            "weight": 0.008,
+        },
+        {
+            "name": "FinanceMTEB/FinancialFraud",
+            "config": None,
+            "split": "train",
+            "text_field": "text",
+            "instruction_field": None,
+            "label_field": "label",
+            "prompt_template": "Determine whether the following case description indicates potential financial fraud. Answer with a short label.\n\nText:\n{text}",
+            "weight": 0.010,
+        },
+        {
+            "name": "FinanceMTEB/Complaints",
+            "config": None,
+            "split": "test",
+            "text_field": "text",
+            "instruction_field": None,
+            "label_field": "label",
+            "prompt_template": "Classify the product/category for the following financial complaint.\n\nComplaint:\n{text}",
+            "weight": 0.010,
+        },
+        {
+            "name": "FinanceMTEB/FLS",
+            "config": None,
+            "split": "train",
+            "text_field": "text",
+            "instruction_field": None,
+            "weight": 0.008,
+        },
+        {
+            "name": "FinanceMTEB/FinFE",
+            "config": None,
+            "split": "train",
+            "text_field": "text",
+            "instruction_field": None,
+            "weight": 0.008,
+        },
+        {
+            "name": "FinanceMTEB/FinEvaSentiment",
+            "config": None,
+            "split": "train",
+            "text_field": "text",
+            "instruction_field": None,
+            "label_field": "label",
+            "label_map": {0: "negative", 1: "neutral", 2: "positive"},
+            "prompt_template": "Classify the sentiment (negative/neutral/positive) of the following text.\n\nText:\n{text}",
+            "weight": 0.010,
+        },
+        {
+            "name": "FinanceMTEB/FinChinaSentiment",
+            "config": None,
+            "split": "train",
+            "text_field": "text",
+            "instruction_field": None,
+            "label_field": "label",
+            "label_map": {0: "negative", 1: "neutral", 2: "positive"},
+            "prompt_template": "Classify the sentiment (negative/neutral/positive) of the following text.\n\nText:\n{text}",
+            "weight": 0.008,
+        },
+        {
+            "name": "FinanceMTEB/TradeTheEventNews",
+            "config": None,
+            "split": "train",
+            "text_field": "text",
+            "instruction_field": None,
+            "weight": 0.008,
+        },
+        {
+            "name": "FinanceMTEB/TradeTheEventEncyclopedia",
+            "config": None,
+            "split": "train",
+            "text_field": "text",
+            "instruction_field": None,
+            "weight": 0.008,
+        },
+        {
+            "name": "FinanceMTEB/AlphaFin",
+            "config": None,
+            "split": "train",
+            "text_field": "text",
+            "instruction_field": None,
+            "weight": 0.008,
+        },
+        {
+            "name": "FinanceMTEB/FinTruthQA",
+            "config": None,
+            "split": "train",
+            "text_field": "answer",
+            "instruction_field": "question",
+            "weight": 0.010,
+        },
+        {
+            "name": "FinanceMTEB/FinQA",
+            "config": None,
+            "split": "train",
+            "text_field": "answer",
+            "instruction_field": "question",
+            "weight": 0.010,
+        },
+        {
+            "name": "FinanceMTEB/TATQA",
+            "config": None,
+            "split": "train",
+            "text_field": "answer",
+            "instruction_field": "question",
+            "weight": 0.010,
+        },
+        {
+            "name": "FinanceMTEB/synthetic_pii_finance_en",
+            "config": None,
+            "split": "test",
+            "text_field": "text",
+            "instruction_field": None,
+            "weight": 0.006,
+        },
+    ]
+
+    LIGHT_DATASETS = [
+        {
+            "name": "FinanceMTEB/financial_phrasebank",
+            "config": None,
+            "split": "train",
+            "text_field": "text",
+            "instruction_field": None,
+            "label_field": "label",
+            "label_map": {0: "negative", 1: "neutral", 2: "positive"},
+            "prompt_template": "Classify the sentiment (negative/neutral/positive) of the following financial sentence.\n\nSentence:\n{text}",
+            "weight": 0.06,
+        },
+        {
+            "name": "FinanceMTEB/FinSent",
+            "config": None,
+            "split": "train",
+            "text_field": "text",
+            "instruction_field": None,
+            "label_field": "label",
+            "label_map": {0: "negative", 1: "neutral", 2: "positive"},
+            "prompt_template": "Classify the sentiment (negative/neutral/positive) of the following sentence.\n\nSentence:\n{text}",
+            "weight": 0.06,
+        },
+        {
+            "name": "FinanceMTEB/OpenFinDataSentiment",
+            "config": None,
+            "split": "train",
+            "text_field": "text",
+            "instruction_field": None,
+            "label_field": "label",
+            "label_map": {0: "negative", 1: "neutral", 2: "positive"},
+            "prompt_template": "Classify the sentiment (negative/neutral/positive) of the following financial text.\n\nText:\n{text}",
+            "weight": 0.06,
+        },
+        {
+            "name": "FinanceMTEB/FiQA_ABSA",
+            "config": None,
+            "split": "train",
+            "text_field": "text",
+            "instruction_field": None,
+            "label_field": "label",
+            "label_map": {0: "negative", 1: "neutral", 2: "positive"},
+            "prompt_template": "Classify the sentiment (negative/neutral/positive) expressed in the following finance-related text.\n\nText:\n{text}",
+            "weight": 0.05,
+        },
+        {
+            "name": "FinanceMTEB/SemEva2017_Headline",
+            "config": None,
+            "split": "train",
+            "text_field": "text",
+            "instruction_field": None,
+            "label_field": "label",
+            "label_map": {0: "negative", 1: "neutral", 2: "positive"},
+            "prompt_template": "Classify the sentiment (negative/neutral/positive) of the following headline.\n\nHeadline:\n{text}",
+            "weight": 0.05,
+        },
+        {
+            "name": "FinanceMTEB/FinancialFraud",
+            "config": None,
+            "split": "train",
+            "text_field": "text",
+            "instruction_field": None,
+            "label_field": "label",
+            "prompt_template": "Determine whether the following case description indicates potential financial fraud. Answer with a short label.\n\nText:\n{text}",
+            "weight": 0.05,
+        },
+        {
+            "name": "FinanceMTEB/Complaints",
+            "config": None,
+            "split": "test",
+            "text_field": "text",
+            "instruction_field": None,
+            "label_field": "label",
+            "prompt_template": "Classify the product/category for the following financial complaint.\n\nComplaint:\n{text}",
+            "weight": 0.05,
+        },
+        {
+            "name": "FinanceMTEB/FOMC",
+            "config": None,
+            "split": "train",
+            "text_field": "text",
+            "instruction_field": None,
+            "weight": 0.04,
+        },
+        {
+            "name": "FinanceMTEB/ESG",
+            "config": None,
+            "split": "train",
+            "text_field": "text",
+            "instruction_field": None,
+            "label_field": "label",
+            "prompt_template": "Given the following text, classify it into the appropriate ESG-related category.\n\nText:\n{text}",
+            "weight": 0.04,
+        },
+        {
+            "name": "FinanceMTEB/FLS",
+            "config": None,
+            "split": "train",
+            "text_field": "text",
+            "instruction_field": None,
+            "weight": 0.04,
+        },
+        {
+            "name": "FinanceMTEB/FinFE",
+            "config": None,
+            "split": "train",
+            "text_field": "text",
+            "instruction_field": None,
+            "weight": 0.04,
+        },
+        {
+            "name": "FinanceMTEB/FinEvaSentiment",
+            "config": None,
+            "split": "train",
+            "text_field": "text",
+            "instruction_field": None,
+            "label_field": "label",
+            "label_map": {0: "negative", 1: "neutral", 2: "positive"},
+            "prompt_template": "Classify the sentiment (negative/neutral/positive) of the following text.\n\nText:\n{text}",
+            "weight": 0.05,
+        },
+        {
+            "name": "FinanceMTEB/FinChinaSentiment",
+            "config": None,
+            "split": "train",
+            "text_field": "text",
+            "instruction_field": None,
+            "label_field": "label",
+            "label_map": {0: "negative", 1: "neutral", 2: "positive"},
+            "prompt_template": "Classify the sentiment (negative/neutral/positive) of the following text.\n\nText:\n{text}",
+            "weight": 0.04,
+        },
+        {
+            "name": "FinanceMTEB/TradeTheEventNews",
+            "config": None,
+            "split": "train",
+            "text_field": "text",
+            "instruction_field": None,
+            "weight": 0.03,
+        },
+        {
+            "name": "FinanceMTEB/TradeTheEventEncyclopedia",
+            "config": None,
+            "split": "train",
+            "text_field": "text",
+            "instruction_field": None,
+            "weight": 0.03,
+        },
+        {
+            "name": "FinanceMTEB/AlphaFin",
+            "config": None,
+            "split": "train",
+            "text_field": "text",
+            "instruction_field": None,
+            "weight": 0.03,
+        },
+        {
+            "name": "FinanceMTEB/FinTruthQA",
+            "config": None,
+            "split": "train",
+            "text_field": "answer",
+            "instruction_field": "question",
+            "weight": 0.04,
+        },
+        {
+            "name": "FinanceMTEB/FinQA",
+            "config": None,
+            "split": "train",
+            "text_field": "answer",
+            "instruction_field": "question",
+            "weight": 0.04,
+        },
+        {
+            "name": "FinanceMTEB/TATQA",
+            "config": None,
+            "split": "train",
+            "text_field": "answer",
+            "instruction_field": "question",
+            "weight": 0.04,
+        },
+        {
+            "name": "FinanceMTEB/synthetic_pii_finance_en",
+            "config": None,
+            "split": "test",
+            "text_field": "text",
+            "instruction_field": None,
+            "weight": 0.02,
         },
     ]
 
@@ -68,6 +446,7 @@ class FinanceDataPipeline:
         self.skip_items = skip_items
         self.max_bytes_per_run = max_bytes_per_run
         self.items_processed = 0
+        self.datasets = self.LIGHT_DATASETS if int(os.getenv("USE_LIGHT_DATASETS", "0")) == 1 else self.DATASETS
 
     def _load_stream(self, ds_config: dict):
         """Load a streaming dataset with retries."""
@@ -99,24 +478,42 @@ class FinanceDataPipeline:
         For plain text datasets, uses raw text.
         """
         instruction = ""
-        if ds_config["instruction_field"] and ds_config["instruction_field"] in item:
+        if ds_config.get("instruction_field") and ds_config["instruction_field"] in item:
             instruction = item[ds_config["instruction_field"]]
 
-        text = item.get(ds_config["text_field"], "")
+        text = item.get(ds_config.get("text_field", ""), "")
         if not isinstance(text, str):
             text = str(text) if text else ""
 
+        label_field = ds_config.get("label_field")
+        label_map = ds_config.get("label_map")
+        prompt_template = ds_config.get("prompt_template")
+
+        label_value = None
+        if label_field and label_field in item:
+            label_value = item[label_field]
+            if label_map and isinstance(label_value, int) and label_value in label_map:
+                label_value = label_map[label_value]
+
+        eos = self.tokenizer.eos_token or ""
+
+        if prompt_template and text:
+            instr = prompt_template.format(text=text)
+            if label_value is not None and label_value != "":
+                return f"### Instruction:\n{instr}\n\n### Response:\n{label_value}{eos}"
+            return f"### Instruction:\n{instr}\n\n### Response:\n{eos}"
+
         if instruction and text:
-            return f"### Instruction:\n{instruction}\n\n### Response:\n{text}"
-        elif text:
-            return text
+            return f"### Instruction:\n{instruction}\n\n### Response:\n{text}{eos}"
+        if text:
+            return f"{text}{eos}"
         return ""
 
     def stream(self) -> Iterator[dict]:
         """Yield tokenized examples from mixed datasets."""
         # Load all dataset streams
         streams = []
-        for ds_config in self.DATASETS:
+        for ds_config in self.datasets:
             dataset = self._load_stream(ds_config)
             if dataset is not None:
                 if self.skip_items > 0:
@@ -133,7 +530,7 @@ class FinanceDataPipeline:
         total_bytes = 0
         # Round-robin with weights
         stream_indices = list(range(len(streams)))
-        weights = [self.DATASETS[i]["weight"] for i in range(len(streams))]
+        weights = [streams[i][1]["weight"] for i in range(len(streams))]
 
         # Create weighted order: repeat indices based on weight
         weighted_order = []
