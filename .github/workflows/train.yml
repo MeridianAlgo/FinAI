@@ -11,9 +11,9 @@ on:
         type: boolean
         default: false
       max_steps:
-        description: 'Training steps per run (default: 150)'
+        description: 'Training steps per run (default: 50)'
         type: string
-        default: '150'
+        default: '50'
 
 concurrency:
   group: meridian-train-${{ github.ref }}
@@ -141,7 +141,7 @@ jobs:
           SOFT_RAM_PCT: '72'
           MIN_THROTTLE_SEQ_LEN: '32'
           DEBUG_STEPS: '0'
-          MAX_STEPS: ${{ github.event.inputs.max_steps || '150' }}
+          MAX_STEPS: ${{ github.event.inputs.max_steps || '50' }}
           TOTAL_STEPS: '100000'
           GRAD_ACCUM: '8'
           BATCH_SIZE: '1'
