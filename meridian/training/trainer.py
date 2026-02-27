@@ -263,7 +263,7 @@ class MeridianTrainer:
         accumulated_ewc_loss = 0.0
         tokens_processed = 0
         start_time = time.time()
-        
+
         initial_loss_val = None
         final_loss_val = None
 
@@ -315,7 +315,9 @@ class MeridianTrainer:
                 if self._soft_cap_should_throttle():
                     original_len = int(input_ids.shape[1]) if input_ids.dim() == 2 else -1
                     min_len = int(os.getenv("MIN_THROTTLE_SEQ_LEN", "128"))
-                    new_len = max(min_len, int(original_len * 0.75)) if original_len > 0 else original_len
+                    new_len = (
+                        max(min_len, int(original_len * 0.75)) if original_len > 0 else original_len
+                    )
                     if original_len > 0 and new_len < original_len:
                         print(
                             f"[THROTTLE] RAM high. Truncating seq_len {original_len} -> {new_len} (micro_step={micro_step})"
@@ -548,7 +550,9 @@ class MeridianTrainer:
         if initial_loss_val is not None:
             final_print_val = final_loss_val if final_loss_val is not None else initial_loss_val
             diff = final_print_val - initial_loss_val
-            print(f"  Initial loss: {initial_loss_val:.4f} | Final loss: {final_print_val:.4f} | Diff: {diff:+.4f}")
+            print(
+                f"  Initial loss: {initial_loss_val:.4f} | Final loss: {final_print_val:.4f} | Diff: {diff:+.4f}"
+            )
         print(f"  Tokens processed: {tokens_processed:,}")
         print(f"{'=' * 70}\n")
 

@@ -446,7 +446,9 @@ class FinanceDataPipeline:
         self.skip_items = skip_items
         self.max_bytes_per_run = max_bytes_per_run
         self.items_processed = 0
-        self.datasets = self.LIGHT_DATASETS if int(os.getenv("USE_LIGHT_DATASETS", "1")) == 1 else self.DATASETS
+        self.datasets = (
+            self.LIGHT_DATASETS if int(os.getenv("USE_LIGHT_DATASETS", "1")) == 1 else self.DATASETS
+        )
 
     def _load_stream(self, ds_config: dict):
         """Load a streaming dataset with retries."""
@@ -655,9 +657,9 @@ def create_dataloader(
         # Find max length in this batch (cap to block_size, pad to multiple of 8)
         max_len = 0
         for ex in batch:
-            l = int(ex["input_ids"].numel())
-            if l > max_len:
-                max_len = l
+            length = int(ex["input_ids"].numel())
+            if length > max_len:
+                max_len = length
         max_len = min(int(block_size), max_len)
         max_len = max(1, ((max_len + 7) // 8) * 8)
         max_len = min(int(block_size), max_len)
