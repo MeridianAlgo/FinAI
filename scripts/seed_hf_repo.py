@@ -16,8 +16,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 def main():
     token = os.getenv("HF_TOKEN")
     repo_id = "MeridianAlgo/MeridianAI"
-    base_model_id = "hpcai-tech/openmoe-base"
-    tokenizer_id = os.getenv("TOKENIZER_ID", "google/umt5-small")
+    base_model_id = "HuggingFaceTB/SmolLM2-360M"
+    tokenizer_id = os.getenv("TOKENIZER_ID", "HuggingFaceTB/SmolLM2-360M")
 
     print(f"\n{'=' * 60}")
     print("  MeridianAI Parameter Report")
@@ -34,21 +34,14 @@ def main():
     except Exception as e:
         print(f"Repo creation note: {e}")
 
-    # Initialize model from OpenMoE base
-    print(f"  Fetching base model {base_model_id} architecture...")
-    from transformers import AutoConfig, AutoModelForCausalLM
-
-    config = AutoConfig.from_pretrained(base_model_id, trust_remote_code=True)
-    if hasattr(config, "hidden_act") and config.hidden_act == "swiglu":
-        config.hidden_act = "silu"
+    # Initialize model from SmolLM2-360M (standard Llama arch, pre-trained on 600B tokens)
+    print(f"  Fetching base model {base_model_id}...")
+    from transformers import AutoModelForCausalLM
 
     model = AutoModelForCausalLM.from_pretrained(
         base_model_id,
-        config=config,
-        trust_remote_code=True,
-        dtype=torch.float32,
+        torch_dtype=torch.bfloat16,
         low_cpu_mem_usage=True,
-        ignore_mismatched_sizes=True,
     )
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_id)
 

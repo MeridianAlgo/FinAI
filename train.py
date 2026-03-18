@@ -135,9 +135,9 @@ def main():
     else:
         print("  No dataset state found, starting from 0.")
 
-    # 2. Configuration — Using OpenMoE-Base (650M Sparse MoE)
-    model_id = "hpcai-tech/openmoe-base"
-    tokenizer_id = os.getenv("TOKENIZER_ID", "google/umt5-small")
+    # 2. Configuration — SmolLM2-360M (360M, standard Llama arch, pre-trained on 600B tokens)
+    model_id = "HuggingFaceTB/SmolLM2-360M"
+    tokenizer_id = os.getenv("TOKENIZER_ID", "HuggingFaceTB/SmolLM2-360M")
     print(f"\n[INFO] Using base model: {model_id}")
     print(f"[INFO] Using tokenizer: {tokenizer_id}")
 
@@ -145,66 +145,78 @@ def main():
     model_loaded = False
     checkpoint_path = os.getenv("CHECKPOINT_PATH", "./checkpoint")
     checkpoint_weights = os.path.join(checkpoint_path, "model.safetensors")
+    # Also accept pytorch_model.bin (older format)
+    if not os.path.exists(checkpoint_weights):
+        bin_path = os.path.join(checkpoint_path, "pytorch_model.bin")
+        if os.path.exists(bin_path):
+            checkpoint_weights = bin_path
 
     requested_dtype = os.getenv("DTYPE", "bfloat16").lower()
     use_bf16 = requested_dtype in {"bf16", "bfloat16"}
 
     if os.path.exists(checkpoint_weights):
-        print(f"  [DEBUG] Found model weights at {checkpoint_weights}. Loading...")
+        print(f"  [DEBUG] Found model weights at {checkpoint_weights}. Checking architecture...")
+        # Verify checkpoint architecture matches expected model before loading
+        arch_ok = False
         try:
-            from transformers import AutoModelForCausalLM
+            ckpt_cfg_path = os.path.join(checkpoint_path, "config.json")
+            if os.path.exists(ckpt_cfg_path):
+                with open(ckpt_cfg_path) as _f:
+                    ckpt_cfg = json.load(_f)
+                arch_ok = ckpt_cfg.get("model_type") == "llama"
+        except Exception:
+            pass
 
-            model = AutoModelForCausalLM.from_pretrained(
-                checkpoint_path,
-                trust_remote_code=True,
-                torch_dtype=torch.bfloat16 if use_bf16 else torch.float32,
-                low_cpu_mem_usage=True,
+        if not arch_ok:
+            print(
+                "  [WARN] Checkpoint architecture mismatch (old model). "
+                f"Discarding checkpoint and loading {model_id} fresh."
             )
-            print("  [OK] Checkpoint loaded - continuing training")
-            model_loaded = True
-        except Exception as e:
-            if use_bf16:
-                print(f"  [WARN] bf16 resume load failed ({e}). Falling back to float32.")
+        else:
+            try:
+                from transformers import AutoModelForCausalLM
+
                 model = AutoModelForCausalLM.from_pretrained(
                     checkpoint_path,
-                    trust_remote_code=True,
-                    torch_dtype=torch.float32,
+                    torch_dtype=torch.bfloat16 if use_bf16 else torch.float32,
                     low_cpu_mem_usage=True,
                 )
-                print("  [OK] Checkpoint loaded (float32 fallback) - continuing training")
+                print("  [OK] Checkpoint loaded - continuing training")
                 model_loaded = True
-            else:
-                print(f"  [FAIL] Checkpoint load failed: {e}")
+            except Exception as e:
+                if use_bf16:
+                    print(f"  [WARN] bf16 resume load failed ({e}). Falling back to float32.")
+                    from transformers import AutoModelForCausalLM
+
+                    model = AutoModelForCausalLM.from_pretrained(
+                        checkpoint_path,
+                        torch_dtype=torch.float32,
+                        low_cpu_mem_usage=True,
+                    )
+                    print("  [OK] Checkpoint loaded (float32 fallback) - continuing training")
+                    model_loaded = True
+                else:
+                    print(f"  [FAIL] Checkpoint load failed: {e}")
     else:
         print(f"  [DEBUG] No checkpoint weights found at {checkpoint_weights}.")
 
     if not model_loaded:
         print(f"  Loading pre-trained model {model_id} from HuggingFace...")
-        from transformers import AutoConfig, AutoModelForCausalLM
-
-        config = AutoConfig.from_pretrained(model_id, trust_remote_code=True)
-        if hasattr(config, "hidden_act") and config.hidden_act == "swiglu":
-            config.hidden_act = "silu"
+        from transformers import AutoModelForCausalLM
 
         try:
             model = AutoModelForCausalLM.from_pretrained(
                 model_id,
-                config=config,
-                trust_remote_code=True,
                 torch_dtype=torch.bfloat16 if use_bf16 else torch.float32,
                 low_cpu_mem_usage=True,
-                ignore_mismatched_sizes=True,
             )
         except Exception as e:
             if use_bf16:
                 print(f"  [WARN] bf16 load failed ({e}). Falling back to float32.")
                 model = AutoModelForCausalLM.from_pretrained(
                     model_id,
-                    config=config,
-                    trust_remote_code=True,
                     torch_dtype=torch.float32,
                     low_cpu_mem_usage=True,
-                    ignore_mismatched_sizes=True,
                 )
             else:
                 raise

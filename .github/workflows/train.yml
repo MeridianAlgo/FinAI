@@ -11,9 +11,9 @@ on:
         type: boolean
         default: false
       max_steps:
-        description: 'Training steps per run (default: 50)'
+        description: 'Training steps per run (default: 300)'
         type: string
-        default: '50'
+        default: '300'
 
 concurrency:
   group: meridian-train-${{ github.ref }}
@@ -42,7 +42,7 @@ jobs:
       - name: Nuke & Seed
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          TOKENIZER_ID: 'google/umt5-small'
+          TOKENIZER_ID: 'HuggingFaceTB/SmolLM2-360M'
           PYTHONPATH: .
         run: python scripts/seed_hf_repo.py
 
@@ -132,29 +132,30 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           COMET_API_KEY: ${{ secrets.COMET_API_KEY }}
-          TOKENIZER_ID: 'google/umt5-small'
-          DTYPE: 'float32'
+          TOKENIZER_ID: 'HuggingFaceTB/SmolLM2-360M'
+          DTYPE: 'bfloat16'
           SKIP_OPTIMIZER_SAVE: '1'
           HARD_RAM_GUARD: '1'
           MAX_RAM_GB: '13.0'
           SOFT_RAM_GB: '11.0'
           SOFT_RAM_PCT: '72'
-          MIN_THROTTLE_SEQ_LEN: '32'
+          MIN_THROTTLE_SEQ_LEN: '64'
           DEBUG_STEPS: '0'
-          MAX_STEPS: ${{ github.event.inputs.max_steps || '50' }}
+          MAX_STEPS: ${{ github.event.inputs.max_steps || '300' }}
           TOTAL_STEPS: '100000'
-          GRAD_ACCUM: '8'
-          BATCH_SIZE: '1'
-          LEARNING_RATE: '1e-5'
-          BLOCK_SIZE: '64'
+          GRAD_ACCUM: '4'
+          BATCH_SIZE: '2'
+          LEARNING_RATE: '2e-4'
+          BLOCK_SIZE: '256'
           MAX_BYTES: '15728640'
           USE_EWC: '1'
-          EWC_SAMPLES: '10'
-          GRADIENT_CHECKPOINTING: '0'
+          EWC_SAMPLES: '5'
+          GRADIENT_CHECKPOINTING: '1'
           OPTIMIZER: 'adafactor'
           FREE_OPTIMIZER_BEFORE_FISHER: '1'
-          FISHER_SEQ_LEN: '32'
+          FISHER_SEQ_LEN: '64'
           FISHER_THRESHOLD: '1e-6'
+          GC_EVERY_STEPS: '10'
           PYTHONPATH: .
           PYTHONUNBUFFERED: '1'
         run: |
