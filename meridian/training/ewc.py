@@ -256,7 +256,9 @@ class ElasticWeightConsolidation:
                 )
 
             if len(valid_fisher) == 0:
-                print("  [WARN] EWC: No valid params after shape check. Disabling EWC for this run.")
+                print(
+                    "  [WARN] EWC: No valid params after shape check. Disabling EWC for this run."
+                )
                 self._initialized = False
                 return
 
