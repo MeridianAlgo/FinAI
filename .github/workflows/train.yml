@@ -37,7 +37,7 @@ jobs:
 
       - name: Install deps
         run: |
-          pip install huggingface_hub transformers torch safetensors sentencepiece
+          pip install huggingface_hub transformers torch safetensors sentencepiece python-dotenv
 
       - name: Nuke & Seed
         env:
