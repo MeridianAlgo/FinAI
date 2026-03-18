@@ -145,10 +145,13 @@ class ElasticWeightConsolidation:
         with torch.no_grad():
             for name, param in model.named_parameters():
                 if name in self.fisher_diag and name in self.prev_params:
-                    # Cast stored bfloat16 tensors to param dtype in-place view
-                    # (no copy if already matching dtype/device)
                     fisher = self.fisher_diag[name]
                     prev = self.prev_params[name]
+
+                    # Skip if shapes don't match (architecture changed)
+                    if fisher.shape != param.shape or prev.shape != param.shape:
+                        continue
+
                     if fisher.dtype != param.dtype:
                         fisher = fisher.to(dtype=param.dtype)
                     if prev.dtype != param.dtype:
@@ -181,6 +184,11 @@ class ElasticWeightConsolidation:
                 if param.grad is not None and name in self.fisher_diag and name in self.prev_params:
                     fisher = self.fisher_diag[name]
                     prev = self.prev_params[name]
+
+                    # Skip if shapes don't match (architecture changed)
+                    if fisher.shape != param.shape or prev.shape != param.shape:
+                        continue
+
                     if fisher.dtype != param.dtype:
                         fisher = fisher.to(dtype=param.dtype)
                     if prev.dtype != param.dtype:
@@ -200,12 +208,60 @@ class ElasticWeightConsolidation:
         torch.save(state, path)
 
     def load(self, path: str) -> None:
-        """Load Fisher + previous params from previous training run."""
+        """Load Fisher + previous params from previous training run.
+
+        Validates that saved tensor shapes match the current model parameters.
+        Mismatched parameters (e.g., from a model architecture change) are
+        silently dropped to avoid tensor size errors during training.
+        """
         # Use weights_only=True for security and speed
         try:
             data = torch.load(path, map_location="cpu", weights_only=True)
-            self.fisher_diag = data["fisher"]
-            self.prev_params = data["prev_params"]
+            loaded_fisher = data["fisher"]
+            loaded_prev = data["prev_params"]
+
+            # Validate shapes against current model
+            current_shapes = {
+                name: param.shape
+                for name, param in self.model.named_parameters()
+                if param.requires_grad
+            }
+
+            valid_fisher: Dict[str, torch.Tensor] = {}
+            valid_prev: Dict[str, torch.Tensor] = {}
+            skipped = 0
+
+            for name in loaded_fisher:
+                if name not in current_shapes:
+                    skipped += 1
+                    continue
+                if loaded_fisher[name].shape != current_shapes[name]:
+                    print(
+                        f"  [WARN] EWC shape mismatch for {name}: "
+                        f"saved {loaded_fisher[name].shape} vs model {current_shapes[name]}. Skipping."
+                    )
+                    skipped += 1
+                    continue
+                if name in loaded_prev and loaded_prev[name].shape != current_shapes[name]:
+                    skipped += 1
+                    continue
+                valid_fisher[name] = loaded_fisher[name]
+                if name in loaded_prev:
+                    valid_prev[name] = loaded_prev[name]
+
+            if skipped > 0:
+                print(
+                    f"  [WARN] EWC: Dropped {skipped} params due to shape/name mismatch. "
+                    f"Keeping {len(valid_fisher)} params."
+                )
+
+            if len(valid_fisher) == 0:
+                print("  [WARN] EWC: No valid params after shape check. Disabling EWC for this run.")
+                self._initialized = False
+                return
+
+            self.fisher_diag = valid_fisher
+            self.prev_params = valid_prev
             self._initialized = True
         except Exception as e:
             print(f"  [WARN] Failed to load EWC state: {e}")

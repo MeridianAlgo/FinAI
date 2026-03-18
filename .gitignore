@@ -45,3 +45,6 @@ comet_summary.txt
 Thumbs.db
 
 # TRACK: dataset_state.json (critical for GitHub Actions persistence)
+
+# Local Log
+train_output_local.log
