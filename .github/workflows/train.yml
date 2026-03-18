@@ -17,7 +17,7 @@ on:
 
 concurrency:
   group: meridian-train-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   seed:
@@ -53,7 +53,7 @@ jobs:
       always() && 
       (needs.seed.result == 'success' || needs.seed.result == 'skipped')
     runs-on: ubuntu-latest
-    timeout-minutes: 360  # 6 hours
+    timeout-minutes: 90   # 1.5 hours max
     permissions:
       contents: write
 
@@ -159,7 +159,7 @@ jobs:
           PYTHONPATH: .
           PYTHONUNBUFFERED: '1'
         run: |
-          timeout 21000 python train.py || echo "Training completed or timed out"
+          timeout 4800 python train.py || echo "Training completed or timed out"
 
       - name: Upload Checkpoint to HuggingFace
         if: always()
