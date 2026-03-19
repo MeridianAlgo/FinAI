@@ -207,12 +207,15 @@ class ElasticWeightConsolidation:
         state = {"fisher": self.fisher_diag, "prev_params": self.prev_params}
         torch.save(state, path)
 
-    def load(self, path: str) -> None:
+    def load(self, path: str) -> bool:
         """Load Fisher + previous params from previous training run.
 
         Validates that saved tensor shapes match the current model parameters.
         Mismatched parameters (e.g., from a model architecture change) are
         silently dropped to avoid tensor size errors during training.
+
+        Returns:
+            True if at least one valid param was loaded, False otherwise.
         """
         # Use weights_only=True for security and speed
         try:
@@ -260,11 +263,13 @@ class ElasticWeightConsolidation:
                     "  [WARN] EWC: No valid params after shape check. Disabling EWC for this run."
                 )
                 self._initialized = False
-                return
+                return False
 
             self.fisher_diag = valid_fisher
             self.prev_params = valid_prev
             self._initialized = True
+            return True
         except Exception as e:
             print(f"  [WARN] Failed to load EWC state: {e}")
             self._initialized = False
+            return False

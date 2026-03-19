@@ -129,8 +129,11 @@ class MeridianTrainer:
             self.ewc = ElasticWeightConsolidation(model, config.ewc_lambda)
             ewc_path = os.path.join(config.output_dir, "ewc_state.pt")
             if os.path.exists(ewc_path):
-                self.ewc.load(ewc_path)
-                print("[OK] Loaded EWC state from previous run")
+                if self.ewc.load(ewc_path):
+                    print("[OK] Loaded EWC state from previous run")
+                else:
+                    print("[WARN] EWC state incompatible with current model — deleting stale file")
+                    os.remove(ewc_path)
 
         # Comet ML
         self.experiment: Optional[Experiment] = None
