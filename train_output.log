@@ -14,7 +14,7 @@
 [INFO] Using tokenizer: HuggingFaceTB/SmolLM2-360M
   [DEBUG] Found model weights at ./checkpoint/model.safetensors. Checking architecture...
 `torch_dtype` is deprecated! Use `dtype` instead!
-Loading weights:   0%|          | 0/290 [00:00<?, ?it/s]Loading weights: 100%|██████████| 290/290 [00:00<00:00, 3451.35it/s]
+Loading weights:   0%|          | 0/290 [00:00<?, ?it/s]Loading weights: 100%|██████████| 290/290 [00:00<00:00, 4587.33it/s]
   [OK] Checkpoint loaded - continuing training
   [OK] Gradient Checkpointing enabled
   Total parameters: 361,821,120
@@ -131,20 +131,20 @@
   [WARN] EWC: Dropped 107 params due to shape/name mismatch. Keeping 0 params.
   [WARN] EWC: No valid params after shape check. Disabling EWC for this run.
 [OK] Loaded EWC state from previous run
-COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/meridian-ai/9abdd5c8d6df4cc0a01d7d112c5fdefd
+COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/meridian-ai/6d13ea81173a42a1b33b1fde56bfae20
 
   [DEBUG] Restoration: Attempting to load trainer state from ./checkpoint...
   [OK] Trainer state restored (global step 9513)
 
 ==================== STARTING TRAINING RUN #1 ====================
-  Start Time: 2026-03-19 17:31:00
+  Start Time: 2026-03-19 18:53:25
 
 ======================================================================
   MERIDIAN.AI TRAINING ENGINE
   Steps: 300 | BS: 2 | Accum: 4
   LR: 0.0002 | Global step: 9513
   Parameters: 361,821,120 total | 361,821,120 trainable
-  Memory: 1.5GB / 16.8GB (9.1% used)
+  Memory: 2.1GB / 16.8GB (12.6% used)
 ======================================================================
 
   [OK] Loaded FinanceMTEB/financial_phrasebank (weight: 0.06)
@@ -168,10 +168,74 @@ COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/m
   [OK] Loaded FinanceMTEB/TATQA (weight: 0.04)
   [OK] Loaded FinanceMTEB/synthetic_pii_finance_en (weight: 0.02)
 
-  [CASCADE CHECK] Initial Loss of this run: 3.3379
-  Memory: 3.8GB / 16.8GB (22.5% used)
-  Step     5/300 | Global   9518 | Loss: 3.3026 | LR: 5.26e-05 | Grad: 11.938 | 2 tok/s
-  Memory: 3.9GB / 16.8GB (23.1% used)
-  Step    10/300 | Global   9523 | Loss: 3.2771 | LR: 1.05e-04 | Grad: 11.188 | 2 tok/s
-  Memory: 3.9GB / 16.8GB (23.0% used)
-  Step    15/300 | Global   9528 | Loss: 3.0881 | LR: 1.58e-04 | Grad: 12.500 | 2 tok/s
+  [CASCADE CHECK] Initial Loss of this run: 3.3371
+  Memory: 3.9GB / 16.8GB (23.5% used)
+  Step     5/300 | Global   9518 | Loss: 3.2923 | LR: 5.26e-05 | Grad: 11.875 | 18 tok/s
+  Memory: 4.0GB / 16.8GB (23.6% used)
+  Step    10/300 | Global   9523 | Loss: 3.2743 | LR: 1.05e-04 | Grad: 11.250 | 20 tok/s
+  Memory: 4.0GB / 16.8GB (23.6% used)
+  Step    15/300 | Global   9528 | Loss: 3.0917 | LR: 1.58e-04 | Grad: 12.500 | 20 tok/s
+  Memory: 4.1GB / 16.8GB (24.3% used)
+  Step    20/300 | Global   9533 | Loss: 2.8576 | LR: 2.00e-04 | Grad: 8.500 | 20 tok/s
+  Memory: 4.1GB / 16.8GB (24.4% used)
+  Step    25/300 | Global   9538 | Loss: 2.5073 | LR: 2.00e-04 | Grad: 12.438 | 20 tok/s
+  Memory: 4.1GB / 16.8GB (24.2% used)
+  Step    30/300 | Global   9543 | Loss: 2.2982 | LR: 1.99e-04 | Grad: 10.438 | 21 tok/s
+  Memory: 4.1GB / 16.8GB (24.7% used)
+  Step    35/300 | Global   9548 | Loss: 2.3194 | LR: 1.99e-04 | Grad: 7.625 | 21 tok/s
+  Memory: 4.2GB / 16.8GB (25.0% used)
+  Step    40/300 | Global   9553 | Loss: 2.1552 | LR: 1.98e-04 | Grad: 4.531 | 21 tok/s
+  Memory: 4.2GB / 16.8GB (24.8% used)
+  Step    45/300 | Global   9558 | Loss: 2.1821 | LR: 1.96e-04 | Grad: 3.969 | 21 tok/s
+  Memory: 4.1GB / 16.8GB (24.5% used)
+  Step    50/300 | Global   9563 | Loss: 1.7906 | LR: 1.95e-04 | Grad: 4.094 | 21 tok/s
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:01<00:00,  1.90s/it]Writing model shards: 100%|██████████| 1/1 [00:01<00:00,  1.90s/it]
+  [SAVE] Checkpoint (weights only, skipping 2GB optimizer) -> ./checkpoint
+  Memory: 4.2GB / 16.8GB (24.9% used)
+  Step    55/300 | Global   9568 | Loss: 2.0487 | LR: 1.93e-04 | Grad: 3.781 | 21 tok/s
+  Memory: 4.1GB / 16.8GB (24.7% used)
+  Step    60/300 | Global   9573 | Loss: 2.1715 | LR: 1.91e-04 | Grad: 5.781 | 21 tok/s
+  Memory: 4.2GB / 16.8GB (24.8% used)
+  Step    65/300 | Global   9578 | Loss: 2.0230 | LR: 1.88e-04 | Grad: 4.250 | 21 tok/s
+  Memory: 4.2GB / 16.8GB (25.0% used)
+  Step    70/300 | Global   9583 | Loss: 2.0353 | LR: 1.86e-04 | Grad: 3.297 | 21 tok/s
+  Memory: 4.2GB / 16.8GB (25.0% used)
+  Step    75/300 | Global   9588 | Loss: 1.7750 | LR: 1.83e-04 | Grad: 3.281 | 21 tok/s
+  Memory: 4.2GB / 16.8GB (25.2% used)
+  Step    80/300 | Global   9593 | Loss: 2.1461 | LR: 1.80e-04 | Grad: 4.031 | 21 tok/s
+  Memory: 4.2GB / 16.8GB (25.2% used)
+  Step    85/300 | Global   9598 | Loss: 1.7618 | LR: 1.77e-04 | Grad: 3.578 | 21 tok/s
+  Memory: 4.2GB / 16.8GB (25.0% used)
+  Step    90/300 | Global   9603 | Loss: 2.2197 | LR: 1.73e-04 | Grad: 3.297 | 21 tok/s
+  Memory: 4.2GB / 16.8GB (25.3% used)
+  Step    95/300 | Global   9608 | Loss: 1.9669 | LR: 1.70e-04 | Grad: 4.344 | 21 tok/s
+  Memory: 4.3GB / 16.8GB (25.5% used)
+  Step   100/300 | Global   9613 | Loss: 1.7961 | LR: 1.66e-04 | Grad: 5.094 | 21 tok/s
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:01<00:00,  1.70s/it]Writing model shards: 100%|██████████| 1/1 [00:01<00:00,  1.70s/it]
+  [SAVE] Checkpoint (weights only, skipping 2GB optimizer) -> ./checkpoint
+  Memory: 4.3GB / 16.8GB (25.4% used)
+  Step   105/300 | Global   9618 | Loss: 1.8539 | LR: 1.62e-04 | Grad: 3.859 | 21 tok/s
+  Memory: 4.3GB / 16.8GB (25.3% used)
+  Step   110/300 | Global   9623 | Loss: 2.0448 | LR: 1.58e-04 | Grad: 4.031 | 21 tok/s
+  Memory: 4.3GB / 16.8GB (25.5% used)
+  Step   115/300 | Global   9628 | Loss: 1.9214 | LR: 1.53e-04 | Grad: 4.562 | 21 tok/s
+  Memory: 4.3GB / 16.8GB (25.4% used)
+  Step   120/300 | Global   9633 | Loss: 1.8245 | LR: 1.49e-04 | Grad: 3.000 | 21 tok/s
+  Memory: 4.3GB / 16.8GB (25.5% used)
+  Step   125/300 | Global   9638 | Loss: 2.1926 | LR: 1.44e-04 | Grad: 4.031 | 21 tok/s
+  Memory: 4.3GB / 16.8GB (25.7% used)
+  Step   130/300 | Global   9643 | Loss: 2.0117 | LR: 1.40e-04 | Grad: 4.156 | 21 tok/s
+  Memory: 4.2GB / 16.8GB (25.3% used)
+  Step   135/300 | Global   9648 | Loss: 1.7589 | LR: 1.35e-04 | Grad: 4.406 | 21 tok/s
+  Memory: 4.3GB / 16.8GB (25.4% used)
+  Step   140/300 | Global   9653 | Loss: 2.5480 | LR: 1.30e-04 | Grad: 3.969 | 21 tok/s
+  Memory: 4.3GB / 16.8GB (25.6% used)
+  Step   145/300 | Global   9658 | Loss: 1.7051 | LR: 1.25e-04 | Grad: 3.328 | 21 tok/s
+  Memory: 4.2GB / 16.8GB (25.3% used)
+  Step   150/300 | Global   9663 | Loss: 2.0946 | LR: 1.20e-04 | Grad: 5.188 | 21 tok/s
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:01<00:00,  1.70s/it]Writing model shards: 100%|██████████| 1/1 [00:01<00:00,  1.70s/it]
+  [SAVE] Checkpoint (weights only, skipping 2GB optimizer) -> ./checkpoint
+  Memory: 4.3GB / 16.8GB (25.4% used)
+  Step   155/300 | Global   9668 | Loss: 2.1261 | LR: 1.15e-04 | Grad: 5.219 | 21 tok/s
+  Memory: 4.3GB / 16.8GB (25.6% used)
+  Step   160/300 | Global   9673 | Loss: 1.9904 | LR: 1.10e-04 | Grad: 3.750 | 21 tok/s
