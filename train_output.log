@@ -14,7 +14,7 @@
 [INFO] Using tokenizer: HuggingFaceTB/SmolLM2-360M
   [DEBUG] Found model weights at ./checkpoint/model.safetensors. Checking architecture...
 `torch_dtype` is deprecated! Use `dtype` instead!
-Loading weights:   0%|          | 0/290 [00:00<?, ?it/s]Loading weights: 100%|██████████| 290/290 [00:00<00:00, 3683.39it/s]
+Loading weights:   0%|          | 0/290 [00:00<?, ?it/s]Loading weights: 100%|██████████| 290/290 [00:00<00:00, 3451.35it/s]
   [OK] Checkpoint loaded - continuing training
   [OK] Gradient Checkpointing enabled
   Total parameters: 361,821,120
@@ -131,20 +131,20 @@
   [WARN] EWC: Dropped 107 params due to shape/name mismatch. Keeping 0 params.
   [WARN] EWC: No valid params after shape check. Disabling EWC for this run.
 [OK] Loaded EWC state from previous run
-COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/meridian-ai/0ac56042a02b4dc198fe685b5d02be13
+COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/meridian-ai/9abdd5c8d6df4cc0a01d7d112c5fdefd
 
   [DEBUG] Restoration: Attempting to load trainer state from ./checkpoint...
   [OK] Trainer state restored (global step 9513)
 
 ==================== STARTING TRAINING RUN #1 ====================
-  Start Time: 2026-03-19 16:08:06
+  Start Time: 2026-03-19 17:31:00
 
 ======================================================================
   MERIDIAN.AI TRAINING ENGINE
   Steps: 300 | BS: 2 | Accum: 4
   LR: 0.0002 | Global step: 9513
   Parameters: 361,821,120 total | 361,821,120 trainable
-  Memory: 2.0GB / 16.8GB (12.2% used)
+  Memory: 1.5GB / 16.8GB (9.1% used)
 ======================================================================
 
   [OK] Loaded FinanceMTEB/financial_phrasebank (weight: 0.06)
@@ -169,9 +169,9 @@ COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/m
   [OK] Loaded FinanceMTEB/synthetic_pii_finance_en (weight: 0.02)
 
   [CASCADE CHECK] Initial Loss of this run: 3.3379
-  Memory: 3.7GB / 16.8GB (22.2% used)
+  Memory: 3.8GB / 16.8GB (22.5% used)
   Step     5/300 | Global   9518 | Loss: 3.3026 | LR: 5.26e-05 | Grad: 11.938 | 2 tok/s
-  Memory: 3.9GB / 16.8GB (23.0% used)
+  Memory: 3.9GB / 16.8GB (23.1% used)
   Step    10/300 | Global   9523 | Loss: 3.2771 | LR: 1.05e-04 | Grad: 11.188 | 2 tok/s
   Memory: 3.9GB / 16.8GB (23.0% used)
   Step    15/300 | Global   9528 | Loss: 3.0881 | LR: 1.58e-04 | Grad: 12.500 | 2 tok/s
