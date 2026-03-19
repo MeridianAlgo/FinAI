@@ -164,14 +164,14 @@ jobs:
           echo "train_exit_code=$TRAIN_EXIT" >> "$GITHUB_OUTPUT"
 
           # Detect repeated errors (10+ occurrences of same error = systemic failure)
-          ERROR_COUNT=$(grep -c '\[ERROR\]' train_output.log 2>/dev/null || echo "0")
+          ERROR_COUNT=$(grep -c '\[ERROR\]' train_output.log 2>/dev/null) || ERROR_COUNT=0
           echo "error_count=$ERROR_COUNT" >> "$GITHUB_OUTPUT"
 
           # Extract unique error messages for the issue body
           grep '\[ERROR\]' train_output.log | sort -u | head -10 > train_errors.txt 2>/dev/null || true
 
           # Detect fatal patterns (NaN loss explosion, OOM, etc.)
-          FATAL=$(grep -cE 'CUDA out of memory|Loss is NaN|RuntimeError|FATAL' train_output.log 2>/dev/null || echo "0")
+          FATAL=$(grep -cE 'CUDA out of memory|Loss is NaN|RuntimeError|FATAL' train_output.log 2>/dev/null) || FATAL=0
           echo "fatal_count=$FATAL" >> "$GITHUB_OUTPUT"
 
           if [ "$ERROR_COUNT" -gt 50 ] || [ "$FATAL" -gt 0 ]; then
