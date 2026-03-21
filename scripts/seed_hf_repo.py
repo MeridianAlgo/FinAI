@@ -40,7 +40,7 @@ def main():
 
     model = AutoModelForCausalLM.from_pretrained(
         base_model_id,
-        torch_dtype=torch.bfloat16,
+        dtype=torch.bfloat16,
         low_cpu_mem_usage=True,
     )
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_id)

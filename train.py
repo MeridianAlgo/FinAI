@@ -178,7 +178,7 @@ def main():
 
                 model = AutoModelForCausalLM.from_pretrained(
                     checkpoint_path,
-                    torch_dtype=torch.bfloat16 if use_bf16 else torch.float32,
+                    dtype=torch.bfloat16 if use_bf16 else torch.float32,
                     low_cpu_mem_usage=True,
                 )
                 print("  [OK] Checkpoint loaded - continuing training")
@@ -190,7 +190,7 @@ def main():
 
                     model = AutoModelForCausalLM.from_pretrained(
                         checkpoint_path,
-                        torch_dtype=torch.float32,
+                        dtype=torch.float32,
                         low_cpu_mem_usage=True,
                     )
                     print("  [OK] Checkpoint loaded (float32 fallback) - continuing training")
@@ -207,7 +207,7 @@ def main():
         try:
             model = AutoModelForCausalLM.from_pretrained(
                 model_id,
-                torch_dtype=torch.bfloat16 if use_bf16 else torch.float32,
+                dtype=torch.bfloat16 if use_bf16 else torch.float32,
                 low_cpu_mem_usage=True,
             )
         except Exception as e:
@@ -215,7 +215,7 @@ def main():
                 print(f"  [WARN] bf16 load failed ({e}). Falling back to float32.")
                 model = AutoModelForCausalLM.from_pretrained(
                     model_id,
-                    torch_dtype=torch.float32,
+                    dtype=torch.float32,
                     low_cpu_mem_usage=True,
                 )
             else:

@@ -467,6 +467,7 @@ class MeridianTrainer:
                             f"| Loss: {avg_loss:.4f} "
                             f"| LR: {lr:.2e} "
                             f"| Grad: {grad_norm:.3f} "
+                            f"| Time: {elapsed:.0f}s "
                             f"| {tps:.0f} tok/s"
                         )
 
