@@ -20,7 +20,7 @@ env:
 
 concurrency:
   group: meridian-train-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   seed:
