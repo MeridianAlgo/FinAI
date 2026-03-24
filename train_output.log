@@ -13,7 +13,7 @@
 [INFO] Using base model: HuggingFaceTB/SmolLM2-360M
 [INFO] Using tokenizer: HuggingFaceTB/SmolLM2-360M
   [DEBUG] Found model weights at ./checkpoint/model.safetensors. Checking architecture...
-Loading weights:   0%|          | 0/290 [00:00<?, ?it/s]Loading weights: 100%|██████████| 290/290 [00:00<00:00, 3700.24it/s]
+Loading weights:   0%|          | 0/290 [00:00<?, ?it/s]Loading weights: 100%|██████████| 290/290 [00:00<00:00, 3544.40it/s]
   [OK] Checkpoint loaded - continuing training
   [OK] Gradient Checkpointing enabled
   Total parameters: 361,821,120
@@ -22,20 +22,20 @@
 [INFO] Gradient checkpointing enabled
 [INFO] Optimizer: Adafactor (low-memory)
 [OK] Loaded EWC state from previous run
-COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/meridian-ai/e7a79eae731548a99204fe903e4cd42f
+COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/meridian-ai/2db0c12dce1b4d5e864f4480961d8d08
 
   [DEBUG] Restoration: Attempting to load trainer state from ./checkpoint...
   [OK] Trainer state restored (global step 10263)
 
 ==================== STARTING TRAINING RUN #1 ====================
-  Start Time: 2026-03-24 04:18:28
+  Start Time: 2026-03-24 06:00:17
 
 ======================================================================
   MERIDIAN.AI TRAINING ENGINE
   Steps: 150 | BS: 2 | Accum: 4
   LR: 0.0002 | Global step: 10263
   Parameters: 361,821,120 total | 361,821,120 trainable
-  Memory: 3.1GB / 16.8GB (18.5% used)
+  Memory: 3.1GB / 16.8GB (18.2% used)
 ======================================================================
 
   [OK] Loaded FinanceMTEB/financial_phrasebank (weight: 0.06)
@@ -60,9 +60,9 @@ COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/m
   [OK] Loaded FinanceMTEB/synthetic_pii_finance_en (weight: 0.02)
 
   [CASCADE CHECK] Initial Loss of this run: 2.1848
-  Memory: 5.2GB / 16.8GB (30.9% used)
-  Step     5/150 | Global  10268 | Loss: 1.5922 | LR: 1.00e-04 | Grad: 4.688 | Time: 1624s | 2 tok/s
-  Memory: 5.2GB / 16.8GB (31.2% used)
-  Step    10/150 | Global  10273 | Loss: 1.6074 | LR: 2.00e-04 | Grad: 4.344 | Time: 3374s | 2 tok/s
-  Memory: 5.2GB / 16.8GB (31.3% used)
-  Step    15/150 | Global  10278 | Loss: 1.3715 | LR: 1.99e-04 | Grad: 4.438 | Time: 4704s | 2 tok/s
+  Memory: 5.1GB / 16.8GB (30.4% used)
+  Step     5/150 | Global  10268 | Loss: 1.5922 | LR: 1.00e-04 | Grad: 4.688 | Time: 1588s | 2 tok/s
+  Memory: 5.2GB / 16.8GB (31.1% used)
+  Step    10/150 | Global  10273 | Loss: 1.6074 | LR: 2.00e-04 | Grad: 4.344 | Time: 3304s | 2 tok/s
+  Memory: 5.3GB / 16.8GB (31.3% used)
+  Step    15/150 | Global  10278 | Loss: 1.3715 | LR: 1.99e-04 | Grad: 4.438 | Time: 4600s | 2 tok/s
