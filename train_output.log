@@ -13,29 +13,31 @@
 [INFO] Using base model: HuggingFaceTB/SmolLM2-360M
 [INFO] Using tokenizer: HuggingFaceTB/SmolLM2-360M
   [DEBUG] Found model weights at ./checkpoint/model.safetensors. Checking architecture...
-Loading weights:   0%|          | 0/290 [00:00<?, ?it/s]Loading weights: 100%|██████████| 290/290 [00:00<00:00, 3796.19it/s]
+Loading weights:   0%|          | 0/290 [00:00<?, ?it/s]Loading weights: 100%|██████████| 290/290 [00:00<00:00, 15392.92it/s]
   [OK] Checkpoint loaded - continuing training
   [OK] Gradient Checkpointing enabled
   Total parameters: 361,821,120
   Loading tokenizer from HuggingFaceTB/SmolLM2-360M...
+'The read operation timed out' thrown while requesting HEAD https://huggingface.co/HuggingFaceTB/SmolLM2-360M/resolve/main/config.json
+Retrying in 1s [Retry 1/5].
   [DEBUG] Initializing MeridianTrainer...
 [INFO] Gradient checkpointing enabled
 [INFO] Optimizer: Adafactor (low-memory)
 [OK] Loaded EWC state from previous run
-COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/meridian-ai/82f75786da974ceeb4d2613b104c555f
+COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/meridian-ai/c1dd317d32db47459d980888cf5c84e0
 
   [DEBUG] Restoration: Attempting to load trainer state from ./checkpoint...
   [OK] Trainer state restored (global step 10863)
 
 ==================== STARTING TRAINING RUN #1 ====================
-  Start Time: 2026-03-27 18:36:40
+  Start Time: 2026-03-27 20:00:06
 
 ======================================================================
   MERIDIAN.AI TRAINING ENGINE
   Steps: 150 | BS: 2 | Accum: 4
   LR: 0.0002 | Global step: 10863
   Parameters: 361,821,120 total | 361,821,120 trainable
-  Memory: 3.0GB / 16.8GB (17.6% used)
+  Memory: 2.9GB / 16.8GB (17.6% used)
 ======================================================================
 
   [OK] Loaded FinanceMTEB/financial_phrasebank (weight: 0.06)
@@ -47,6 +49,10 @@ COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/m
   [OK] Loaded FinanceMTEB/Complaints (weight: 0.05)
   [OK] Loaded FinanceMTEB/FOMC (weight: 0.04)
   [OK] Loaded FinanceMTEB/ESG (weight: 0.04)
+'The read operation timed out' thrown while requesting HEAD https://huggingface.co/datasets/FinanceMTEB/FLS/resolve/39b6719f1d7197df4498fea9fce20d4ad782a083/FLS.py
+Retrying in 1s [Retry 1/5].
+'The read operation timed out' thrown while requesting HEAD https://huggingface.co/datasets/FinanceMTEB/FLS/resolve/39b6719f1d7197df4498fea9fce20d4ad782a083/FLS.py
+Retrying in 2s [Retry 2/5].
   [OK] Loaded FinanceMTEB/FLS (weight: 0.04)
   [OK] Loaded FinanceMTEB/FinFE (weight: 0.04)
   [OK] Loaded FinanceMTEB/FinEvaSentiment (weight: 0.05)
@@ -60,9 +66,13 @@ COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/m
   [OK] Loaded FinanceMTEB/synthetic_pii_finance_en (weight: 0.02)
 
   [CASCADE CHECK] Initial Loss of this run: 2.1600
-  Memory: 5.3GB / 16.8GB (31.8% used)
-  Step     5/150 | Global  10868 | Loss: 1.5345 | LR: 1.00e-04 | Grad: 4.844 | Time: 1599s | 2 tok/s
-  Memory: 5.3GB / 16.8GB (31.8% used)
-  Step    10/150 | Global  10873 | Loss: 1.3840 | LR: 2.00e-04 | Grad: 4.188 | Time: 3303s | 2 tok/s
-  Memory: 5.4GB / 16.8GB (32.2% used)
-  Step    15/150 | Global  10878 | Loss: 1.1872 | LR: 1.99e-04 | Grad: 4.406 | Time: 4579s | 2 tok/s
+'The read operation timed out' thrown while requesting GET https://huggingface.co/datasets/FinanceMTEB/FinFE/resolve/01034e2afdce0f7fa9a51a03aa0fdc1e3d576b05/data/train-00000-of-00001.parquet
+Retrying in 1s [Retry 1/5].
+'The read operation timed out' thrown while requesting GET https://huggingface.co/datasets/FinanceMTEB/FinFE/resolve/01034e2afdce0f7fa9a51a03aa0fdc1e3d576b05/data/train-00000-of-00001.parquet
+Retrying in 1s [Retry 1/5].
+'The read operation timed out' thrown while requesting GET https://huggingface.co/datasets/FinanceMTEB/FinEvaSentiment/resolve/d35cf19978e50767a4ccf5e483e4a9e9a33a864d/data/train-00000-of-00001.parquet
+Retrying in 1s [Retry 1/5].
+  Memory: 5.2GB / 16.8GB (31.2% used)
+  Step     5/150 | Global  10868 | Loss: 1.5345 | LR: 1.00e-04 | Grad: 4.844 | Time: 1795s | 2 tok/s
+  Memory: 5.2GB / 16.8GB (31.3% used)
+  Step    10/150 | Global  10873 | Loss: 1.3840 | LR: 2.00e-04 | Grad: 4.188 | Time: 3480s | 2 tok/s
