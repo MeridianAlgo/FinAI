@@ -13,7 +13,7 @@
 [INFO] Using base model: HuggingFaceTB/SmolLM2-360M
 [INFO] Using tokenizer: HuggingFaceTB/SmolLM2-360M
   [DEBUG] Found model weights at ./checkpoint/model.safetensors. Checking architecture...
-Loading weights:   0%|          | 0/290 [00:00<?, ?it/s]Loading weights: 100%|██████████| 290/290 [00:00<00:00, 3586.48it/s]
+Loading weights:   0%|          | 0/290 [00:00<?, ?it/s]Loading weights: 100%|██████████| 290/290 [00:00<00:00, 4497.61it/s]
   [OK] Checkpoint loaded - continuing training
   [OK] Gradient Checkpointing enabled
   Total parameters: 361,821,120
@@ -22,20 +22,20 @@
 [INFO] Gradient checkpointing enabled
 [INFO] Optimizer: Adafactor (low-memory)
 [OK] Loaded EWC state from previous run
-COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/meridian-ai/1c34a14e4be8484aac4be61ce2e73074
+COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/meridian-ai/766e9184352447eb9e4a2b888dca1955
 
   [DEBUG] Restoration: Attempting to load trainer state from ./checkpoint...
   [OK] Trainer state restored (global step 11013)
 
 ==================== STARTING TRAINING RUN #1 ====================
-  Start Time: 2026-03-28 23:45:52
+  Start Time: 2026-03-29 02:07:38
 
 ======================================================================
   MERIDIAN.AI TRAINING ENGINE
   Steps: 150 | BS: 2 | Accum: 4
   LR: 0.0002 | Global step: 11013
   Parameters: 361,821,120 total | 361,821,120 trainable
-  Memory: 3.0GB / 16.8GB (17.6% used)
+  Memory: 3.0GB / 16.8GB (17.7% used)
 ======================================================================
 
   [OK] Loaded FinanceMTEB/financial_phrasebank (weight: 0.06)
@@ -60,9 +60,179 @@ COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/m
   [OK] Loaded FinanceMTEB/synthetic_pii_finance_en (weight: 0.02)
 
   [CASCADE CHECK] Initial Loss of this run: 2.1677
+  Memory: 5.2GB / 16.8GB (31.3% used)
+  Step     5/150 | Global  11018 | Loss: 1.5315 | LR: 1.00e-04 | Grad: 4.812 | Time: 163s | 18 tok/s
+  Memory: 5.2GB / 16.8GB (31.3% used)
+  Step    10/150 | Global  11023 | Loss: 1.3408 | LR: 2.00e-04 | Grad: 4.125 | Time: 322s | 19 tok/s
+  Memory: 5.2GB / 16.8GB (31.3% used)
+  Step    15/150 | Global  11028 | Loss: 1.1324 | LR: 1.99e-04 | Grad: 4.469 | Time: 448s | 19 tok/s
   Memory: 5.2GB / 16.8GB (31.2% used)
-  Step     5/150 | Global  11018 | Loss: 1.5302 | LR: 1.00e-04 | Grad: 4.875 | Time: 1629s | 2 tok/s
+  Step    20/150 | Global  11033 | Loss: 1.2768 | LR: 1.98e-04 | Grad: 3.125 | Time: 604s | 20 tok/s
   Memory: 5.3GB / 16.8GB (31.6% used)
-  Step    10/150 | Global  11023 | Loss: 1.3404 | LR: 2.00e-04 | Grad: 4.125 | Time: 3369s | 2 tok/s
-  Memory: 5.3GB / 16.8GB (31.7% used)
-  Step    15/150 | Global  11028 | Loss: 1.1399 | LR: 1.99e-04 | Grad: 4.438 | Time: 4716s | 2 tok/s
+  Step    25/150 | Global  11038 | Loss: 0.9674 | LR: 1.95e-04 | Grad: 4.281 | Time: 755s | 20 tok/s
+  Memory: 5.2GB / 16.8GB (31.3% used)
+  Step    30/150 | Global  11043 | Loss: 1.2282 | LR: 1.91e-04 | Grad: 4.562 | Time: 906s | 20 tok/s
+  Memory: 5.3GB / 16.8GB (31.9% used)
+  Step    35/150 | Global  11048 | Loss: 1.3531 | LR: 1.86e-04 | Grad: 3.906 | Time: 1065s | 20 tok/s
+  Memory: 5.3GB / 16.8GB (31.6% used)
+  Step    40/150 | Global  11053 | Loss: 1.4115 | LR: 1.81e-04 | Grad: 3.047 | Time: 1223s | 20 tok/s
+  Memory: 5.5GB / 16.8GB (32.8% used)
+  Step    45/150 | Global  11058 | Loss: 1.4848 | LR: 1.74e-04 | Grad: 3.609 | Time: 1369s | 20 tok/s
+  Memory: 5.4GB / 16.8GB (32.3% used)
+  Step    50/150 | Global  11063 | Loss: 1.1098 | LR: 1.67e-04 | Grad: 3.391 | Time: 1517s | 20 tok/s
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:01<00:00,  1.30s/it]Writing model shards: 100%|██████████| 1/1 [00:01<00:00,  1.30s/it]
+  [SAVE] Checkpoint (weights only, skipping 2GB optimizer) -> ./checkpoint
+  Memory: 5.5GB / 16.8GB (32.9% used)
+  Step    55/150 | Global  11068 | Loss: 1.3669 | LR: 1.58e-04 | Grad: 3.922 | Time: 1672s | 20 tok/s
+  Memory: 5.5GB / 16.8GB (32.9% used)
+  Step    60/150 | Global  11073 | Loss: 1.5903 | LR: 1.50e-04 | Grad: 3.578 | Time: 1816s | 20 tok/s
+  Memory: 5.5GB / 16.8GB (32.9% used)
+  Step    65/150 | Global  11078 | Loss: 1.4774 | LR: 1.40e-04 | Grad: 3.891 | Time: 1969s | 20 tok/s
+  Memory: 5.5GB / 16.8GB (32.6% used)
+  Step    70/150 | Global  11083 | Loss: 1.5059 | LR: 1.31e-04 | Grad: 3.062 | Time: 2117s | 20 tok/s
+  Memory: 5.5GB / 16.8GB (33.0% used)
+  Step    75/150 | Global  11088 | Loss: 1.3159 | LR: 1.21e-04 | Grad: 3.531 | Time: 2266s | 20 tok/s
+  Memory: 5.6GB / 16.8GB (33.2% used)
+  Step    80/150 | Global  11093 | Loss: 1.6314 | LR: 1.11e-04 | Grad: 3.594 | Time: 2414s | 20 tok/s
+  Memory: 5.6GB / 16.8GB (33.1% used)
+  Step    85/150 | Global  11098 | Loss: 1.3556 | LR: 1.01e-04 | Grad: 3.641 | Time: 2559s | 20 tok/s
+  Memory: 5.6GB / 16.8GB (33.2% used)
+  Step    90/150 | Global  11103 | Loss: 1.8645 | LR: 9.11e-05 | Grad: 3.531 | Time: 2713s | 20 tok/s
+  Memory: 5.5GB / 16.8GB (32.8% used)
+  Step    95/150 | Global  11108 | Loss: 1.6133 | LR: 8.14e-05 | Grad: 3.938 | Time: 2859s | 20 tok/s
+  Memory: 5.6GB / 16.8GB (33.2% used)
+  Step   100/150 | Global  11113 | Loss: 1.5136 | LR: 7.21e-05 | Grad: 4.719 | Time: 3004s | 20 tok/s
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:01<00:00,  1.37s/it]Writing model shards: 100%|██████████| 1/1 [00:01<00:00,  1.37s/it]
+  [SAVE] Checkpoint (weights only, skipping 2GB optimizer) -> ./checkpoint
+  Memory: 5.5GB / 16.8GB (33.0% used)
+  Step   105/150 | Global  11118 | Loss: 1.5669 | LR: 6.33e-05 | Grad: 4.219 | Time: 3151s | 20 tok/s
+  Memory: 5.6GB / 16.8GB (33.3% used)
+  Step   110/150 | Global  11123 | Loss: 1.8040 | LR: 5.50e-05 | Grad: 3.781 | Time: 3293s | 20 tok/s
+  Memory: 5.5GB / 16.8GB (33.0% used)
+  Step   115/150 | Global  11128 | Loss: 1.7143 | LR: 4.74e-05 | Grad: 5.219 | Time: 3438s | 20 tok/s
+  Memory: 5.6GB / 16.8GB (33.4% used)
+  Step   120/150 | Global  11133 | Loss: 1.6509 | LR: 4.06e-05 | Grad: 3.484 | Time: 3577s | 20 tok/s
+  Memory: 5.6GB / 16.8GB (33.5% used)
+  Step   125/150 | Global  11138 | Loss: 2.0047 | LR: 3.47e-05 | Grad: 4.781 | Time: 3733s | 20 tok/s
+  Memory: 5.6GB / 16.8GB (33.6% used)
+  Step   130/150 | Global  11143 | Loss: 1.8430 | LR: 2.97e-05 | Grad: 4.406 | Time: 3894s | 20 tok/s
+  Memory: 5.6GB / 16.8GB (33.3% used)
+  Step   135/150 | Global  11148 | Loss: 1.5253 | LR: 2.57e-05 | Grad: 4.656 | Time: 4045s | 20 tok/s
+  Memory: 5.6GB / 16.8GB (33.5% used)
+  Step   140/150 | Global  11153 | Loss: 2.3975 | LR: 2.27e-05 | Grad: 4.844 | Time: 4200s | 20 tok/s
+  Memory: 5.6GB / 16.8GB (33.5% used)
+  Step   145/150 | Global  11158 | Loss: 1.5106 | LR: 2.08e-05 | Grad: 3.719 | Time: 4361s | 20 tok/s
+  Memory: 5.6GB / 16.8GB (33.6% used)
+  Step   150/150 | Global  11163 | Loss: 2.0307 | LR: 2.00e-05 | Grad: 8.000 | Time: 4512s | 20 tok/s
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:01<00:00,  1.39s/it]Writing model shards: 100%|██████████| 1/1 [00:01<00:00,  1.39s/it]
+  [SAVE] Checkpoint (weights only, skipping 2GB optimizer) -> ./checkpoint
+
+[EWC] Computing Fisher Information Matrix for next run...
+  Memory: 4.9GB / 16.8GB (29.2% used)
+    [EWC RAM] Allocated fisher tensors: 4.9GB (29.5%)
+    [EWC RAM] Starting dataloader loop: 4.9GB (29.5%)
+  [OK] Loaded FinanceMTEB/financial_phrasebank (weight: 0.06)
+  [OK] Loaded FinanceMTEB/FinSent (weight: 0.06)
+  [OK] Loaded FinanceMTEB/OpenFinDataSentiment (weight: 0.06)
+  [OK] Loaded FinanceMTEB/FiQA_ABSA (weight: 0.05)
+  [OK] Loaded FinanceMTEB/SemEva2017_Headline (weight: 0.05)
+  [OK] Loaded FinanceMTEB/FinancialFraud (weight: 0.05)
+  [OK] Loaded FinanceMTEB/Complaints (weight: 0.05)
+  [OK] Loaded FinanceMTEB/FOMC (weight: 0.04)
+  [OK] Loaded FinanceMTEB/ESG (weight: 0.04)
+  [OK] Loaded FinanceMTEB/FLS (weight: 0.04)
+  [OK] Loaded FinanceMTEB/FinFE (weight: 0.04)
+  [OK] Loaded FinanceMTEB/FinEvaSentiment (weight: 0.05)
+  [OK] Loaded FinanceMTEB/FinChinaSentiment (weight: 0.04)
+  [OK] Loaded FinanceMTEB/TradeTheEventNews (weight: 0.03)
+  [OK] Loaded FinanceMTEB/TradeTheEventEncyclopedia (weight: 0.03)
+  [OK] Loaded FinanceMTEB/AlphaFin (weight: 0.03)
+  [OK] Loaded FinanceMTEB/FinTruthQA (weight: 0.04)
+  [OK] Loaded FinanceMTEB/FinQA (weight: 0.04)
+  [OK] Loaded FinanceMTEB/TATQA (weight: 0.04)
+  [OK] Loaded FinanceMTEB/synthetic_pii_finance_en (weight: 0.02)
+    [DEBUG] EWC: Processing sample 1/5...
+    [EWC RAM] Sample 1: 4.9GB (29.4%)
+    [DEBUG] EWC Sample 1: Forward pass...
+    [DEBUG] EWC Sample 1: Backward pass...
+    [DEBUG] EWC Sample 1: Accumulating Fisher diag...
+    [DEBUG] EWC Sample 1: Zeroing grads...
+    [DEBUG] EWC Sample 1: Clearing tensors...
+    [DEBUG] EWC: Processing sample 2/5...
+    [EWC RAM] Sample 2: 5.6GB (33.5%)
+    [DEBUG] EWC Sample 2: Forward pass...
+    [DEBUG] EWC Sample 2: Backward pass...
+    [DEBUG] EWC Sample 2: Accumulating Fisher diag...
+    [DEBUG] EWC Sample 2: Zeroing grads...
+    [DEBUG] EWC Sample 2: Clearing tensors...
+    [DEBUG] EWC: Processing sample 3/5...
+    [EWC RAM] Sample 3: 5.7GB (33.9%)
+    [DEBUG] EWC Sample 3: Forward pass...
+    [DEBUG] EWC Sample 3: Backward pass...
+    [DEBUG] EWC Sample 3: Accumulating Fisher diag...
+    [DEBUG] EWC Sample 3: Zeroing grads...
+    [DEBUG] EWC Sample 3: Clearing tensors...
+    [DEBUG] EWC: Processing sample 4/5...
+    [EWC RAM] Sample 4: 5.6GB (33.4%)
+    [DEBUG] EWC Sample 4: Forward pass...
+    [DEBUG] EWC Sample 4: Backward pass...
+    [DEBUG] EWC Sample 4: Accumulating Fisher diag...
+    [DEBUG] EWC Sample 4: Zeroing grads...
+    [DEBUG] EWC Sample 4: Clearing tensors...
+    [DEBUG] EWC: Processing sample 5/5...
+    [EWC RAM] Sample 5: 5.7GB (34.2%)
+    [DEBUG] EWC Sample 5: Forward pass...
+    [DEBUG] EWC Sample 5: Backward pass...
+    [DEBUG] EWC Sample 5: Accumulating Fisher diag...
+    [DEBUG] EWC Sample 5: Zeroing grads...
+    [DEBUG] EWC Sample 5: Clearing tensors...
+    [DEBUG] EWC: Reached max_samples (5). Stopping.
+  [EWC] Keeping 290/290 params above threshold
+[OK] Fisher matrix saved for continual learning
+  Memory: 4.2GB / 16.8GB (25.2% used)
+
+======================================================================
+  TRAINING COMPLETE
+  Steps: 150 | Time: 4552s | Best loss: 0.9674
+  Initial loss: 2.1677 | Final loss: 2.0307 | Diff: -0.1370
+  Tokens processed: 91,632
+======================================================================
+
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO: Comet.ml Experiment Summary
+COMET INFO: ---------------------------------------------------------------------------------------
+COMET INFO:   Data:
+COMET INFO:     display_summary_level : 1
+COMET INFO:     name                  : hourly-train
+COMET INFO:     url                   : https://www.comet.com/meridianalgo/meridian-ai/766e9184352447eb9e4a2b888dca1955
+COMET INFO:   Metrics [count] (min, max):
+COMET INFO:     global_step [30]    : (11018, 11163)
+COMET INFO:     grad_norm [30]      : (3.046875, 8.0)
+COMET INFO:     loss [30]           : (0.9673820192882829, 2.3975048280966123)
+COMET INFO:     lr [30]             : (2.0022338605946686e-05, 0.0002)
+COMET INFO:     tokens_per_sec [30] : (18.20739854115462, 20.309245581731737)
+COMET INFO:   Others:
+COMET INFO:     Name : hourly-train
+COMET INFO:   Parameters:
+COMET INFO:     batch_size : 2
+COMET INFO:     ewc        : True
+COMET INFO:     grad_accum : 4
+COMET INFO:     lr         : 0.0002
+COMET INFO:     max_steps  : 150
+COMET INFO:   Uploads:
+COMET INFO:     environment details      : 1
+COMET INFO:     filename                 : 1
+COMET INFO:     git metadata             : 1
+COMET INFO:     git-patch (uncompressed) : 1 (3.14 KB)
+COMET INFO:     installed packages       : 1
+COMET INFO:     model graph              : 1
+COMET INFO:     os packages              : 1
+COMET INFO:     source_code              : 2 (37.64 KB)
+COMET INFO: 
+
+  Saving checkpoint to ./checkpoint...
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:01<00:00,  1.36s/it]Writing model shards: 100%|██████████| 1/1 [00:01<00:00,  1.36s/it]
+  [SAVE] Checkpoint (weights only, skipping 2GB optimizer) -> ./checkpoint
+  [OK] Dataset state saved (total processed: 84,141)
+
+  TRAINING RUN #1 COMPLETE.
