@@ -1,18 +1,17 @@
 ---
 license: mit
-base_model: hpcai-tech/openmoe-base
+base_model: Qwen/Qwen2.5-0.5B
 tags:
   - finance
-  - mixture-of-experts
-  - openmoe
-  - umt5
+  - language-model
+  - qwen2.5
 language:
   - en
 ---
 
 # Meridian.AI
 
-Meridian.AI is an experimental finance-focused sparse Mixture-of-Experts (MoE) causal language model trained via continual updates.
+Meridian.AI is an experimental finance-focused causal language model trained via continual updates on the Qwen2.5-0.5B architecture.
 
 This repository is designed to run on commodity CPU hardware (including GitHub Actions runners) and continuously improve the model over time.
 
@@ -28,19 +27,18 @@ This model is intended for research and prototyping. It is not intended to provi
 
 ## Base model + tokenizer
 
-- **Base model weights**: `hpcai-tech/openmoe-base`
-- **Tokenizer**: `google/umt5-small` (256k vocab, SentencePiece/umT5)
+- **Base model weights**: `Qwen/Qwen2.5-0.5B`
+- **Tokenizer**: `Qwen/Qwen2.5-0.5B`
 
-This repo includes a working umT5 tokenizer at the root so `AutoTokenizer.from_pretrained("MeridianAlgo/MeridianAI")` works.
+This repo uses the Qwen2.5 tokenizer, so `AutoTokenizer.from_pretrained("meridianal/FinAI", subfolder="checkpoint")` works.
 
 ## Architecture overview
 
-Meridian.AI is a sparse Mixture-of-Experts (MoE) transformer:
+Meridian.AI is built on top of the Qwen2.5 transformer architecture:
 
-- **Sparse routing**: only a small subset of expert parameters are activated per token.
-- **Grouped Query Attention (GQA)**: reduces attention compute cost.
-- **RoPE**: rotary positional embeddings.
-- **Numeracy features**: additional components intended to improve numeric reasoning on finance tasks.
+- **Dense routing**: High reasoning capabilities in a small 0.5B parameter footprint.
+- **Grouped Query Attention (GQA)**: reduces attention compute cost for fast generation.
+- **RoPE**: rotary positional embeddings for length extrapolation.
 
 Even when a model is trained for finance, general text quality depends heavily on the base model and the stability of continual training.
 
@@ -52,14 +50,14 @@ The model weights are stored under the `checkpoint/` subfolder.
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-repo_id = "MeridianAlgo/MeridianAI"
+repo_id = "meridianal/FinAI"
 
-tokenizer = AutoTokenizer.from_pretrained(repo_id)
+tokenizer = AutoTokenizer.from_pretrained(repo_id, subfolder="checkpoint")
 model = AutoModelForCausalLM.from_pretrained(
     repo_id,
     subfolder="checkpoint",
     trust_remote_code=True,
-    dtype=torch.float32,
+    torch_dtype=torch.float32,
     low_cpu_mem_usage=True,
     ignore_mismatched_sizes=True,
 )
@@ -151,13 +149,12 @@ If you still see OOMs, reduce `BLOCK_SIZE` first.
 
 This Hugging Face repo contains:
 
-- Root tokenizer files (umt5)
-- A `checkpoint/` folder with the latest model weights + config
+- A `checkpoint/` folder with the latest model weights, tokenizer configs, and architecture.
 
 This means:
 
-- Tokenizer: `AutoTokenizer.from_pretrained("MeridianAlgo/MeridianAI")`
-- Model: `AutoModelForCausalLM.from_pretrained("MeridianAlgo/MeridianAI", subfolder="checkpoint", ...)`
+- Tokenizer: `AutoTokenizer.from_pretrained("meridianal/FinAI", subfolder="checkpoint")`
+- Model: `AutoModelForCausalLM.from_pretrained("meridianal/FinAI", subfolder="checkpoint", ...)`
 
 ## Evaluation
 
