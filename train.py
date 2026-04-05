@@ -135,9 +135,9 @@ def main():
     else:
         print("  No dataset state found, starting from 0.")
 
-    # 2. Configuration — SmolLM2-360M (360M, standard Llama arch, pre-trained on 600B tokens)
-    model_id = "HuggingFaceTB/SmolLM2-360M"
-    tokenizer_id = os.getenv("TOKENIZER_ID", "HuggingFaceTB/SmolLM2-360M")
+    # 2. Configuration — Upgrading to Qwen2.5-0.5B for better capacity and reasoning
+    model_id = "Qwen/Qwen2.5-0.5B"
+    tokenizer_id = os.getenv("TOKENIZER_ID", "Qwen/Qwen2.5-0.5B")
     print(f"\n[INFO] Using base model: {model_id}")
     print(f"[INFO] Using tokenizer: {tokenizer_id}")
 
@@ -163,7 +163,7 @@ def main():
             if os.path.exists(ckpt_cfg_path):
                 with open(ckpt_cfg_path) as _f:
                     ckpt_cfg = json.load(_f)
-                arch_ok = ckpt_cfg.get("model_type") == "llama"
+                arch_ok = ckpt_cfg.get("model_type") in ["llama", "qwen2"]
         except Exception:
             pass
 
@@ -178,7 +178,7 @@ def main():
 
                 model = AutoModelForCausalLM.from_pretrained(
                     checkpoint_path,
-                    dtype=torch.bfloat16 if use_bf16 else torch.float32,
+                    torch_dtype=torch.bfloat16 if use_bf16 else torch.float32,
                     low_cpu_mem_usage=True,
                 )
                 print("  [OK] Checkpoint loaded - continuing training")
@@ -190,7 +190,7 @@ def main():
 
                     model = AutoModelForCausalLM.from_pretrained(
                         checkpoint_path,
-                        dtype=torch.float32,
+                        torch_dtype=torch.float32,
                         low_cpu_mem_usage=True,
                     )
                     print("  [OK] Checkpoint loaded (float32 fallback) - continuing training")
@@ -207,7 +207,7 @@ def main():
         try:
             model = AutoModelForCausalLM.from_pretrained(
                 model_id,
-                dtype=torch.bfloat16 if use_bf16 else torch.float32,
+                torch_dtype=torch.bfloat16 if use_bf16 else torch.float32,
                 low_cpu_mem_usage=True,
             )
         except Exception as e:
@@ -215,7 +215,7 @@ def main():
                 print(f"  [WARN] bf16 load failed ({e}). Falling back to float32.")
                 model = AutoModelForCausalLM.from_pretrained(
                     model_id,
-                    dtype=torch.float32,
+                    torch_dtype=torch.float32,
                     low_cpu_mem_usage=True,
                 )
             else:
@@ -259,12 +259,12 @@ def main():
         gradient_accumulation_steps=int(os.getenv("GRAD_ACCUM", "4")),
         max_steps=max_steps,
         total_steps=total_steps,
-        learning_rate=float(os.getenv("LEARNING_RATE", "3e-4")),
+        learning_rate=float(os.getenv("LEARNING_RATE", "5e-5")),
         output_dir=checkpoint_path,
         save_steps=int(os.getenv("SAVE_STEPS", "50")),
         use_ewc=os.getenv("USE_EWC", "1") == "1",
-        ewc_lambda=float(os.getenv("EWC_LAMBDA", "100.0")),
-        ewc_samples=int(os.getenv("EWC_SAMPLES", "20")),
+        ewc_lambda=float(os.getenv("EWC_LAMBDA", "500.0")),
+        ewc_samples=int(os.getenv("EWC_SAMPLES", "50")),
     )
 
     # 7. Create trainer & load state

@@ -15,9 +15,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 def main():
     token = os.getenv("HF_TOKEN")
-    repo_id = "MeridianAlgo/MeridianAI"
-    base_model_id = "HuggingFaceTB/SmolLM2-360M"
-    tokenizer_id = os.getenv("TOKENIZER_ID", "HuggingFaceTB/SmolLM2-360M")
+    repo_id = "MeridianAlgo/FinAI"
+    base_model_id = "Qwen/Qwen2.5-0.5B"
+    tokenizer_id = os.getenv("TOKENIZER_ID", "Qwen/Qwen2.5-0.5B")
 
     print(f"\n{'=' * 60}")
     print("  MeridianAI Parameter Report")
@@ -40,7 +40,7 @@ def main():
 
     model = AutoModelForCausalLM.from_pretrained(
         base_model_id,
-        dtype=torch.bfloat16,
+        torch_dtype=torch.bfloat16,
         low_cpu_mem_usage=True,
     )
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_id)

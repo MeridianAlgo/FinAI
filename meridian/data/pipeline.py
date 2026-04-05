@@ -246,6 +246,22 @@ class FinanceDataPipeline:
 
     LIGHT_DATASETS = [
         {
+            "name": "gbharti/finance-alpaca",
+            "config": None,
+            "split": "train",
+            "text_field": "output",
+            "instruction_field": "instruction",
+            "weight": 0.40,
+        },
+        {
+            "name": "yahma/alpaca-cleaned",
+            "config": None,
+            "split": "train",
+            "text_field": "output",
+            "instruction_field": "instruction",
+            "weight": 0.20,
+        },
+        {
             "name": "FinanceMTEB/financial_phrasebank",
             "config": None,
             "split": "train",
