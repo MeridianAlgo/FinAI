@@ -45,7 +45,7 @@ jobs:
       - name: Nuke & Seed
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          TOKENIZER_ID: 'HuggingFaceTB/SmolLM2-360M'
+          TOKENIZER_ID: 'Qwen/Qwen2.5-0.5B'
           PYTHONPATH: .
         run: python scripts/seed_hf_repo.py
 
@@ -92,7 +92,7 @@ jobs:
           from huggingface_hub import snapshot_download, list_repo_files
           import os, shutil
 
-          repo_id = 'MeridianAlgo/MeridianAI'
+          repo_id = 'meridianal/FinAI'
           token = os.getenv('HF_TOKEN')
 
           try:
@@ -135,7 +135,7 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           COMET_API_KEY: ${{ secrets.COMET_API_KEY }}
-          TOKENIZER_ID: 'HuggingFaceTB/SmolLM2-360M'
+          TOKENIZER_ID: 'Qwen/Qwen2.5-0.5B'
           DTYPE: 'bfloat16'
           SKIP_OPTIMIZER_SAVE: '1'
           HARD_RAM_GUARD: '1'
@@ -148,7 +148,7 @@ jobs:
           TOTAL_STEPS: '100000'
           GRAD_ACCUM: '4'
           BATCH_SIZE: '2'
-          LEARNING_RATE: '2e-4'
+          LEARNING_RATE: '5e-5'
           BLOCK_SIZE: '256'
           MAX_BYTES: '15728640'
           USE_EWC: '1'
@@ -251,11 +251,11 @@ jobs:
               exit(0)
 
           api = HfApi()
-          print('Uploading to MeridianAlgo/MeridianAI...')
+          print('Uploading to meridianal/FinAI...')
           try:
               api.upload_folder(
                   folder_path='./checkpoint',
-                  repo_id='MeridianAlgo/MeridianAI',
+                  repo_id='meridianal/FinAI',
                   path_in_repo='checkpoint',
                   commit_message='Hourly training update [skip ci]',
                   token=os.getenv('HF_TOKEN')

@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 def main():
     token = os.getenv("HF_TOKEN")
-    repo_id = "MeridianAlgo/FinAI"
+    repo_id = "meridianal/FinAI"
     base_model_id = "Qwen/Qwen2.5-0.5B"
     tokenizer_id = os.getenv("TOKENIZER_ID", "Qwen/Qwen2.5-0.5B")
 

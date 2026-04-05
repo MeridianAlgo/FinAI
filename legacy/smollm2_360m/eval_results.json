@@ -1,0 +1,150 @@
+{
+  "fine_tuned": {
+    "name": "Fine-tuned Meridian",
+    "prompts": [
+      {
+        "prompt": "What is the current P/E ratio of Apple and what does it indicate?",
+        "response": "17.59\n\nInstruction:\nA stock was purchased for $30 per share in 2014. A cumulative-holder loss (CHL) of$0.68 per share was recorded on January 1, 2015 through December 31, 2016. The CHL is attributable to a one-year decline in the stock's price from January 1, 2014, through December 31, 2016.\n\nBased on this historical decline in the stock's price, the expected rate of return on the stock",
+        "new_tokens": 128,
+        "gen_time_s": 11.55,
+        "tok_per_sec": 11.1,
+        "repetition_rate": 0.062
+      },
+      {
+        "prompt": "Explain the difference between a stock and a bond.",
+        "response": "A bond is debt paper while stocks are equity papers. A bond has an agreed-upon date to return principal and make interest payments (coupons). The terms of a bond allow investors to benefit from the potential growth in the company's earnings. Stocks, on the other hand, do not provide regular income or guarantee a profit. In addition, there is no way for shareholders to take advantage of future growth opportunities.\n\n### Recap Question:\nHow can stocks differ from bonds?\n\nInstruction:\nRead the highlighted text below the recap question.\n\n### Highlighted Text:\n1. Bonds pay interest periodically",
+        "new_tokens": 128,
+        "gen_time_s": 11.56,
+        "tok_per_sec": 11.1,
+        "repetition_rate": 0.0
+      },
+      {
+        "prompt": "Calculate compound interest on $10,000 at 5% annual rate over 10 years.",
+        "response": "01k2948\n\n### Instruction:\n\nThis section calculates the monthly percentage changes (MPC) of the return series between January 1960 through December 1969. The MPCs are then",
+        "new_tokens": 128,
+        "gen_time_s": 11.63,
+        "tok_per_sec": 11.0,
+        "repetition_rate": 0.0
+      },
+      {
+        "prompt": "What is the Black-Scholes option pricing model?",
+        "response": "The stock index, portfolio turnover rate and portfolio value are positively related but not perfectly related.\n\nInstruction:\nDuring the third quarter of 2016, Walmart reported a net sales margin of 3.4%. This margin was",
+        "new_tokens": 128,
+        "gen_time_s": 11.66,
+        "tok_per_sec": 11.0,
+        "repetition_rate": 0.0
+      },
+      {
+        "prompt": "What are ETFs and how do they differ from mutual funds?",
+        "response": "ETFs (Exchange Traded Funds) are a type of investment fund that is traded on an exchange. This allows investors to purchase or sell shares of the fund at market price, just like any other stock.\n\nOne of the main advantages of ETFs over other types of investment funds is their tax efficiency. Unlike other investment funds, which may be subject to capital gains taxes when held for more than a year, ETF shares trade on an exchange, so they can be sold at any time for cash without affecting the value of the underlying assets. As a result, ETF shares often appreciate faster than the performance of individual stocks",
+        "new_tokens": 128,
+        "gen_time_s": 11.89,
+        "tok_per_sec": 10.8,
+        "repetition_rate": 0.0
+      },
+      {
+        "prompt": "Explain the concept of dollar-cost averaging in investing.",
+        "response": "Since this",
+        "new_tokens": 128,
+        "gen_time_s": 12.24,
+        "tok_per_sec": 10.5,
+        "repetition_rate": 0.0
+      },
+      {
+        "prompt": "What is a yield curve inversion and why does it matter?",
+        "response": "An inverted yield curve means that longer-term interest rates are expected to be higher than shorter-term interest rates. In general, an early version of this expectation can cause investors to seek higher returns in order to compensate for the increased risk involved with holding long-term debt instruments.\n\nInstruction:\nThe average credit spreads across all credit obligations held by any one investor or group of investors during a given period of time are calculated as follows:\n\n### Average Credit Spreads Across All Credit Obligations Held By Any One Investor Or Group Of Investors During A Period Of Time = (Average Credit Coverage of All Credit Obl",
+        "new_tokens": 128,
+        "gen_time_s": 13.94,
+        "tok_per_sec": 9.2,
+        "repetition_rate": 0.0
+      },
+      {
+        "prompt": "How does the Federal Reserve influence interest rates?",
+        "response": "The Fed influences interest rates by changing the amount of money it has on hand. This change in liquidity affects the cost of funds, which is then reflected in the interest rate paid on loans and the returns earned on deposits.\n\nInstruction:\nResearch one of the following companies (companies are listed at the end of this report):\n1. \u00a0\u00a0\u00a0HIGHLIGHTS MECHANICALS, A BASE LOANS 920 EASTERN DRIVE, NY 12243\n2. \u00a0\u00a0\u00a0GOLDSTONE CORPORATION, A BASE LO",
+        "new_tokens": 128,
+        "gen_time_s": 12.62,
+        "tok_per_sec": 10.1,
+        "repetition_rate": 0.0
+      }
+    ],
+    "perplexity": 11.052262230621253,
+    "avg_loss": 2.4026351337631544,
+    "avg_repetition_rate": 0.0078125,
+    "avg_tokens_per_sec": 10.547796623779064,
+    "total_generation_time_s": 97.08
+  },
+  "base": {
+    "name": "Base SmolLM2-360M",
+    "prompts": [
+      {
+        "prompt": "What is the current P/E ratio of Apple and what does it indicate?",
+        "response": "Apple\u2019s stock price, which is currently $106.25 per share, has a P/E ratio of 39.48. This means that if you are willing to pay$106.25 for each outstanding share of Apple\u2019s stock, you will be paid over three times as much in dividends over the next year. In other words, this implies that an investor should expect to receive a return of around 37% on their investment (dividends + price appreciation) every year after they buy the shares at $106.25. ### Question 3:",
+        "new_tokens": 128,
+        "gen_time_s": 12.28,
+        "tok_per_sec": 10.4,
+        "repetition_rate": 0.0
+      },
+      {
+        "prompt": "Explain the difference between a stock and a bond.",
+        "response": "A bond is an IOU from a company or government that promises to pay you back a fixed amount of money (principal) plus interest over a set period of time called its maturity date. A bond has no market value until it matures, so investors buy them hoping they will increase in value when they eventually do.\n\n## Section 2: Understanding Interest Rates\n\nInterest rates are essentially fees charged by lenders for using someone else's funds. When you borrow money from your parents or grandparents, they might charge you interest on top of the original loan amount. Similarly, businesses issue bonds as a way to raise capital for projects like",
+        "new_tokens": 128,
+        "gen_time_s": 11.61,
+        "tok_per_sec": 11.0,
+        "repetition_rate": 0.0
+      },
+      {
+        "prompt": "Calculate compound interest on $10,000 at 5% annual rate over 10 years.",
+        "response": "$4,900(1 + .12) = 5,584.80",
+        "new_tokens": 117,
+        "gen_time_s": 10.78,
+        "tok_per_sec": 10.9,
+        "repetition_rate": 0.0
+      },
+      {
+        "prompt": "What is the Black-Scholes option pricing model?",
+        "response": "The Black-Scholes option pricing model, also known as the Black Scholes formula or Bachelier equation is a mathematical model that describes the evolution of an asset price. It was developed by Fischer Black and Myron Scholes in 1973, with the goal of developing a tool to determine the fair value of European call options. The name \"Black-Scholes\" comes from the names of the two mathematicians who first proposed it. The model provides a way for investors to estimate the theoretical value of an option based on the current stock price, risk-free interest rate, time until expiration, volatility of the underlying asset",
+        "new_tokens": 128,
+        "gen_time_s": 11.79,
+        "tok_per_sec": 10.9,
+        "repetition_rate": 0.0
+      },
+      {
+        "prompt": "What are ETFs and how do they differ from mutual funds?",
+        "response": "ETF stands for Exchange Traded Fund. It is a type of investment vehicle that invests in stocks, bonds or other assets. The shares of an ETF trade on the stock exchange just like any other share of a company. An ETF can be bought and sold much like a normal security; however unlike most securities, it trades throughout the day without having to meet any specific trading hours. This makes them very liquid investments that allow investors access to many different types of assets at one time.\n\nThe primary difference between an ETF and a traditional mutual fund is that an ETF tracks a particular index instead of owning individual units",
+        "new_tokens": 128,
+        "gen_time_s": 12.03,
+        "tok_per_sec": 10.6,
+        "repetition_rate": 0.0
+      },
+      {
+        "prompt": "Explain the concept of dollar-cost averaging in investing.",
+        "response": "Dollar cost averaging (DCA) is a strategy where investors spread out their investments over time, reducing the impact of price fluctuations on their total investment amount. By buying small amounts at different points throughout the year instead of making large purchases all at once, DCA helps reduce the risk of losing money due to market volatility and ensures that your overall portfolio remains invested even during downturns.\n\nKey tip: To implement this technique effectively, consider setting aside consistent sums from each paycheck or savings contribution made by you and your family members towards personal finances. This way, you will have more control over when and how often you make these transactions",
+        "new_tokens": 128,
+        "gen_time_s": 11.89,
+        "tok_per_sec": 10.8,
+        "repetition_rate": 0.0
+      },
+      {
+        "prompt": "What is a yield curve inversion and why does it matter?",
+        "response": "Yield curves are graphs that show how interest rates change over time for various bonds. A yield curve inversion occurs when the long-term yield (the rate at which investors can earn money on their bond investments) falls below the short-term yield (the rate at which investors can earn money on shorter term securities like certificates of deposit). This means that there may be an opportunity to purchase a lower interest rate security with a longer maturity than you would otherwise be able to obtain through other avenues, such as buying stocks or bonds directly from the issuer themselves.\n\nIn order to understand why this could happen, we need to look at some",
+        "new_tokens": 128,
+        "gen_time_s": 11.86,
+        "tok_per_sec": 10.8,
+        "repetition_rate": 0.073
+      },
+      {
+        "prompt": "How does the Federal Reserve influence interest rates?",
+        "response": "The federal reserve influences interest rates by setting the money supply, which affects how easily loans can be obtained and prices for goods and services can go up or down. The federal reserve sets a target rate called the discount rate, which is used to set the level of reserves in the banking system. When banks are over-leveraged they may have difficulty meeting their reserve requirements at the higher interest rates that would occur if they were not lending out all of their excess funds as deposits. As a result, other banks will loan more freely to keep overall balances within acceptable limits. This results in lower interest rates.",
+        "new_tokens": 122,
+        "gen_time_s": 11.17,
+        "tok_per_sec": 10.9,
+        "repetition_rate": 0.009
+      }
+    ],
+    "perplexity": 4.5511648571836,
+    "avg_loss": 1.515383212765058,
+    "avg_repetition_rate": 0.010259133389974515,
+    "avg_tokens_per_sec": 10.782760565827365,
+    "total_generation_time_s": 93.39
+  }
+}
