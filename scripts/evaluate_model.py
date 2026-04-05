@@ -7,13 +7,13 @@ Measures:
   3. Basic coherence / repetition checks
 """
 
-import sys
 import io
+import sys
 
 # Fix Windows encoding issues
-if sys.platform == 'win32':
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 import json
 import math
@@ -25,7 +25,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
-
 
 # ── Finance evaluation prompts ──────────────────────────────────────────
 GENERATION_PROMPTS = [
@@ -152,7 +151,9 @@ def generate_text(model, tokenizer, prompt, max_new_tokens=128, temperature=0.7)
     if "### Response:" in full_text:
         response = full_text.split("### Response:")[-1].strip()
     else:
-        response = full_text[len(formatted):].strip() if full_text.startswith(formatted) else full_text
+        response = (
+            full_text[len(formatted) :].strip() if full_text.startswith(formatted) else full_text
+        )
 
     tokens_per_sec = new_tokens / gen_time if gen_time > 0 else 0
     return response, new_tokens, gen_time, tokens_per_sec
@@ -203,7 +204,9 @@ def evaluate_model(model, tokenizer, model_name="Model"):
         print(f"\n  +-- Prompt {i}/{len(GENERATION_PROMPTS)} -----------------------")
         print(f"  | Q: {prompt}")
         print(f"  | A: {response[:300]}{'...' if len(response) > 300 else ''}")
-        print(f"  | Tokens: {new_tokens} | Time: {gen_time:.1f}s | {tok_per_sec:.1f} tok/s | Rep: {rep_rate:.1%}")
+        print(
+            f"  | Tokens: {new_tokens} | Time: {gen_time:.1f}s | {tok_per_sec:.1f} tok/s | Rep: {rep_rate:.1%}"
+        )
         print(f"  +{'-'*50}")
 
     avg_rep = total_rep / len(GENERATION_PROMPTS) if GENERATION_PROMPTS else 0
@@ -213,7 +216,7 @@ def evaluate_model(model, tokenizer, model_name="Model"):
     results["avg_tokens_per_sec"] = avg_tps
     results["total_generation_time_s"] = round(total_time, 2)
 
-    print(f"\n  Summary:")
+    print("\n  Summary:")
     print(f"    Avg Repetition Rate: {avg_rep:.1%}")
     print(f"    Avg Tokens/sec:      {avg_tps:.1f}")
     print(f"    Total Gen Time:      {total_time:.1f}s")
@@ -245,7 +248,9 @@ def main():
     # Free memory before loading base model
     del ft_model
     torch.cuda.empty_cache() if torch.cuda.is_available() else None
-    import gc; gc.collect()
+    import gc
+
+    gc.collect()
 
     # ── Evaluate base model ───────────────────────────────────────────
     if not skip_base:
@@ -286,8 +291,18 @@ def main():
     if has_base:
         base = all_results["base"]
         extended_rows = []
-        base_vals = [base["perplexity"], base["avg_loss"], base["avg_repetition_rate"], base["avg_tokens_per_sec"]]
-        ft_vals = [ft["perplexity"], ft["avg_loss"], ft["avg_repetition_rate"], ft["avg_tokens_per_sec"]]
+        base_vals = [
+            base["perplexity"],
+            base["avg_loss"],
+            base["avg_repetition_rate"],
+            base["avg_tokens_per_sec"],
+        ]
+        ft_vals = [
+            ft["perplexity"],
+            ft["avg_loss"],
+            ft["avg_repetition_rate"],
+            ft["avg_tokens_per_sec"],
+        ]
         for (name, ft_str), bv, fv in zip(rows, base_vals, ft_vals):  # noqa: B007
             delta = fv - bv
             direction = "v" if delta < 0 else "^" if delta > 0 else "="
@@ -298,11 +313,22 @@ def main():
                 quality = "OK" if delta > 0 else "BAD" if delta < 0 else "="
 
             if name == "Avg Repetition":  # format as percentage
-                extended_rows.append((name, ft_str, f"{bv*100:.1f}%", f"{delta*100:+.1f}% {direction} {quality}"))
+                extended_rows.append(
+                    (name, ft_str, f"{bv*100:.1f}%", f"{delta*100:+.1f}% {direction} {quality}")
+                )
             elif name == "Avg Tok/s":
-                extended_rows.append((name, ft_str, f"{bv:.1f}", f"{delta:+.1f} {direction} {quality}"))
+                extended_rows.append(
+                    (name, ft_str, f"{bv:.1f}", f"{delta:+.1f} {direction} {quality}")
+                )
             else:
-                extended_rows.append((name, ft_str, f"{bv:.2f}" if name == "Perplexity" else f"{bv:.4f}", f"{delta:+.4f} {direction} {quality}"))
+                extended_rows.append(
+                    (
+                        name,
+                        ft_str,
+                        f"{bv:.2f}" if name == "Perplexity" else f"{bv:.4f}",
+                        f"{delta:+.4f} {direction} {quality}",
+                    )
+                )
         rows = extended_rows
 
     # Print table
@@ -322,7 +348,9 @@ def main():
         print()
 
     # Save results
-    output_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "eval_results.json")
+    output_file = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "eval_results.json"
+    )
     with open(output_file, "w") as f:
         json.dump(all_results, f, indent=2, default=str)
     print(f"\n  Results saved to: {output_file}")
