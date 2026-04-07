@@ -11,7 +11,7 @@
 [INFO] Using tokenizer: Qwen/Qwen2.5-0.5B
   [DEBUG] Found model weights at ./checkpoint/pytorch_model.bin. Checking architecture...
 `torch_dtype` is deprecated! Use `dtype` instead!
-Loading weights:   0%|          | 0/291 [00:00<?, ?it/s]Loading weights: 100%|██████████| 291/291 [00:00<00:00, 31598.99it/s]
+Loading weights:   0%|          | 0/291 [00:00<?, ?it/s]Loading weights: 100%|██████████| 291/291 [00:00<00:00, 40293.90it/s]
   [OK] Checkpoint loaded - continuing training
   [OK] Gradient Checkpointing enabled
   Total parameters: 494,032,768
@@ -19,20 +19,20 @@
   [DEBUG] Initializing MeridianTrainer...
 [INFO] Gradient checkpointing enabled
 [INFO] Optimizer: Adafactor (low-memory)
-COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/meridian-ai/3ff39e0f6d6c4134a29bcfcb1c8df716
+COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/meridian-ai/b0315a030497495fb413caf082e65fa1
 
   [DEBUG] Restoration: Attempting to load trainer state from ./checkpoint...
   [DEBUG] Restoration: No trainer state found in ./checkpoint.
 
 ==================== STARTING TRAINING RUN #1 ====================
-  Start Time: 2026-04-06 22:12:29
+  Start Time: 2026-04-06 23:34:50
 
 ======================================================================
   MERIDIAN.AI TRAINING ENGINE
   Steps: 150 | BS: 2 | Accum: 4
   LR: 5e-05 | Global step: 0
   Parameters: 494,032,768 total | 494,032,768 trainable
-  Memory: 1.7GB / 16.8GB (10.2% used)
+  Memory: 1.7GB / 16.8GB (10.0% used)
 ======================================================================
 
   [OK] Loaded gbharti/finance-alpaca (weight: 0.4)
@@ -58,4 +58,32 @@ COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/m
   [OK] Loaded FinanceMTEB/TATQA (weight: 0.04)
   [OK] Loaded FinanceMTEB/synthetic_pii_finance_en (weight: 0.02)
 
-  [CASCADE CHECK] Initial Loss of this run: 3.1422
+  [CASCADE CHECK] Initial Loss of this run: 3.1436
+  Memory: 6.3GB / 16.8GB (37.6% used)
+  Step     5/150 | Global      5 | Loss: 2.5537 | LR: 2.50e-05 | Grad: 19.250 | Time: 429s | 17 tok/s
+  Memory: 6.5GB / 16.8GB (38.9% used)
+  Step    10/150 | Global     10 | Loss: 3.4406 | LR: 5.00e-05 | Grad: 38.750 | Time: 751s | 17 tok/s
+  Memory: 6.6GB / 16.8GB (39.3% used)
+  Step    15/150 | Global     15 | Loss: 3.0126 | LR: 4.99e-05 | Grad: 36.250 | Time: 1097s | 18 tok/s
+  Memory: 6.6GB / 16.8GB (39.5% used)
+  Step    20/150 | Global     20 | Loss: 2.6530 | LR: 4.94e-05 | Grad: 22.125 | Time: 1439s | 18 tok/s
+  Memory: 6.1GB / 16.8GB (36.3% used)
+  Step    25/150 | Global     25 | Loss: 3.0239 | LR: 4.88e-05 | Grad: 43.250 | Time: 1773s | 18 tok/s
+  Memory: 6.1GB / 16.8GB (36.1% used)
+  Step    30/150 | Global     30 | Loss: 2.7443 | LR: 4.78e-05 | Grad: 33.750 | Time: 2127s | 18 tok/s
+  Memory: 6.2GB / 16.8GB (36.7% used)
+  Step    35/150 | Global     35 | Loss: 2.9355 | LR: 4.66e-05 | Grad: 28.250 | Time: 2455s | 18 tok/s
+  Memory: 6.2GB / 16.8GB (36.7% used)
+  Step    40/150 | Global     40 | Loss: 2.6660 | LR: 4.52e-05 | Grad: 44.000 | Time: 2762s | 18 tok/s
+  Memory: 6.1GB / 16.8GB (36.7% used)
+  Step    45/150 | Global     45 | Loss: 2.9232 | LR: 4.35e-05 | Grad: 35.000 | Time: 3121s | 18 tok/s
+  Memory: 5.9GB / 16.8GB (34.9% used)
+  Step    50/150 | Global     50 | Loss: 3.4279 | LR: 4.16e-05 | Grad: 35.750 | Time: 3464s | 18 tok/s
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:00<00:00,  2.25it/s]Writing model shards: 100%|██████████| 1/1 [00:00<00:00,  2.25it/s]
+  [SAVE] Checkpoint (weights only, skipping 2GB optimizer) -> ./checkpoint
+  Memory: 5.8GB / 16.8GB (34.8% used)
+  Step    55/150 | Global     55 | Loss: 2.7420 | LR: 3.96e-05 | Grad: 42.500 | Time: 3796s | 18 tok/s
+  Memory: 5.8GB / 16.8GB (34.7% used)
+  Step    60/150 | Global     60 | Loss: 2.7366 | LR: 3.74e-05 | Grad: 24.125 | Time: 4169s | 18 tok/s
+  Memory: 5.9GB / 16.8GB (35.0% used)
+  Step    65/150 | Global     65 | Loss: 3.2650 | LR: 3.51e-05 | Grad: 43.750 | Time: 4526s | 18 tok/s
