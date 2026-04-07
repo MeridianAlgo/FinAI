@@ -68,6 +68,22 @@ def main():
     )
     print(f"[OK] Model seeded to {repo_id}")
 
+    # Upload model card
+    model_card_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "FinAI",
+        "README.md",
+    )
+    if os.path.exists(model_card_path):
+        api.upload_file(
+            path_or_fileobj=model_card_path,
+            path_in_repo="README.md",
+            repo_id=repo_id,
+            commit_message="Add model card",
+            token=token,
+        )
+        print(f"[OK] Model card uploaded to {repo_id}")
+
 
 if __name__ == "__main__":
     main()

@@ -251,19 +251,39 @@ jobs:
               exit(0)
 
           api = HfApi()
-          print('Uploading to meridianal/FinAI...')
+          token = os.getenv('HF_TOKEN')
+          repo_id = 'meridianal/FinAI'
+          print(f'Uploading checkpoint to {repo_id}...')
           try:
               api.upload_folder(
                   folder_path='./checkpoint',
-                  repo_id='meridianal/FinAI',
+                  repo_id=repo_id,
                   path_in_repo='checkpoint',
                   commit_message='Hourly training update [skip ci]',
-                  token=os.getenv('HF_TOKEN')
+                  token=token,
               )
-              print('Upload successful')
+              print('Checkpoint upload successful')
           except Exception as e:
-              print(f'Upload failed: {e}')
+              print(f'Checkpoint upload failed: {e}')
               exit(1)
+
+          # Upload model card to HF repo root
+          model_card_path = './FinAI/README.md'
+          if os.path.exists(model_card_path):
+              print('Uploading model card...')
+              try:
+                  api.upload_file(
+                      path_or_fileobj=model_card_path,
+                      path_in_repo='README.md',
+                      repo_id=repo_id,
+                      commit_message='Update model card [skip ci]',
+                      token=token,
+                  )
+                  print('Model card upload successful')
+              except Exception as e:
+                  print(f'Model card upload failed (non-fatal): {e}')
+          else:
+              print('No model card found at FinAI/README.md, skipping')
           "
 
       - name: Sync Dataset State

@@ -1,50 +1,111 @@
----
-license: mit
-base_model: Qwen/Qwen2.5-0.5B
-tags:
-  - finance
-  - language-model
-  - qwen2.5
-language:
-  - en
----
-
 # Meridian.AI
 
-Meridian.AI is an experimental finance-focused causal language model trained via continual updates on the Qwen2.5-0.5B architecture.
+A custom sparse Mixture-of-Experts language model continually trained on finance data. Runs automatically on GitHub Actions free runners — no GPU required.
 
-This repository is designed to run on commodity CPU hardware (including GitHub Actions runners) and continuously improve the model over time.
+**Model on Hugging Face:** [meridianal/FinAI](https://huggingface.co/meridianal/FinAI)
 
-## Intended use
+---
 
-Use this model for:
+## Architecture
 
-- Financial Q&A style prompting
-- Basic quantitative finance explanations
-- Summarization/classification-style finance text tasks
+Meridian.AI is built from scratch — not a fine-tune of an existing model.
 
-This model is intended for research and prototyping. It is not intended to provide financial advice.
+| Component | Detail |
+|---|---|
+| Type | Sparse Mixture-of-Experts (SMoE) |
+| Layers | 14 transformer layers (alternating dense / MoE) |
+| Attention | GQA — 12 query heads, 4 KV heads |
+| Experts | 8 per MoE layer, top-2 active per token |
+| Position encoding | RoPE (`theta=500k`) |
+| Activation | SwiGLU |
+| Normalisation | RMSNorm |
+| Finance feature | Numeracy encoding (64-dim learned embedding for numeric tokens) |
+| Continual learning | Elastic Weight Consolidation (EWC) |
+| Total params | ~479M (tied embeddings) / ~283M unique |
+| Tokenizer | Qwen2.5-0.5B (151k vocab) |
+| Context | 2048 tokens |
 
-## Base model + tokenizer
+---
 
-- **Base model weights**: `Qwen/Qwen2.5-0.5B`
-- **Tokenizer**: `Qwen/Qwen2.5-0.5B`
+## Repository Layout
 
-This repo uses the Qwen2.5 tokenizer, so `AutoTokenizer.from_pretrained("meridianal/FinAI", subfolder="checkpoint")` works.
+```
+FinAI/
+├── meridian/
+│   ├── model/
+│   │   ├── configuration.py     # MeridianConfig
+│   │   └── modeling.py          # MeridianForCausalLM
+│   ├── data/
+│   │   └── pipeline.py          # Finance dataset streaming
+│   └── training/
+│       └── trainer.py           # MeridianTrainer + EWC
+├── scripts/
+│   ├── seed_hf_repo.py          # Initialise HF repo with fresh weights
+│   ├── evaluate_model.py        # Run eval prompts
+│   └── ...
+├── train.py                     # Main training entry point
+├── requirements.txt
+├── .github/
+│   └── workflows/
+│       └── train.yml            # Hourly CI training workflow
+└── FinAI/
+    └── README.md                # HuggingFace model card
+```
 
-## Architecture overview
+---
 
-Meridian.AI is built on top of the Qwen2.5 transformer architecture:
+## How It Trains
 
-- **Dense routing**: High reasoning capabilities in a small 0.5B parameter footprint.
-- **Grouped Query Attention (GQA)**: reduces attention compute cost for fast generation.
-- **RoPE**: rotary positional embeddings for length extrapolation.
+Training runs automatically every hour via GitHub Actions:
 
-Even when a model is trained for finance, general text quality depends heavily on the base model and the stability of continual training.
+1. **Pull** — downloads the latest checkpoint from `meridianal/FinAI` on HuggingFace.
+2. **Train** — streams finance datasets, runs up to 150 gradient steps with EWC regularisation.
+3. **Upload** — pushes the updated checkpoint back to HuggingFace.
+4. **Sync** — commits dataset state and formatting changes back to this repo.
 
-## How to use (Transformers)
+The workflow is memory-safe: training halts and saves before hitting the ~14GB runner RAM ceiling. AdaFactor optimizer state is discarded before upload to keep checkpoint size manageable.
 
-The model weights are stored under the `checkpoint/` subfolder.
+---
+
+## Local Setup
+
+```bash
+git clone https://github.com/MeridianAlgo/FinAI.git
+cd FinAI
+pip install -r requirements.txt
+```
+
+### Quick smoke test
+
+```bash
+SMOKE_TEST=1 FAST_MODE=1 python train.py
+```
+
+### Full local training run
+
+```bash
+export HF_TOKEN=your_token_here
+python train.py
+```
+
+**Key environment variables:**
+
+| Variable | Default | Description |
+|---|---|---|
+| `MAX_STEPS` | 150 | Gradient steps per run |
+| `BATCH_SIZE` | 2 | Per-step batch size |
+| `GRAD_ACCUM` | 4 | Gradient accumulation steps |
+| `BLOCK_SIZE` | 256 | Sequence length |
+| `LEARNING_RATE` | 5e-5 | AdaFactor LR |
+| `USE_EWC` | 1 | Enable EWC regularisation |
+| `MAX_RAM_GB` | 13.0 | Hard RAM limit before emergency save |
+| `SKIP_OPTIMIZER_SAVE` | 1 | Drop optimizer state before saving |
+| `USE_LIGHT_DATASETS` | 0 | Use only small (<15MB) datasets |
+| `FAST_MODE` | 0 | Minimal settings for quick debugging |
+
+---
+
+## Using the Model
 
 ```python
 import torch
@@ -59,128 +120,48 @@ model = AutoModelForCausalLM.from_pretrained(
     trust_remote_code=True,
     torch_dtype=torch.float32,
     low_cpu_mem_usage=True,
-    ignore_mismatched_sizes=True,
 )
 model.eval()
 
 prompt = """### Instruction:
-Explain what a P/E ratio is and how it is used.
+What is the difference between a bond's yield and its coupon rate?
 
 ### Response:
 """
 
 inputs = tokenizer(prompt, return_tensors="pt")
-out = model.generate(
-    **inputs,
-    max_new_tokens=128,
-    do_sample=True,
-    temperature=0.85,
-    top_p=0.92,
-    repetition_penalty=1.25,
-    no_repeat_ngram_size=3,
-    pad_token_id=tokenizer.pad_token_id,
-    eos_token_id=tokenizer.eos_token_id,
-)
+with torch.no_grad():
+    out = model.generate(
+        **inputs,
+        max_new_tokens=200,
+        do_sample=True,
+        temperature=0.8,
+        top_p=0.92,
+        repetition_penalty=1.3,
+        no_repeat_ngram_size=3,
+        pad_token_id=tokenizer.pad_token_id,
+        eos_token_id=tokenizer.eos_token_id,
+    )
 
 print(tokenizer.decode(out[0], skip_special_tokens=True))
 ```
 
-### Generation tips (reduce repetition)
+---
 
-Because continual training can introduce repetition loops, start with:
+## CI Setup (GitHub Actions)
 
-- `repetition_penalty=1.2` to `1.4`
-- `no_repeat_ngram_size=3`
-- `temperature=0.7` to `0.95`
-- `top_p=0.85` to `0.95`
+Required repository secrets:
 
-If you see repeated tokens/phrases, increase `repetition_penalty` and decrease `temperature`.
+| Secret | Purpose |
+|---|---|
+| `HF_TOKEN` | HuggingFace write token for `meridianal/FinAI` |
+| `GH_PAT` | GitHub personal access token (for pushing commits) |
+| `COMET_API_KEY` | (Optional) CometML experiment tracking |
 
-## Training data
+The workflow runs hourly and can also be triggered manually from the Actions tab with optional `force_seed` (re-initialises the HF repo) and `max_steps` overrides.
 
-Training uses streaming mixes of finance datasets (FinanceMTEB family) plus optional larger corpora depending on environment configuration.
+---
 
-### Lightweight mode
+## Disclaimer
 
-To keep each dataset small (e.g. under ~15MB) and avoid large downloads, the code supports a light-datasets-only mode:
-
-- `USE_LIGHT_DATASETS=1`
-
-This uses a curated set of small FinanceMTEB datasets (sentiment, ESG, FOMC, fraud, complaints, small QA).
-
-### Formatting
-
-Instruction-style datasets are formatted as:
-
-```
-### Instruction:
-<instruction>
-
-### Response:
-<response><eos>
-```
-
-Classification datasets are converted into instruction/response examples with a label-only response.
-
-EOS tokens are appended to help the model learn when to stop generation.
-
-## Training on GitHub Actions (memory-safe)
-
-GitHub-hosted runners have limited RAM. The trainer supports the following environment variables:
-
-- `SKIP_OPTIMIZER_SAVE=1` (recommended): avoids saving the 2GB+ optimizer state.
-- `MAX_RAM_PCT=90` or `MAX_RAM_GB=14`: will save a weights-only checkpoint and stop before an OOM.
-
-If you enable gradient checkpointing, `use_cache` is automatically disabled.
-
-### Recommended Actions runner settings
-
-If you are using a 2-core / 16GB runner, a conservative starting point:
-
-- `BATCH_SIZE=1`
-- `GRAD_ACCUM=4`
-- `BLOCK_SIZE=128` to `256`
-- `LEARNING_RATE=1e-5`
-- `MAX_STEPS=20` to `50`
-
-If you still see OOMs, reduce `BLOCK_SIZE` first.
-
-### Checkpoint layout on the Hub
-
-This Hugging Face repo contains:
-
-- A `checkpoint/` folder with the latest model weights, tokenizer configs, and architecture.
-
-This means:
-
-- Tokenizer: `AutoTokenizer.from_pretrained("meridianal/FinAI", subfolder="checkpoint")`
-- Model: `AutoModelForCausalLM.from_pretrained("meridianal/FinAI", subfolder="checkpoint", ...)`
-
-## Evaluation
-
-If you want to track whether training is improving (and not collapsing), periodically run a fixed set of prompts and record:
-
-- Repetition rate (e.g. fraction of repeated 3-grams)
-- Numeric accuracy on a small set of math/finance questions
-- Qualitative Q&A quality
-
-The repo includes scripts to run basic prompt tests.
-
-## Limitations
-
-- This is a continually trained experimental model and may exhibit repetition.
-- Not financial advice.
-- Outputs may be incorrect or outdated.
-
-## Roadmap
-
-Potential next improvements:
-
-- Add stronger evaluation gates to prevent uploading collapsed checkpoints
-- Add curated finance instruction sets (filings, earnings calls, QA)
-- Improve chat formatting / system prompts
-- Add safe serialization and sharding options for faster uploads
-
-## Source code
-
-Training pipeline and scripts live in the GitHub repo: https://github.com/MeridianAlgo/FinAI
+Meridian.AI is an experimental research project. Outputs should not be used for real financial decisions. Not financial advice.
