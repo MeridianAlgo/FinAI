@@ -11,7 +11,7 @@
 [INFO] Using tokenizer: Qwen/Qwen2.5-0.5B
   [DEBUG] Found model weights at ./checkpoint/pytorch_model.bin. Checking architecture...
 `torch_dtype` is deprecated! Use `dtype` instead!
-Loading weights:   0%|          | 0/291 [00:00<?, ?it/s]Loading weights: 100%|██████████| 291/291 [00:00<00:00, 34152.51it/s]
+Loading weights:   0%|          | 0/291 [00:00<?, ?it/s]Loading weights: 100%|██████████| 291/291 [00:00<00:00, 30847.49it/s]
   [OK] Checkpoint loaded - continuing training
   [OK] Gradient Checkpointing enabled
   Total parameters: 494,032,768
@@ -19,20 +19,20 @@
   [DEBUG] Initializing MeridianTrainer...
 [INFO] Gradient checkpointing enabled
 [INFO] Optimizer: Adafactor (low-memory)
-COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/meridian-ai/f19f735a22144cdeb9357a1028c77bd5
+COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/meridian-ai/cc343796ab7747e3b8f600452e5579ca
 
   [DEBUG] Restoration: Attempting to load trainer state from ./checkpoint...
   [DEBUG] Restoration: No trainer state found in ./checkpoint.
 
 ==================== STARTING TRAINING RUN #1 ====================
-  Start Time: 2026-04-07 15:20:01
+  Start Time: 2026-04-07 17:12:15
 
 ======================================================================
   MERIDIAN.AI TRAINING ENGINE
   Steps: 150 | BS: 2 | Accum: 4
   LR: 5e-05 | Global step: 0
   Parameters: 494,032,768 total | 494,032,768 trainable
-  Memory: 1.7GB / 16.8GB (10.1% used)
+  Memory: 1.7GB / 16.8GB (10.3% used)
 ======================================================================
 
   [OK] Loaded gbharti/finance-alpaca (weight: 0.4)
