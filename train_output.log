@@ -11,7 +11,7 @@
 [INFO] Using tokenizer: Qwen/Qwen2.5-0.5B
   [DEBUG] Found model weights at ./checkpoint/pytorch_model.bin. Checking architecture...
 `torch_dtype` is deprecated! Use `dtype` instead!
-Loading weights:   0%|          | 0/291 [00:00<?, ?it/s]Loading weights: 100%|██████████| 291/291 [00:00<00:00, 34518.58it/s]
+Loading weights:   0%|          | 0/291 [00:00<?, ?it/s]Loading weights: 100%|██████████| 291/291 [00:00<00:00, 34152.51it/s]
   [OK] Checkpoint loaded - continuing training
   [OK] Gradient Checkpointing enabled
   Total parameters: 494,032,768
@@ -19,13 +19,13 @@
   [DEBUG] Initializing MeridianTrainer...
 [INFO] Gradient checkpointing enabled
 [INFO] Optimizer: Adafactor (low-memory)
-COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/meridian-ai/f6c6b34c8efe45509a1cf54f9cf70e2a
+COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/meridian-ai/f19f735a22144cdeb9357a1028c77bd5
 
   [DEBUG] Restoration: Attempting to load trainer state from ./checkpoint...
   [DEBUG] Restoration: No trainer state found in ./checkpoint.
 
 ==================== STARTING TRAINING RUN #1 ====================
-  Start Time: 2026-04-07 13:49:58
+  Start Time: 2026-04-07 15:20:01
 
 ======================================================================
   MERIDIAN.AI TRAINING ENGINE
