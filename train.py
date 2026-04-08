@@ -13,6 +13,9 @@ import os
 import time
 import traceback
 
+import signal
+import sys
+
 try:
     import comet_ml  # noqa: F401
 except Exception:
@@ -35,6 +38,12 @@ if os.name == "nt":
     except RuntimeError:
         pass
 
+
+def sigterm_handler(signum, frame):
+    print("\n[CRITICAL] Received SIGTERM! Triggering graceful shutdown...")
+    raise KeyboardInterrupt()
+
+signal.signal(signal.SIGTERM, sigterm_handler)
 
 def main():
     print("=" * 70)
