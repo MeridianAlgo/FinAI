@@ -10,11 +10,9 @@ Orchestrates:
 import json
 import multiprocessing
 import os
+import signal
 import time
 import traceback
-
-import signal
-import sys
 
 try:
     import comet_ml  # noqa: F401
@@ -43,7 +41,9 @@ def sigterm_handler(signum, frame):
     print("\n[CRITICAL] Received SIGTERM! Triggering graceful shutdown...")
     raise KeyboardInterrupt()
 
+
 signal.signal(signal.SIGTERM, sigterm_handler)
+
 
 def main():
     print("=" * 70)
