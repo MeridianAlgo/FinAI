@@ -334,7 +334,9 @@ def main():
         processed_items += items_processed  # Update for next loop
 
         print(f"\n  [INFO] Successfully processed {items_processed:,} data items in this run.")
-        print(f"  [INFO] Advancing global dataset index to {processed_items:,} for the next training session.")
+        print(
+            f"  [INFO] Advancing global dataset index to {processed_items:,} for the next training session."
+        )
 
         for sp in [state_path, os.path.join(checkpoint_path, "dataset_state.json")]:
             with open(sp, "w") as f:
