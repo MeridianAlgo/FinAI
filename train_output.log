@@ -5,16 +5,16 @@
 
 [MODE] Full Training — Hourly Continual Learning
 
-  Found state in ./checkpoint/dataset_state.json: 96
-  Found state in dataset_state.json: 96
-  Found state in dataset_state.json: 96
-  Resuming from maximum dataset index: 96
+  Found state in ./checkpoint/dataset_state.json: 128
+  Found state in dataset_state.json: 128
+  Found state in dataset_state.json: 128
+  Resuming from maximum dataset index: 128
 
 [INFO] Using base model: Qwen/Qwen2.5-0.5B
 [INFO] Using tokenizer: Qwen/Qwen2.5-0.5B
   [DEBUG] Found model weights at ./checkpoint/model.safetensors. Checking architecture...
 `torch_dtype` is deprecated! Use `dtype` instead!
-Loading weights:   0%|          | 0/290 [00:00<?, ?it/s]Loading weights: 100%|██████████| 290/290 [00:00<00:00, 4062.61it/s]
+Loading weights:   0%|          | 0/290 [00:00<?, ?it/s]Loading weights: 100%|██████████| 290/290 [00:00<00:00, 4006.47it/s]
   [OK] Checkpoint loaded - continuing training
   [OK] Gradient Checkpointing enabled
   Total parameters: 494,032,768
@@ -22,20 +22,20 @@
   [DEBUG] Initializing MeridianTrainer...
 [INFO] Gradient checkpointing enabled
 [INFO] Optimizer: Adafactor (low-memory)
-COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/meridian-ai/270b9cea09814544a98d376961a6bd89
+COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/meridian-ai/7e0c22bf838147afb4a141026b160c2b
 
   [DEBUG] Restoration: Attempting to load trainer state from ./checkpoint...
-  [OK] Trainer state restored (global step 112)
+  [OK] Trainer state restored (global step 116)
 
 ==================== STARTING TRAINING RUN #1 ====================
-  Start Time: 2026-04-09 07:51:20
+  Start Time: 2026-04-09 09:21:00
 
 ======================================================================
   MERIDIAN.AI TRAINING ENGINE
   Steps: 150 | BS: 1 | Accum: 8
-  LR: 5e-05 | Global step: 112
+  LR: 5e-05 | Global step: 116
   Parameters: 494,032,768 total | 494,032,768 trainable
-  Memory: 1.7GB / 16.8GB (9.9% used)
+  Memory: 1.6GB / 16.8GB (9.6% used)
 ======================================================================
 
   [OK] Loaded gbharti/finance-alpaca (weight: 0.4)
@@ -61,20 +61,116 @@ COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/m
   [OK] Loaded FinanceMTEB/TATQA (weight: 0.04)
   [OK] Loaded FinanceMTEB/synthetic_pii_finance_en (weight: 0.02)
 
-  [CASCADE CHECK] Initial Loss of this run: 3.3792
+  [CASCADE CHECK] Initial Loss of this run: 3.4934
+'The read operation timed out' thrown while requesting GET https://huggingface.co/datasets/FinanceMTEB/Complaints/resolve/6704122294b7693f5e544cdde1e4a3e80b291b76/data/test-00001-of-00002.parquet
+Retrying in 1s [Retry 1/5].
+'The read operation timed out' thrown while requesting GET https://huggingface.co/datasets/FinanceMTEB/Complaints/resolve/6704122294b7693f5e544cdde1e4a3e80b291b76/data/test-00001-of-00002.parquet
+Retrying in 2s [Retry 2/5].
+'The read operation timed out' thrown while requesting GET https://huggingface.co/datasets/FinanceMTEB/Complaints/resolve/6704122294b7693f5e544cdde1e4a3e80b291b76/data/test-00001-of-00002.parquet
+Retrying in 4s [Retry 3/5].
+'The read operation timed out' thrown while requesting GET https://huggingface.co/datasets/FinanceMTEB/Complaints/resolve/6704122294b7693f5e544cdde1e4a3e80b291b76/data/test-00001-of-00002.parquet
+Retrying in 8s [Retry 4/5].
+'The read operation timed out' thrown while requesting GET https://huggingface.co/datasets/FinanceMTEB/Complaints/resolve/6704122294b7693f5e544cdde1e4a3e80b291b76/data/test-00001-of-00002.parquet
+Retrying in 8s [Retry 5/5].
+HTTP Error 503 thrown while requesting GET https://huggingface.co/datasets/FinanceMTEB/Complaints/resolve/6704122294b7693f5e544cdde1e4a3e80b291b76/data/test-00001-of-00002.parquet
 
-[CRITICAL] Received SIGTERM! Triggering graceful shutdown...
+  ERROR during training: Server error '503 Service Unavailable' for url 'https://huggingface.co/datasets/FinanceMTEB/Complaints/resolve/6704122294b7693f5e544cdde1e4a3e80b291b76/data/test-00001-of-00002.parquet' (Request ID: Root=1-69d77f4f-4d327a8a6e98a37727dc41ff;b66f295f-fed8-4356-86fc-c95baea7fa6e)
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/503
 
-[INTERRUPT] Training stopped by user. Saving progress...
-Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.06s/it]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.06s/it]
+Internal Error - We're working hard to fix this as soon as possible!
+Traceback (most recent call last):
+  File "/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages/huggingface_hub/utils/_http.py", line 761, in hf_raise_for_status
+    response.raise_for_status()
+  File "/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages/httpx/_models.py", line 829, in raise_for_status
+    raise HTTPStatusError(message, request=request, response=self)
+httpx.HTTPStatusError: Server error '503 Service Unavailable' for url 'https://huggingface.co/datasets/FinanceMTEB/Complaints/resolve/6704122294b7693f5e544cdde1e4a3e80b291b76/data/test-00001-of-00002.parquet'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/503
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/runner/work/FinAI/FinAI/train.py", line 310, in main
+    trainer.train()
+  File "/home/runner/work/FinAI/FinAI/meridian/training/trainer.py", line 290, in train
+    batch = next(data_iter)
+            ^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages/torch/utils/data/dataloader.py", line 741, in __next__
+    data = self._next_data()
+           ^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages/torch/utils/data/dataloader.py", line 801, in _next_data
+    data = self._dataset_fetcher.fetch(index)  # may raise StopIteration
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages/torch/utils/data/_utils/fetch.py", line 35, in fetch
+    data.append(next(self.dataset_iter))
+                ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/FinAI/FinAI/meridian/data/pipeline.py", line 573, in stream
+    item = next(stream_iter)
+           ^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages/datasets/iterable_dataset.py", line 2690, in __iter__
+    for key, example in ex_iterable:
+  File "/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages/datasets/iterable_dataset.py", line 2227, in __iter__
+    for key, pa_table in self._iter_arrow():
+  File "/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages/datasets/iterable_dataset.py", line 2251, in _iter_arrow
+    for key, pa_table in self.ex_iterable._iter_arrow():
+  File "/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages/datasets/iterable_dataset.py", line 494, in _iter_arrow
+    for key, pa_table in iterator:
+  File "/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages/datasets/iterable_dataset.py", line 1912, in _iter_arrow
+    for key, pa_table in self.ex_iterable.iter_arrow():
+  File "/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages/datasets/iterable_dataset.py", line 384, in _iter_arrow
+    for key, pa_table in self.generate_tables_fn(**gen_kwags):
+  File "/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages/datasets/packaged_modules/parquet/parquet.py", line 196, in _generate_tables
+    for batch_idx, record_batch in enumerate(
+  File "pyarrow/_dataset.pyx", line 3934, in _iterator
+  File "pyarrow/_dataset.pyx", line 3524, in pyarrow._dataset.TaggedRecordBatchIterator.__next__
+  File "pyarrow/error.pxi", line 155, in pyarrow.lib.pyarrow_internal_check_status
+  File "pyarrow/error.pxi", line 89, in pyarrow.lib.check_status
+  File "/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages/datasets/utils/file_utils.py", line 844, in read_with_retries
+    out = read(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages/huggingface_hub/hf_file_system.py", line 1269, in read
+    return super().read(length)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages/fsspec/spec.py", line 2122, in read
+    out = self.cache._fetch(self.loc, self.loc + length)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages/fsspec/caching.py", line 279, in _fetch
+    self.cache = self.fetcher(start, end)  # new block replaces old
+                 ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages/huggingface_hub/hf_file_system.py", line 1225, in _fetch_range
+    r = http_backoff("GET", url, headers=headers, timeout=constants.HF_HUB_DOWNLOAD_TIMEOUT)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages/huggingface_hub/utils/_http.py", line 559, in http_backoff
+    return next(
+           ^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages/huggingface_hub/utils/_http.py", line 468, in _http_backoff_base
+    if not _should_retry(response):
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages/huggingface_hub/utils/_http.py", line 448, in _should_retry
+    hf_raise_for_status(response)  # Will raise uncaught exception
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages/huggingface_hub/utils/_http.py", line 889, in hf_raise_for_status
+    raise _format(HfHubHTTPError, str(e), response) from e
+huggingface_hub.errors.HfHubHTTPError: Server error '503 Service Unavailable' for url 'https://huggingface.co/datasets/FinanceMTEB/Complaints/resolve/6704122294b7693f5e544cdde1e4a3e80b291b76/data/test-00001-of-00002.parquet' (Request ID: Root=1-69d77f4f-4d327a8a6e98a37727dc41ff;b66f295f-fed8-4356-86fc-c95baea7fa6e)
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/503
+
+Internal Error - We're working hard to fix this as soon as possible!
+
+  Saving checkpoint to ./checkpoint...
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:01<00:00,  1.97s/it]Writing model shards: 100%|██████████| 1/1 [00:01<00:00,  1.97s/it]
   [SAVE] Checkpoint (weights only, skipping 2GB optimizer) -> ./checkpoint
+
+  [INFO] Successfully processed 24 data items in this run.
+  [INFO] Advancing global dataset index to 152 for the next training session.
+  [OK] Dataset state saved (total processed: 152)
+
+  TRAINING RUN #1 COMPLETE.
 COMET INFO: ---------------------------------------------------------------------------------------
 COMET INFO: Comet.ml Experiment Summary
 COMET INFO: ---------------------------------------------------------------------------------------
 COMET INFO:   Data:
 COMET INFO:     display_summary_level : 1
 COMET INFO:     name                  : hourly-train
-COMET INFO:     url                   : https://www.comet.com/meridianalgo/meridian-ai/270b9cea09814544a98d376961a6bd89
+COMET INFO:     url                   : https://www.comet.com/meridianalgo/meridian-ai/7e0c22bf838147afb4a141026b160c2b
 COMET INFO:   Others:
 COMET INFO:     Name : hourly-train
 COMET INFO:   Parameters:
@@ -93,13 +189,3 @@ COMET INFO:     model graph              : 1
 COMET INFO:     os packages              : 1
 COMET INFO:     source_code              : 2 (38.07 KB)
 COMET INFO: 
-
-  Saving checkpoint to ./checkpoint...
-Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.02s/it]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.02s/it]
-  [SAVE] Checkpoint (weights only, skipping 2GB optimizer) -> ./checkpoint
-
-  [INFO] Successfully processed 32 data items in this run.
-  [INFO] Advancing global dataset index to 128 for the next training session.
-  [OK] Dataset state saved (total processed: 128)
-
-  TRAINING RUN #1 COMPLETE.
