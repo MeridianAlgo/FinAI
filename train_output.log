@@ -5,13 +5,16 @@
 
 [MODE] Full Training — Hourly Continual Learning
 
-  No dataset state found, starting from 0.
+  Found state in ./checkpoint/dataset_state.json: 32
+  Found state in dataset_state.json: 32
+  Found state in dataset_state.json: 32
+  Resuming from maximum dataset index: 32
 
 [INFO] Using base model: Qwen/Qwen2.5-0.5B
 [INFO] Using tokenizer: Qwen/Qwen2.5-0.5B
   [DEBUG] Found model weights at ./checkpoint/model.safetensors. Checking architecture...
 `torch_dtype` is deprecated! Use `dtype` instead!
-Loading weights:   0%|          | 0/290 [00:00<?, ?it/s]Loading weights: 100%|██████████| 290/290 [00:00<00:00, 4369.43it/s]
+Loading weights:   0%|          | 0/290 [00:00<?, ?it/s]Loading weights: 100%|██████████| 290/290 [00:00<00:00, 8814.24it/s]
   [OK] Checkpoint loaded - continuing training
   [OK] Gradient Checkpointing enabled
   Total parameters: 494,032,768
@@ -19,33 +22,27 @@
   [DEBUG] Initializing MeridianTrainer...
 [INFO] Gradient checkpointing enabled
 [INFO] Optimizer: Adafactor (low-memory)
-COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/meridian-ai/374ea28e345d449db5249b29552bee60
+COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/meridian-ai/2f9a186909db4f2fafaa50f041fda85e
 
   [DEBUG] Restoration: Attempting to load trainer state from ./checkpoint...
-  [OK] Trainer state restored (global step 100)
+  [OK] Trainer state restored (global step 104)
 
 ==================== STARTING TRAINING RUN #1 ====================
-  Start Time: 2026-04-09 01:04:09
+  Start Time: 2026-04-09 02:57:54
 
 ======================================================================
   MERIDIAN.AI TRAINING ENGINE
   Steps: 150 | BS: 1 | Accum: 8
-  LR: 5e-05 | Global step: 100
+  LR: 5e-05 | Global step: 104
   Parameters: 494,032,768 total | 494,032,768 trainable
-  Memory: 1.6GB / 16.8GB (9.8% used)
+  Memory: 1.6GB / 16.8GB (9.6% used)
 ======================================================================
 
   [OK] Loaded gbharti/finance-alpaca (weight: 0.4)
   [OK] Loaded yahma/alpaca-cleaned (weight: 0.2)
   [OK] Loaded FinanceMTEB/financial_phrasebank (weight: 0.06)
   [OK] Loaded FinanceMTEB/FinSent (weight: 0.06)
-  Retry 1 for FinanceMTEB/OpenFinDataSentiment: Server error '500 Internal Server Error' for url 'https://huggingface.co/api/datasets/FinanceMTEB/OpenFinDataSentiment/tree/3494bbd2c652c8e1f021f7e60e9ab79faeec257b/data?recursive=true&expand=false' (Request ID: Root=1-69d6e7bf-5d5cfa083dd6e8cf0f671891;b419964d-9021-4ca8-87c8-54baa7bf07f4)
-For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/500
-
-Internal Error - We're working hard to fix this as soon as possible!
   [OK] Loaded FinanceMTEB/OpenFinDataSentiment (weight: 0.06)
-  Retry 1 for FinanceMTEB/FiQA_ABSA: The read operation timed out
-  Retry 2 for FinanceMTEB/FiQA_ABSA: The read operation timed out
   [OK] Loaded FinanceMTEB/FiQA_ABSA (weight: 0.05)
   [OK] Loaded FinanceMTEB/SemEva2017_Headline (weight: 0.05)
   [OK] Loaded FinanceMTEB/FinancialFraud (weight: 0.05)
@@ -56,8 +53,6 @@ Internal Error - We're working hard to fix this as soon as possible!
   [OK] Loaded FinanceMTEB/FinFE (weight: 0.04)
   [OK] Loaded FinanceMTEB/FinEvaSentiment (weight: 0.05)
   [OK] Loaded FinanceMTEB/FinChinaSentiment (weight: 0.04)
-  Retry 1 for FinanceMTEB/TradeTheEventNews: The read operation timed out
-  Retry 2 for FinanceMTEB/TradeTheEventNews: The read operation timed out
   [OK] Loaded FinanceMTEB/TradeTheEventNews (weight: 0.03)
   [OK] Loaded FinanceMTEB/TradeTheEventEncyclopedia (weight: 0.03)
   [OK] Loaded FinanceMTEB/AlphaFin (weight: 0.03)
@@ -66,12 +61,12 @@ Internal Error - We're working hard to fix this as soon as possible!
   [OK] Loaded FinanceMTEB/TATQA (weight: 0.04)
   [OK] Loaded FinanceMTEB/synthetic_pii_finance_en (weight: 0.02)
 
-  [CASCADE CHECK] Initial Loss of this run: 3.1157
+  [CASCADE CHECK] Initial Loss of this run: 3.3090
 
 [CRITICAL] Received SIGTERM! Triggering graceful shutdown...
 
 [INTERRUPT] Training stopped by user. Saving progress...
-Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.10s/it]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.10s/it]
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.14s/it]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.14s/it]
   [SAVE] Checkpoint (weights only, skipping 2GB optimizer) -> ./checkpoint
 COMET INFO: ---------------------------------------------------------------------------------------
 COMET INFO: Comet.ml Experiment Summary
@@ -79,7 +74,7 @@ COMET INFO: --------------------------------------------------------------------
 COMET INFO:   Data:
 COMET INFO:     display_summary_level : 1
 COMET INFO:     name                  : hourly-train
-COMET INFO:     url                   : https://www.comet.com/meridianalgo/meridian-ai/374ea28e345d449db5249b29552bee60
+COMET INFO:     url                   : https://www.comet.com/meridianalgo/meridian-ai/2f9a186909db4f2fafaa50f041fda85e
 COMET INFO:   Others:
 COMET INFO:     Name : hourly-train
 COMET INFO:   Parameters:
@@ -92,7 +87,7 @@ COMET INFO:   Uploads:
 COMET INFO:     environment details      : 1
 COMET INFO:     filename                 : 1
 COMET INFO:     git metadata             : 1
-COMET INFO:     git-patch (uncompressed) : 1 (2.78 KB)
+COMET INFO:     git-patch (uncompressed) : 1 (6.31 KB)
 COMET INFO:     installed packages       : 1
 COMET INFO:     model graph              : 1
 COMET INFO:     os packages              : 1
@@ -100,11 +95,11 @@ COMET INFO:     source_code              : 2 (38.07 KB)
 COMET INFO: 
 
   Saving checkpoint to ./checkpoint...
-Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:01<00:00,  1.98s/it]Writing model shards: 100%|██████████| 1/1 [00:01<00:00,  1.98s/it]
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.05s/it]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.05s/it]
   [SAVE] Checkpoint (weights only, skipping 2GB optimizer) -> ./checkpoint
 
   [INFO] Successfully processed 32 data items in this run.
-  [INFO] Advancing global dataset index to 32 for the next training session.
-  [OK] Dataset state saved (total processed: 32)
+  [INFO] Advancing global dataset index to 64 for the next training session.
+  [OK] Dataset state saved (total processed: 64)
 
   TRAINING RUN #1 COMPLETE.
