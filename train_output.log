@@ -5,16 +5,16 @@
 
 [MODE] Full Training — Hourly Continual Learning
 
-  Found state in ./checkpoint/dataset_state.json: 2536
+  Found state in ./checkpoint/dataset_state.json: 2568
   Found state in dataset_state.json: 2536
   Found state in dataset_state.json: 2536
-  Resuming from maximum dataset index: 2536
+  Resuming from maximum dataset index: 2568
 
 [INFO] Using base model: Qwen/Qwen2.5-0.5B
 [INFO] Using tokenizer: Qwen/Qwen2.5-0.5B
   [DEBUG] Found model weights at ./checkpoint/model.safetensors. Checking architecture...
 `torch_dtype` is deprecated! Use `dtype` instead!
-Loading weights:   0%|          | 0/290 [00:00<?, ?it/s]Loading weights: 100%|██████████| 290/290 [00:00<00:00, 4112.40it/s]
+Loading weights:   0%|          | 0/290 [00:00<?, ?it/s]Loading weights: 100%|██████████| 290/290 [00:00<00:00, 4418.42it/s]
   [OK] Checkpoint loaded - continuing training
   [OK] Gradient Checkpointing enabled
   Total parameters: 494,032,768
@@ -22,20 +22,20 @@
   [DEBUG] Initializing MeridianTrainer...
 [INFO] Gradient checkpointing enabled
 [INFO] Optimizer: Adafactor (low-memory)
-COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/meridian-ai/47084bd556aa4b75a7135ba504e2535e
+COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/meridian-ai/de0838474d7b44449dd8db78c650cd8d
 
   [DEBUG] Restoration: Attempting to load trainer state from ./checkpoint...
-  [OK] Trainer state restored (global step 414)
+  [OK] Trainer state restored (global step 418)
 
 ==================== STARTING TRAINING RUN #1 ====================
-  Start Time: 2026-04-10 17:54:34
+  Start Time: 2026-04-10 19:17:11
 
 ======================================================================
   MERIDIAN.AI TRAINING ENGINE
   Steps: 150 | BS: 1 | Accum: 8
-  LR: 5e-05 | Global step: 414
+  LR: 5e-05 | Global step: 418
   Parameters: 494,032,768 total | 494,032,768 trainable
-  Memory: 1.7GB / 16.8GB (9.8% used)
+  Memory: 1.6GB / 16.8GB (9.6% used)
 ======================================================================
 
   [OK] Loaded gbharti/finance-alpaca (weight: 0.4)
@@ -61,12 +61,12 @@ COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/m
   [OK] Loaded FinanceMTEB/TATQA (weight: 0.04)
   [OK] Loaded FinanceMTEB/synthetic_pii_finance_en (weight: 0.02)
 
-  [CASCADE CHECK] Initial Loss of this run: 3.2981
+  [CASCADE CHECK] Initial Loss of this run: 3.1090
 
 [CRITICAL] Received SIGTERM! Triggering graceful shutdown...
 
 [INTERRUPT] Training stopped by user. Saving progress...
-Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.16s/it]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.16s/it]
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.08s/it]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.08s/it]
   [SAVE] Checkpoint (weights only, skipping 2GB optimizer) -> ./checkpoint
 COMET INFO: ---------------------------------------------------------------------------------------
 COMET INFO: Comet.ml Experiment Summary
@@ -74,7 +74,7 @@ COMET INFO: --------------------------------------------------------------------
 COMET INFO:   Data:
 COMET INFO:     display_summary_level : 1
 COMET INFO:     name                  : hourly-train
-COMET INFO:     url                   : https://www.comet.com/meridianalgo/meridian-ai/47084bd556aa4b75a7135ba504e2535e
+COMET INFO:     url                   : https://www.comet.com/meridianalgo/meridian-ai/de0838474d7b44449dd8db78c650cd8d
 COMET INFO:   Others:
 COMET INFO:     Name : hourly-train
 COMET INFO:   Parameters:
@@ -99,7 +99,7 @@ COMET INFO:
   [SAVE] Checkpoint (weights only, skipping 2GB optimizer) -> ./checkpoint
 
   [INFO] Successfully processed 32 data items in this run.
-  [INFO] Advancing global dataset index to 2,568 for the next training session.
-  [OK] Dataset state saved (total processed: 2,568)
+  [INFO] Advancing global dataset index to 2,600 for the next training session.
+  [OK] Dataset state saved (total processed: 2,600)
 
   TRAINING RUN #1 COMPLETE.
