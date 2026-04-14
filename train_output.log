@@ -5,112 +5,51 @@
 
 [MODE] Full Training — Hourly Continual Learning
 
-  Found state in ./checkpoint/dataset_state.json: 5536
-  Found state in dataset_state.json: 5512
-  Found state in dataset_state.json: 5512
-  Resuming from maximum dataset index: 5536
+  Found state in ./checkpoint/dataset_state.json: 5568
+  Found state in dataset_state.json: 5568
+  Found state in dataset_state.json: 5568
+  Resuming from maximum dataset index: 5568
 
 [INFO] Using base model: Qwen/Qwen2.5-0.5B
 [INFO] Using tokenizer: Qwen/Qwen2.5-0.5B
   [DEBUG] Found model weights at ./checkpoint/model.safetensors. Checking architecture...
 `torch_dtype` is deprecated! Use `dtype` instead!
-Loading weights:   0%|          | 0/290 [00:00<?, ?it/s]Loading weights: 100%|██████████| 290/290 [00:00<00:00, 4506.70it/s]
+Loading weights:   0%|          | 0/290 [00:00<?, ?it/s]Loading weights: 100%|██████████| 290/290 [00:00<00:00, 4147.48it/s]
   [OK] Checkpoint loaded - continuing training
   [OK] Gradient Checkpointing enabled
   Total parameters: 494,032,768
   Loading tokenizer from Qwen/Qwen2.5-0.5B...
-HTTP Error 503 thrown while requesting HEAD https://huggingface.co/Qwen/Qwen2.5-0.5B/resolve/main/config.json
-Retrying in 1s [Retry 1/5].
-HTTP Error 503 thrown while requesting HEAD https://huggingface.co/Qwen/Qwen2.5-0.5B/resolve/main/config.json
-Retrying in 2s [Retry 2/5].
-HTTP Error 503 thrown while requesting HEAD https://huggingface.co/Qwen/Qwen2.5-0.5B/resolve/main/config.json
-Retrying in 4s [Retry 3/5].
-HTTP Error 503 thrown while requesting HEAD https://huggingface.co/Qwen/Qwen2.5-0.5B/resolve/main/config.json
-Retrying in 8s [Retry 4/5].
-HTTP Error 503 thrown while requesting HEAD https://huggingface.co/Qwen/Qwen2.5-0.5B/resolve/main/config.json
-Retrying in 8s [Retry 5/5].
-HTTP Error 504 thrown while requesting HEAD https://huggingface.co/Qwen/Qwen2.5-0.5B/resolve/main/config.json
-HTTP Error 504 thrown while requesting HEAD https://huggingface.co/Qwen/Qwen2.5-0.5B/resolve/main/config.json
-Retrying in 1s [Retry 1/5].
-HTTP Error 504 thrown while requesting HEAD https://huggingface.co/Qwen/Qwen2.5-0.5B/resolve/main/config.json
-Retrying in 2s [Retry 2/5].
-HTTP Error 504 thrown while requesting HEAD https://huggingface.co/Qwen/Qwen2.5-0.5B/resolve/main/config.json
-Retrying in 4s [Retry 3/5].
-HTTP Error 504 thrown while requesting HEAD https://huggingface.co/Qwen/Qwen2.5-0.5B/resolve/main/config.json
-Retrying in 8s [Retry 4/5].
-You are using a model of type `qwen2` to instantiate a model of type ``. This may be expected if you are loading a checkpoint that shares a subset of the architecture (e.g., loading a `sam2_video` checkpoint into `Sam2Model`), but is otherwise not supported and can yield errors. Please verify that the checkpoint is compatible with the model you are instantiating.
-HTTP Error 504 thrown while requesting HEAD https://huggingface.co/Qwen/Qwen2.5-0.5B/resolve/main/tokenizer_config.json
-Retrying in 1s [Retry 1/5].
-HTTP Error 504 thrown while requesting HEAD https://huggingface.co/Qwen/Qwen2.5-0.5B/resolve/main/tokenizer_config.json
-Retrying in 2s [Retry 2/5].
-HTTP Error 504 thrown while requesting HEAD https://huggingface.co/Qwen/Qwen2.5-0.5B/resolve/main/tokenizer_config.json
-Retrying in 4s [Retry 3/5].
-HTTP Error 503 thrown while requesting HEAD https://huggingface.co/Qwen/Qwen2.5-0.5B/resolve/main/tokenizer_config.json
-Retrying in 8s [Retry 4/5].
-HTTP Error 503 thrown while requesting HEAD https://huggingface.co/Qwen/Qwen2.5-0.5B/resolve/main/tokenizer_config.json
-Retrying in 8s [Retry 5/5].
-HTTP Error 504 thrown while requesting HEAD https://huggingface.co/Qwen/Qwen2.5-0.5B/resolve/main/tokenizer_config.json
   [DEBUG] Initializing MeridianTrainer...
 [INFO] Gradient checkpointing enabled
 [INFO] Optimizer: Adafactor (low-memory)
-COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/meridian-ai/78e7d2b4c59d4c6ab160e4cd0e60d924
+COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/meridian-ai/436f262e448e42d89d981dbd3aa00578
 
   [DEBUG] Restoration: Attempting to load trainer state from ./checkpoint...
-  [OK] Trainer state restored (global step 789)
+  [OK] Trainer state restored (global step 793)
 
 ==================== STARTING TRAINING RUN #1 ====================
-  Start Time: 2026-04-14 16:19:24
+  Start Time: 2026-04-14 18:12:42
 
 ======================================================================
   MERIDIAN.AI TRAINING ENGINE
   Steps: 150 | BS: 1 | Accum: 8
-  LR: 5e-05 | Global step: 789
+  LR: 5e-05 | Global step: 793
   Parameters: 494,032,768 total | 494,032,768 trainable
-  Memory: 1.6GB / 16.8GB (9.8% used)
+  Memory: 1.7GB / 16.8GB (9.9% used)
 ======================================================================
 
-HTTP Error 504 thrown while requesting HEAD https://huggingface.co/datasets/gbharti/finance-alpaca/resolve/main/README.md
-Retrying in 1s [Retry 1/5].
-HTTP Error 504 thrown while requesting HEAD https://huggingface.co/datasets/gbharti/finance-alpaca/resolve/main/README.md
-Retrying in 2s [Retry 2/5].
-HTTP Error 504 thrown while requesting HEAD https://huggingface.co/datasets/gbharti/finance-alpaca/resolve/c88d3d5e7e2c7cab9f11a56f27bd5ba3ed68f075/dataset_infos.json
-Retrying in 1s [Retry 1/5].
   [OK] Loaded gbharti/finance-alpaca (weight: 0.4)
-HTTP Error 504 thrown while requesting HEAD https://huggingface.co/datasets/yahma/alpaca-cleaned/resolve/12567cabf869d7c92e573c7c783905fc160e9639/dataset_infos.json
-Retrying in 1s [Retry 1/5].
   [OK] Loaded yahma/alpaca-cleaned (weight: 0.2)
-HTTP Error 504 thrown while requesting HEAD https://huggingface.co/datasets/FinanceMTEB/financial_phrasebank/resolve/main/README.md
-Retrying in 1s [Retry 1/5].
-HTTP Error 502 thrown while requesting HEAD https://huggingface.co/datasets/FinanceMTEB/financial_phrasebank/resolve/main/README.md
-Retrying in 2s [Retry 2/5].
   [OK] Loaded FinanceMTEB/financial_phrasebank (weight: 0.06)
-HTTP Error 504 thrown while requesting HEAD https://huggingface.co/datasets/FinanceMTEB/FinSent/resolve/main/README.md
-Retrying in 1s [Retry 1/5].
-HTTP Error 504 thrown while requesting HEAD https://huggingface.co/datasets/FinanceMTEB/FinSent/resolve/main/README.md
-Retrying in 2s [Retry 2/5].
   [OK] Loaded FinanceMTEB/FinSent (weight: 0.06)
   [OK] Loaded FinanceMTEB/OpenFinDataSentiment (weight: 0.06)
   [OK] Loaded FinanceMTEB/FiQA_ABSA (weight: 0.05)
   [OK] Loaded FinanceMTEB/SemEva2017_Headline (weight: 0.05)
   [OK] Loaded FinanceMTEB/FinancialFraud (weight: 0.05)
-HTTP Error 503 thrown while requesting HEAD https://huggingface.co/datasets/FinanceMTEB/Complaints/resolve/6704122294b7693f5e544cdde1e4a3e80b291b76/.huggingface.yaml
-Retrying in 1s [Retry 1/5].
   [OK] Loaded FinanceMTEB/Complaints (weight: 0.05)
-HTTP Error 504 thrown while requesting HEAD https://huggingface.co/datasets/FinanceMTEB/FOMC/resolve/cdaf1306a24bc5e7441c7c871343efdf4c721bc2/dataset_infos.json
-Retrying in 1s [Retry 1/5].
   [OK] Loaded FinanceMTEB/FOMC (weight: 0.04)
   [OK] Loaded FinanceMTEB/ESG (weight: 0.04)
-HTTP Error 503 thrown while requesting HEAD https://huggingface.co/datasets/FinanceMTEB/FLS/resolve/main/README.md
-Retrying in 1s [Retry 1/5].
-HTTP Error 503 thrown while requesting HEAD https://huggingface.co/datasets/FinanceMTEB/FLS/resolve/main/README.md
-Retrying in 2s [Retry 2/5].
-HTTP Error 504 thrown while requesting HEAD https://huggingface.co/datasets/FinanceMTEB/FLS/resolve/39b6719f1d7197df4498fea9fce20d4ad782a083/dataset_infos.json
-Retrying in 1s [Retry 1/5].
-HTTP Error 504 thrown while requesting HEAD https://huggingface.co/datasets/FinanceMTEB/FLS/resolve/39b6719f1d7197df4498fea9fce20d4ad782a083/dataset_infos.json
-Retrying in 2s [Retry 2/5].
   [OK] Loaded FinanceMTEB/FLS (weight: 0.04)
-HTTP Error 504 thrown while requesting HEAD https://huggingface.co/datasets/FinanceMTEB/FinFE/resolve/01034e2afdce0f7fa9a51a03aa0fdc1e3d576b05/dataset_infos.json
-Retrying in 1s [Retry 1/5].
   [OK] Loaded FinanceMTEB/FinFE (weight: 0.04)
   [OK] Loaded FinanceMTEB/FinEvaSentiment (weight: 0.05)
   [OK] Loaded FinanceMTEB/FinChinaSentiment (weight: 0.04)
@@ -122,12 +61,12 @@ Retrying in 1s [Retry 1/5].
   [OK] Loaded FinanceMTEB/TATQA (weight: 0.04)
   [OK] Loaded FinanceMTEB/synthetic_pii_finance_en (weight: 0.02)
 
-  [CASCADE CHECK] Initial Loss of this run: 2.5108
+  [CASCADE CHECK] Initial Loss of this run: 2.6250
 
 [CRITICAL] Received SIGTERM! Triggering graceful shutdown...
 
 [INTERRUPT] Training stopped by user. Saving progress...
-Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.11s/it]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.11s/it]
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.05s/it]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.05s/it]
   [SAVE] Checkpoint (weights only, skipping 2GB optimizer) -> ./checkpoint
 COMET INFO: ---------------------------------------------------------------------------------------
 COMET INFO: Comet.ml Experiment Summary
@@ -135,7 +74,7 @@ COMET INFO: --------------------------------------------------------------------
 COMET INFO:   Data:
 COMET INFO:     display_summary_level : 1
 COMET INFO:     name                  : hourly-train
-COMET INFO:     url                   : https://www.comet.com/meridianalgo/meridian-ai/78e7d2b4c59d4c6ab160e4cd0e60d924
+COMET INFO:     url                   : https://www.comet.com/meridianalgo/meridian-ai/436f262e448e42d89d981dbd3aa00578
 COMET INFO:   Others:
 COMET INFO:     Name : hourly-train
 COMET INFO:   Parameters:
@@ -148,7 +87,7 @@ COMET INFO:   Uploads:
 COMET INFO:     environment details      : 1
 COMET INFO:     filename                 : 1
 COMET INFO:     git metadata             : 1
-COMET INFO:     git-patch (uncompressed) : 1 (8.27 KB)
+COMET INFO:     git-patch (uncompressed) : 1 (10.78 KB)
 COMET INFO:     installed packages       : 1
 COMET INFO:     model graph              : 1
 COMET INFO:     os packages              : 1
@@ -156,11 +95,11 @@ COMET INFO:     source_code              : 2 (38.07 KB)
 COMET INFO: 
 
   Saving checkpoint to ./checkpoint...
-Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.00s/it]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.00s/it]
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.01s/it]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.01s/it]
   [SAVE] Checkpoint (weights only, skipping 2GB optimizer) -> ./checkpoint
 
   [INFO] Successfully processed 32 data items in this run.
-  [INFO] Advancing global dataset index to 5,568 for the next training session.
-  [OK] Dataset state saved (total processed: 5,568)
+  [INFO] Advancing global dataset index to 5,600 for the next training session.
+  [OK] Dataset state saved (total processed: 5,600)
 
   TRAINING RUN #1 COMPLETE.
