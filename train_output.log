@@ -5,16 +5,16 @@
 
 [MODE] Full Training — Hourly Continual Learning
 
-  Found state in ./checkpoint/dataset_state.json: 12728
-  Found state in dataset_state.json: 12728
-  Found state in dataset_state.json: 12728
-  Resuming from maximum dataset index: 12728
+  Found state in ./checkpoint/dataset_state.json: 13352
+  Found state in dataset_state.json: 13352
+  Found state in dataset_state.json: 13352
+  Resuming from maximum dataset index: 13352
 
 [INFO] Using base model: Qwen/Qwen2.5-0.5B
 [INFO] Using tokenizer: Qwen/Qwen2.5-0.5B
   [DEBUG] Found model weights at ./checkpoint/model.safetensors. Checking architecture...
 `torch_dtype` is deprecated! Use `dtype` instead!
-Loading weights:   0%|          | 0/290 [00:00<?, ?it/s]Loading weights: 100%|██████████| 290/290 [00:00<00:00, 4360.97it/s]
+Loading weights:   0%|          | 0/290 [00:00<?, ?it/s]Loading weights: 100%|██████████| 290/290 [00:00<00:00, 4304.61it/s]
   [OK] Checkpoint loaded - continuing training
   [OK] Gradient Checkpointing enabled
   Total parameters: 494,032,768
@@ -23,20 +23,20 @@
 [INFO] Gradient checkpointing enabled
 [INFO] Optimizer: Adafactor (low-memory)
 [OK] Loaded EWC state from previous run
-COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/meridian-ai/2a0952c77aec4b34bafa306085861c69
+COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/meridian-ai/8ffa23abe8864d009f02763166cb48ec
 
   [DEBUG] Restoration: Attempting to load trainer state from ./checkpoint...
-  [OK] Trainer state restored (global step 1688)
+  [OK] Trainer state restored (global step 1766)
 
 ==================== STARTING TRAINING RUN #1 ====================
-  Start Time: 2026-04-20 06:24:30
+  Start Time: 2026-04-20 09:13:44
 
 ======================================================================
   MERIDIAN.AI TRAINING ENGINE
   Steps: 150 | BS: 1 | Accum: 8
-  LR: 5e-05 | Global step: 1688
+  LR: 5e-05 | Global step: 1766
   Parameters: 494,032,768 total | 494,032,768 trainable
-  Memory: 3.6GB / 16.8GB (21.2% used)
+  Memory: 3.5GB / 16.8GB (21.1% used)
 ======================================================================
 
   [OK] Loaded gbharti/finance-alpaca (weight: 0.4)
@@ -62,44 +62,14 @@ COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/m
   [OK] Loaded FinanceMTEB/TATQA (weight: 0.04)
   [OK] Loaded FinanceMTEB/synthetic_pii_finance_en (weight: 0.02)
 
-  [CASCADE CHECK] Initial Loss of this run: 3.0871
-  Memory: 7.8GB / 16.8GB (46.6% used)
-  Step     5/150 | Global   1693 | Loss: 2.3505 | LR: 2.50e-05 | Grad: 21.750 | Time: 376s | 15 tok/s
-  Memory: 8.0GB / 16.8GB (47.5% used)
-  Step    10/150 | Global   1698 | Loss: 2.5005 | LR: 5.00e-05 | Grad: 30.000 | Time: 661s | 15 tok/s
-  Memory: 7.4GB / 16.8GB (44.2% used)
-  Step    15/150 | Global   1703 | Loss: 2.3565 | LR: 4.99e-05 | Grad: 22.125 | Time: 908s | 15 tok/s
-  Memory: 7.4GB / 16.8GB (44.2% used)
-  Step    20/150 | Global   1708 | Loss: 2.5695 | LR: 4.94e-05 | Grad: 26.000 | Time: 1215s | 15 tok/s
-  Memory: 7.4GB / 16.8GB (44.3% used)
-  Step    25/150 | Global   1713 | Loss: 2.3498 | LR: 4.88e-05 | Grad: 48.250 | Time: 1463s | 15 tok/s
-  Memory: 7.4GB / 16.8GB (43.9% used)
-  Step    30/150 | Global   1718 | Loss: 2.5974 | LR: 4.78e-05 | Grad: 18.875 | Time: 1786s | 15 tok/s
+  [CASCADE CHECK] Initial Loss of this run: 3.1230
   Memory: 7.4GB / 16.8GB (44.1% used)
-  Step    35/150 | Global   1723 | Loss: 2.5079 | LR: 4.66e-05 | Grad: 19.750 | Time: 2141s | 15 tok/s
-  Memory: 7.5GB / 16.8GB (44.6% used)
-  Step    40/150 | Global   1728 | Loss: 2.1393 | LR: 4.52e-05 | Grad: 41.500 | Time: 2441s | 15 tok/s
-  Memory: 7.4GB / 16.8GB (44.3% used)
-  Step    45/150 | Global   1733 | Loss: 2.2931 | LR: 4.35e-05 | Grad: 17.250 | Time: 2727s | 15 tok/s
-  Memory: 7.5GB / 16.8GB (44.8% used)
-  Step    50/150 | Global   1738 | Loss: 2.8365 | LR: 4.16e-05 | Grad: 20.750 | Time: 3061s | 15 tok/s
-Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.23s/it]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.23s/it]
-  [SAVE] Checkpoint (weights only, skipping 2GB optimizer) -> ./checkpoint
-  Memory: 7.5GB / 16.8GB (44.8% used)
-  Step    55/150 | Global   1743 | Loss: 2.4136 | LR: 3.96e-05 | Grad: 36.500 | Time: 3360s | 15 tok/s
-  Memory: 7.5GB / 16.8GB (44.6% used)
-  Step    60/150 | Global   1748 | Loss: 2.7399 | LR: 3.74e-05 | Grad: 88.000 | Time: 3679s | 15 tok/s
-  Memory: 7.4GB / 16.8GB (44.3% used)
-  Step    65/150 | Global   1753 | Loss: 2.5277 | LR: 3.51e-05 | Grad: 25.500 | Time: 3985s | 15 tok/s
-  Memory: 7.5GB / 16.8GB (44.7% used)
-  Step    70/150 | Global   1758 | Loss: 2.1222 | LR: 3.27e-05 | Grad: 19.125 | Time: 4276s | 15 tok/s
-  Memory: 7.5GB / 16.8GB (44.6% used)
-  Step    75/150 | Global   1763 | Loss: 2.5068 | LR: 3.03e-05 | Grad: 29.000 | Time: 4569s | 15 tok/s
+  Step     5/150 | Global   1771 | Loss: 2.5617 | LR: 2.50e-05 | Grad: 37.000 | Time: 4529s | 1 tok/s
 
 [CRITICAL] Received SIGTERM! Triggering graceful shutdown...
 
 [INTERRUPT] Training stopped by user. Saving progress...
-Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.28s/it]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.28s/it]
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:01<00:00,  1.99s/it]Writing model shards: 100%|██████████| 1/1 [00:01<00:00,  2.00s/it]
   [SAVE] Checkpoint (weights only, skipping 2GB optimizer) -> ./checkpoint
 COMET INFO: ---------------------------------------------------------------------------------------
 COMET INFO: Comet.ml Experiment Summary
@@ -107,13 +77,13 @@ COMET INFO: --------------------------------------------------------------------
 COMET INFO:   Data:
 COMET INFO:     display_summary_level : 1
 COMET INFO:     name                  : hourly-train
-COMET INFO:     url                   : https://www.comet.com/meridianalgo/meridian-ai/2a0952c77aec4b34bafa306085861c69
-COMET INFO:   Metrics [count] (min, max):
-COMET INFO:     global_step [15]    : (1693, 1763)
-COMET INFO:     grad_norm [15]      : (17.25, 88.0)
-COMET INFO:     loss [15]           : (2.1222482538812026, 2.836476409115686)
-COMET INFO:     lr [15]             : (2.5e-05, 5e-05)
-COMET INFO:     tokens_per_sec [15] : (14.808614767437343, 15.345183822553716)
+COMET INFO:     url                   : https://www.comet.com/meridianalgo/meridian-ai/8ffa23abe8864d009f02763166cb48ec
+COMET INFO:   Metrics:
+COMET INFO:     global_step    : 1771
+COMET INFO:     grad_norm      : 37.0
+COMET INFO:     loss           : 2.5617390675649467
+COMET INFO:     lr             : 2.5e-05
+COMET INFO:     tokens_per_sec : 0.964427013915012
 COMET INFO:   Others:
 COMET INFO:     Name : hourly-train
 COMET INFO:   Parameters:
@@ -126,7 +96,7 @@ COMET INFO:   Uploads:
 COMET INFO:     environment details      : 1
 COMET INFO:     filename                 : 1
 COMET INFO:     git metadata             : 1
-COMET INFO:     git-patch (uncompressed) : 1 (5.71 KB)
+COMET INFO:     git-patch (uncompressed) : 1 (8.55 KB)
 COMET INFO:     installed packages       : 1
 COMET INFO:     model graph              : 1
 COMET INFO:     os packages              : 1
@@ -134,11 +104,11 @@ COMET INFO:     source_code              : 2 (38.07 KB)
 COMET INFO: 
 
   Saving checkpoint to ./checkpoint...
-Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.13s/it]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.13s/it]
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.05s/it]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.05s/it]
   [SAVE] Checkpoint (weights only, skipping 2GB optimizer) -> ./checkpoint
 
-  [INFO] Successfully processed 624 data items in this run.
-  [INFO] Advancing global dataset index to 13,352 for the next training session.
-  [OK] Dataset state saved (total processed: 13,352)
+  [INFO] Successfully processed 40 data items in this run.
+  [INFO] Advancing global dataset index to 13,392 for the next training session.
+  [OK] Dataset state saved (total processed: 13,392)
 
   TRAINING RUN #1 COMPLETE.
