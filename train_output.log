@@ -5,16 +5,16 @@
 
 [MODE] Full Training — Hourly Continual Learning
 
-  Found state in ./checkpoint/dataset_state.json: 16128
-  Found state in dataset_state.json: 16128
-  Found state in dataset_state.json: 16128
-  Resuming from maximum dataset index: 16128
+  Found state in ./checkpoint/dataset_state.json: 17328
+  Found state in dataset_state.json: 17328
+  Found state in dataset_state.json: 17328
+  Resuming from maximum dataset index: 17328
 
 [INFO] Using base model: Qwen/Qwen2.5-0.5B
 [INFO] Using tokenizer: Qwen/Qwen2.5-0.5B
   [DEBUG] Found model weights at ./checkpoint/model.safetensors. Checking architecture...
 `torch_dtype` is deprecated! Use `dtype` instead!
-Loading weights:   0%|          | 0/290 [00:00<?, ?it/s]Loading weights: 100%|██████████| 290/290 [00:00<00:00, 6043.64it/s]
+Loading weights:   0%|          | 0/290 [00:00<?, ?it/s]Loading weights: 100%|██████████| 290/290 [00:00<00:00, 3734.23it/s]
   [OK] Checkpoint loaded - continuing training
   [OK] Gradient Checkpointing enabled
   Total parameters: 494,032,768
@@ -23,18 +23,18 @@
 [INFO] Gradient checkpointing enabled
 [INFO] Optimizer: Adafactor (low-memory)
 [OK] Loaded EWC state from previous run
-COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/meridian-ai/99a0eaad799a4aed8e33f02f54c55b3b
+COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/meridian-ai/08c2e47826b64a4a919de281fa32df2e
 
   [DEBUG] Restoration: Attempting to load trainer state from ./checkpoint...
-  [OK] Trainer state restored (global step 2113)
+  [OK] Trainer state restored (global step 2263)
 
 ==================== STARTING TRAINING RUN #1 ====================
-  Start Time: 2026-04-21 16:19:45
+  Start Time: 2026-04-21 18:06:23
 
 ======================================================================
   MERIDIAN.AI TRAINING ENGINE
   Steps: 150 | BS: 1 | Accum: 8
-  LR: 5e-05 | Global step: 2113
+  LR: 5e-05 | Global step: 2263
   Parameters: 494,032,768 total | 494,032,768 trainable
   Memory: 3.5GB / 16.8GB (21.1% used)
 ======================================================================
@@ -62,160 +62,20 @@ COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/m
   [OK] Loaded FinanceMTEB/TATQA (weight: 0.04)
   [OK] Loaded FinanceMTEB/synthetic_pii_finance_en (weight: 0.02)
 
-  [CASCADE CHECK] Initial Loss of this run: 3.2327
-  Memory: 8.7GB / 16.8GB (51.8% used)
-  Step     5/150 | Global   2118 | Loss: 2.1148 | LR: 2.50e-05 | Grad: 40.000 | Time: 116s | 52 tok/s
-  Memory: 8.7GB / 16.8GB (52.1% used)
-  Step    10/150 | Global   2123 | Loss: 2.5797 | LR: 5.00e-05 | Grad: 27.750 | Time: 192s | 57 tok/s
-  Memory: 8.5GB / 16.8GB (50.5% used)
-  Step    15/150 | Global   2128 | Loss: 2.2892 | LR: 4.99e-05 | Grad: 25.875 | Time: 267s | 58 tok/s
-  Memory: 8.7GB / 16.8GB (51.6% used)
-  Step    20/150 | Global   2133 | Loss: 2.4678 | LR: 4.94e-05 | Grad: 51.500 | Time: 351s | 60 tok/s
-  Memory: 8.6GB / 16.8GB (51.5% used)
-  Step    25/150 | Global   2138 | Loss: 2.5098 | LR: 4.88e-05 | Grad: 26.500 | Time: 424s | 60 tok/s
-  Memory: 8.7GB / 16.8GB (52.1% used)
-  Step    30/150 | Global   2143 | Loss: 2.4049 | LR: 4.78e-05 | Grad: 23.000 | Time: 494s | 60 tok/s
-  Memory: 8.7GB / 16.8GB (51.6% used)
-  Step    35/150 | Global   2148 | Loss: 2.4087 | LR: 4.66e-05 | Grad: 16.750 | Time: 576s | 61 tok/s
-  Memory: 8.8GB / 16.8GB (52.3% used)
-  Step    40/150 | Global   2153 | Loss: 2.6383 | LR: 4.52e-05 | Grad: 27.750 | Time: 650s | 61 tok/s
-  Memory: 8.8GB / 16.8GB (52.3% used)
-  Step    45/150 | Global   2158 | Loss: 2.5091 | LR: 4.35e-05 | Grad: 33.250 | Time: 725s | 62 tok/s
-  Memory: 8.7GB / 16.8GB (52.1% used)
-  Step    50/150 | Global   2163 | Loss: 2.5888 | LR: 4.16e-05 | Grad: 134.000 | Time: 803s | 62 tok/s
-Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:07<00:00,  7.55s/it]Writing model shards: 100%|██████████| 1/1 [00:07<00:00,  7.55s/it]
-  [SAVE] Checkpoint (weights only, skipping 2GB optimizer) -> ./checkpoint
-  Memory: 8.9GB / 16.8GB (52.8% used)
-  Step    55/150 | Global   2168 | Loss: 2.6531 | LR: 3.96e-05 | Grad: 28.625 | Time: 884s | 61 tok/s
-  Memory: 8.9GB / 16.8GB (53.1% used)
-  Step    60/150 | Global   2173 | Loss: 2.6623 | LR: 3.74e-05 | Grad: 43.000 | Time: 969s | 62 tok/s
-  Memory: 8.9GB / 16.8GB (52.9% used)
-  Step    65/150 | Global   2178 | Loss: 2.6361 | LR: 3.51e-05 | Grad: 24.875 | Time: 1042s | 62 tok/s
-  Memory: 8.9GB / 16.8GB (53.1% used)
-  Step    70/150 | Global   2183 | Loss: 2.8922 | LR: 3.27e-05 | Grad: 110.000 | Time: 1120s | 62 tok/s
-  Memory: 8.9GB / 16.8GB (52.9% used)
-  Step    75/150 | Global   2188 | Loss: 2.3787 | LR: 3.03e-05 | Grad: 17.375 | Time: 1199s | 62 tok/s
-  Memory: 9.0GB / 16.8GB (53.4% used)
-  Step    80/150 | Global   2193 | Loss: 2.4846 | LR: 2.78e-05 | Grad: 30.500 | Time: 1277s | 62 tok/s
-  Memory: 9.0GB / 16.8GB (53.8% used)
-  Step    85/150 | Global   2198 | Loss: 2.7561 | LR: 2.52e-05 | Grad: 53.000 | Time: 1355s | 62 tok/s
-  Memory: 9.0GB / 16.8GB (53.9% used)
-  Step    90/150 | Global   2203 | Loss: 2.4528 | LR: 2.28e-05 | Grad: 23.250 | Time: 1438s | 62 tok/s
-  Memory: 8.9GB / 16.8GB (53.1% used)
-  Step    95/150 | Global   2208 | Loss: 2.4971 | LR: 2.04e-05 | Grad: 25.875 | Time: 1521s | 62 tok/s
-  Memory: 8.8GB / 16.8GB (52.4% used)
-  Step   100/150 | Global   2213 | Loss: 2.4970 | LR: 1.80e-05 | Grad: 27.000 | Time: 1597s | 62 tok/s
-Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:07<00:00,  7.57s/it]Writing model shards: 100%|██████████| 1/1 [00:07<00:00,  7.57s/it]
-  [SAVE] Checkpoint (weights only, skipping 2GB optimizer) -> ./checkpoint
-  Memory: 8.9GB / 16.8GB (53.1% used)
-  Step   105/150 | Global   2218 | Loss: 3.1064 | LR: 1.58e-05 | Grad: 42.000 | Time: 1679s | 62 tok/s
-  Memory: 8.9GB / 16.8GB (53.2% used)
-  Step   110/150 | Global   2223 | Loss: 2.4430 | LR: 1.38e-05 | Grad: 22.125 | Time: 1754s | 62 tok/s
-  Memory: 9.0GB / 16.8GB (53.8% used)
-  Step   115/150 | Global   2228 | Loss: 2.4864 | LR: 1.19e-05 | Grad: 16.500 | Time: 1831s | 62 tok/s
-  Memory: 8.8GB / 16.8GB (52.4% used)
-  Step   120/150 | Global   2233 | Loss: 2.4684 | LR: 1.02e-05 | Grad: 20.375 | Time: 1914s | 62 tok/s
-  Memory: 8.8GB / 16.8GB (52.7% used)
-  Step   125/150 | Global   2238 | Loss: 2.4302 | LR: 8.67e-06 | Grad: 95.000 | Time: 1994s | 62 tok/s
-  Memory: 8.8GB / 16.8GB (52.3% used)
-  Step   130/150 | Global   2243 | Loss: 2.3878 | LR: 7.42e-06 | Grad: 19.750 | Time: 2071s | 62 tok/s
-  Memory: 8.8GB / 16.8GB (52.7% used)
-  Step   135/150 | Global   2248 | Loss: 2.2868 | LR: 6.41e-06 | Grad: 23.000 | Time: 2143s | 62 tok/s
-  Memory: 9.0GB / 16.8GB (53.4% used)
-  Step   140/150 | Global   2253 | Loss: 2.3903 | LR: 5.67e-06 | Grad: 26.500 | Time: 2220s | 62 tok/s
-  Memory: 8.8GB / 16.8GB (52.2% used)
-  Step   145/150 | Global   2258 | Loss: 2.2163 | LR: 5.20e-06 | Grad: 17.000 | Time: 2304s | 62 tok/s
-  Memory: 8.8GB / 16.8GB (52.5% used)
-  Step   150/150 | Global   2263 | Loss: 2.4779 | LR: 5.01e-06 | Grad: 49.250 | Time: 2384s | 62 tok/s
-Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:07<00:00,  7.41s/it]Writing model shards: 100%|██████████| 1/1 [00:07<00:00,  7.41s/it]
-  [SAVE] Checkpoint (weights only, skipping 2GB optimizer) -> ./checkpoint
+  [CASCADE CHECK] Initial Loss of this run: 3.0061
 
-[EWC] Computing Fisher Information Matrix for next run...
-  Memory: 7.7GB / 16.8GB (46.0% used)
-    [EWC RAM] Allocated fisher tensors: 7.9GB (47.0%)
-    [EWC RAM] Starting dataloader loop: 7.9GB (47.0%)
-  [OK] Loaded gbharti/finance-alpaca (weight: 0.4)
-  [OK] Loaded yahma/alpaca-cleaned (weight: 0.2)
-  [OK] Loaded FinanceMTEB/financial_phrasebank (weight: 0.06)
-  [OK] Loaded FinanceMTEB/FinSent (weight: 0.06)
-  [OK] Loaded FinanceMTEB/OpenFinDataSentiment (weight: 0.06)
-  [OK] Loaded FinanceMTEB/FiQA_ABSA (weight: 0.05)
-  [OK] Loaded FinanceMTEB/SemEva2017_Headline (weight: 0.05)
-  [OK] Loaded FinanceMTEB/FinancialFraud (weight: 0.05)
-  [OK] Loaded FinanceMTEB/Complaints (weight: 0.05)
-  [OK] Loaded FinanceMTEB/FOMC (weight: 0.04)
-  [OK] Loaded FinanceMTEB/ESG (weight: 0.04)
-  [OK] Loaded FinanceMTEB/FLS (weight: 0.04)
-  [OK] Loaded FinanceMTEB/FinFE (weight: 0.04)
-  [OK] Loaded FinanceMTEB/FinEvaSentiment (weight: 0.05)
-  [OK] Loaded FinanceMTEB/FinChinaSentiment (weight: 0.04)
-  [OK] Loaded FinanceMTEB/TradeTheEventNews (weight: 0.03)
-  [OK] Loaded FinanceMTEB/TradeTheEventEncyclopedia (weight: 0.03)
-  [OK] Loaded FinanceMTEB/AlphaFin (weight: 0.03)
-  [OK] Loaded FinanceMTEB/FinTruthQA (weight: 0.04)
-  [OK] Loaded FinanceMTEB/FinQA (weight: 0.04)
-  [OK] Loaded FinanceMTEB/TATQA (weight: 0.04)
-  [OK] Loaded FinanceMTEB/synthetic_pii_finance_en (weight: 0.02)
-    [DEBUG] EWC: Processing sample 1/5...
-    [EWC RAM] Sample 1: 7.2GB (42.8%)
-    [DEBUG] EWC Sample 1: Forward pass...
-    [DEBUG] EWC Sample 1: Backward pass...
-    [DEBUG] EWC Sample 1: Accumulating Fisher diag...
-    [DEBUG] EWC Sample 1: Zeroing grads...
-    [DEBUG] EWC Sample 1: Clearing tensors...
-    [DEBUG] EWC: Processing sample 2/5...
-    [EWC RAM] Sample 2: 7.5GB (44.9%)
-    [DEBUG] EWC Sample 2: Forward pass...
-    [DEBUG] EWC Sample 2: Backward pass...
-    [DEBUG] EWC Sample 2: Accumulating Fisher diag...
-    [DEBUG] EWC Sample 2: Zeroing grads...
-    [DEBUG] EWC Sample 2: Clearing tensors...
-    [DEBUG] EWC: Processing sample 3/5...
-    [EWC RAM] Sample 3: 7.5GB (44.7%)
-    [DEBUG] EWC Sample 3: Forward pass...
-    [DEBUG] EWC Sample 3: Backward pass...
-    [DEBUG] EWC Sample 3: Accumulating Fisher diag...
-    [DEBUG] EWC Sample 3: Zeroing grads...
-    [DEBUG] EWC Sample 3: Clearing tensors...
-    [DEBUG] EWC: Processing sample 4/5...
-    [EWC RAM] Sample 4: 7.4GB (44.1%)
-    [DEBUG] EWC Sample 4: Forward pass...
-    [DEBUG] EWC Sample 4: Backward pass...
-    [DEBUG] EWC Sample 4: Accumulating Fisher diag...
-    [DEBUG] EWC Sample 4: Zeroing grads...
-    [DEBUG] EWC Sample 4: Clearing tensors...
-    [DEBUG] EWC: Processing sample 5/5...
-    [EWC RAM] Sample 5: 7.7GB (45.6%)
-    [DEBUG] EWC Sample 5: Forward pass...
-    [DEBUG] EWC Sample 5: Backward pass...
-    [DEBUG] EWC Sample 5: Accumulating Fisher diag...
-    [DEBUG] EWC Sample 5: Zeroing grads...
-    [DEBUG] EWC Sample 5: Clearing tensors...
-    [DEBUG] EWC: Reached max_samples (5). Stopping.
-  [EWC] Keeping 290/290 params above threshold
-[OK] Fisher matrix saved for continual learning
-  Memory: 7.2GB / 16.8GB (42.8% used)
+[CRITICAL] Received SIGTERM! Triggering graceful shutdown...
 
-======================================================================
-  TRAINING COMPLETE
-  Steps: 150 | Time: 2426s | Best loss: 1.4147
-  Initial loss: 3.2327 | Final loss: 2.4779 | Diff: -0.7548
-  Tokens processed: 148,432
-======================================================================
-
+[INTERRUPT] Training stopped by user. Saving progress...
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.08s/it]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.09s/it]
+  [SAVE] Checkpoint (weights only, skipping 2GB optimizer) -> ./checkpoint
 COMET INFO: ---------------------------------------------------------------------------------------
 COMET INFO: Comet.ml Experiment Summary
 COMET INFO: ---------------------------------------------------------------------------------------
 COMET INFO:   Data:
 COMET INFO:     display_summary_level : 1
 COMET INFO:     name                  : hourly-train
-COMET INFO:     url                   : https://www.comet.com/meridianalgo/meridian-ai/99a0eaad799a4aed8e33f02f54c55b3b
-COMET INFO:   Metrics [count] (min, max):
-COMET INFO:     global_step [30]    : (2118, 2263)
-COMET INFO:     grad_norm [30]      : (16.5, 134.0)
-COMET INFO:     loss [30]           : (2.1148445328053156, 3.1064258027676304)
-COMET INFO:     lr [30]             : (5.0055846514866716e-06, 5e-05)
-COMET INFO:     tokens_per_sec [30] : (52.34300054016199, 62.48719409165222)
+COMET INFO:     url                   : https://www.comet.com/meridianalgo/meridian-ai/08c2e47826b64a4a919de281fa32df2e
 COMET INFO:   Others:
 COMET INFO:     Name : hourly-train
 COMET INFO:   Parameters:
@@ -228,7 +88,7 @@ COMET INFO:   Uploads:
 COMET INFO:     environment details      : 1
 COMET INFO:     filename                 : 1
 COMET INFO:     git metadata             : 1
-COMET INFO:     git-patch (uncompressed) : 1 (5.71 KB)
+COMET INFO:     git-patch (uncompressed) : 1 (14.29 KB)
 COMET INFO:     installed packages       : 1
 COMET INFO:     model graph              : 1
 COMET INFO:     os packages              : 1
@@ -236,11 +96,11 @@ COMET INFO:     source_code              : 2 (38.07 KB)
 COMET INFO: 
 
   Saving checkpoint to ./checkpoint...
-Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:07<00:00,  7.41s/it]Writing model shards: 100%|██████████| 1/1 [00:07<00:00,  7.41s/it]
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:01<00:00,  1.90s/it]Writing model shards: 100%|██████████| 1/1 [00:01<00:00,  1.90s/it]
   [SAVE] Checkpoint (weights only, skipping 2GB optimizer) -> ./checkpoint
 
-  [INFO] Successfully processed 1,200 data items in this run.
-  [INFO] Advancing global dataset index to 17,328 for the next training session.
-  [OK] Dataset state saved (total processed: 17,328)
+  [INFO] Successfully processed 32 data items in this run.
+  [INFO] Advancing global dataset index to 17,360 for the next training session.
+  [OK] Dataset state saved (total processed: 17,360)
 
   TRAINING RUN #1 COMPLETE.
