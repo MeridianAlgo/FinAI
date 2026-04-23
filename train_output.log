@@ -5,16 +5,16 @@
 
 [MODE] Full Training — Hourly Continual Learning
 
-  Found state in ./checkpoint/dataset_state.json: 20952
-  Found state in dataset_state.json: 20952
-  Found state in dataset_state.json: 20952
-  Resuming from maximum dataset index: 20952
+  Found state in ./checkpoint/dataset_state.json: 21576
+  Found state in dataset_state.json: 21576
+  Found state in dataset_state.json: 21576
+  Resuming from maximum dataset index: 21576
 
 [INFO] Using base model: Qwen/Qwen2.5-0.5B
 [INFO] Using tokenizer: Qwen/Qwen2.5-0.5B
   [DEBUG] Found model weights at ./checkpoint/model.safetensors. Checking architecture...
 [transformers] `torch_dtype` is deprecated! Use `dtype` instead!
-Loading weights:   0%|          | 0/290 [00:00<?, ?it/s]Loading weights: 100%|██████████| 290/290 [00:00<00:00, 4703.79it/s]
+Loading weights:   0%|          | 0/290 [00:00<?, ?it/s]Loading weights: 100%|██████████| 290/290 [00:00<00:00, 3714.98it/s]
   [OK] Checkpoint loaded - continuing training
   [OK] Gradient Checkpointing enabled
   Total parameters: 494,032,768
@@ -23,20 +23,20 @@
 [INFO] Gradient checkpointing enabled
 [INFO] Optimizer: Adafactor (low-memory)
 [OK] Loaded EWC state from previous run
-COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/meridian-ai/143d41440ff74b1985b45f48caba8b0c
+COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/meridian-ai/70cb2aa8f5ae4da381395371d391f65a
 
   [DEBUG] Restoration: Attempting to load trainer state from ./checkpoint...
-  [OK] Trainer state restored (global step 2716)
+  [OK] Trainer state restored (global step 2794)
 
 ==================== STARTING TRAINING RUN #1 ====================
-  Start Time: 2026-04-23 15:20:52
+  Start Time: 2026-04-23 17:29:23
 
 ======================================================================
   MERIDIAN.AI TRAINING ENGINE
   Steps: 150 | BS: 1 | Accum: 8
-  LR: 5e-05 | Global step: 2716
+  LR: 5e-05 | Global step: 2794
   Parameters: 494,032,768 total | 494,032,768 trainable
-  Memory: 3.6GB / 16.8GB (21.2% used)
+  Memory: 3.6GB / 16.8GB (21.3% used)
 ======================================================================
 
   [OK] Loaded gbharti/finance-alpaca (weight: 0.4)
@@ -62,44 +62,14 @@ COMET INFO: Experiment is live on comet.com https://www.comet.com/meridianalgo/m
   [OK] Loaded FinanceMTEB/TATQA (weight: 0.04)
   [OK] Loaded FinanceMTEB/synthetic_pii_finance_en (weight: 0.02)
 
-  [CASCADE CHECK] Initial Loss of this run: 3.3287
-  Memory: 8.3GB / 16.8GB (49.4% used)
-  Step     5/150 | Global   2721 | Loss: 2.4470 | LR: 2.50e-05 | Grad: 13.500 | Time: 353s | 15 tok/s
-  Memory: 8.3GB / 16.8GB (49.4% used)
-  Step    10/150 | Global   2726 | Loss: 2.7509 | LR: 5.00e-05 | Grad: 16.750 | Time: 666s | 15 tok/s
-  Memory: 8.0GB / 16.8GB (47.8% used)
-  Step    15/150 | Global   2731 | Loss: 2.1008 | LR: 4.99e-05 | Grad: 16.875 | Time: 932s | 15 tok/s
-  Memory: 8.0GB / 16.8GB (47.4% used)
-  Step    20/150 | Global   2736 | Loss: 2.3819 | LR: 4.94e-05 | Grad: 29.875 | Time: 1213s | 15 tok/s
-  Memory: 8.0GB / 16.8GB (47.4% used)
-  Step    25/150 | Global   2741 | Loss: 2.3044 | LR: 4.88e-05 | Grad: 46.500 | Time: 1494s | 15 tok/s
-  Memory: 8.0GB / 16.8GB (47.9% used)
-  Step    30/150 | Global   2746 | Loss: 2.3208 | LR: 4.78e-05 | Grad: 13.500 | Time: 1810s | 15 tok/s
-  Memory: 8.0GB / 16.8GB (47.7% used)
-  Step    35/150 | Global   2751 | Loss: 2.4759 | LR: 4.66e-05 | Grad: 32.750 | Time: 2142s | 15 tok/s
-  Memory: 8.0GB / 16.8GB (47.9% used)
-  Step    40/150 | Global   2756 | Loss: 2.0576 | LR: 4.52e-05 | Grad: 20.625 | Time: 2420s | 15 tok/s
-  Memory: 8.0GB / 16.8GB (47.7% used)
-  Step    45/150 | Global   2761 | Loss: 2.5805 | LR: 4.35e-05 | Grad: 33.000 | Time: 2704s | 15 tok/s
-  Memory: 8.1GB / 16.8GB (48.3% used)
-  Step    50/150 | Global   2766 | Loss: 3.0678 | LR: 4.16e-05 | Grad: 23.500 | Time: 3037s | 15 tok/s
-Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.01s/it]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.01s/it]
-  [SAVE] Checkpoint (weights only, skipping 2GB optimizer) -> ./checkpoint
-  Memory: 8.1GB / 16.8GB (48.5% used)
-  Step    55/150 | Global   2771 | Loss: 2.2705 | LR: 3.96e-05 | Grad: 24.625 | Time: 3334s | 15 tok/s
-  Memory: 8.1GB / 16.8GB (48.6% used)
-  Step    60/150 | Global   2776 | Loss: 2.2794 | LR: 3.74e-05 | Grad: 29.625 | Time: 3635s | 15 tok/s
-  Memory: 8.2GB / 16.8GB (48.9% used)
-  Step    65/150 | Global   2781 | Loss: 2.4327 | LR: 3.51e-05 | Grad: 21.375 | Time: 3927s | 15 tok/s
-  Memory: 8.2GB / 16.8GB (48.7% used)
-  Step    70/150 | Global   2786 | Loss: 2.1871 | LR: 3.27e-05 | Grad: 17.625 | Time: 4231s | 15 tok/s
-  Memory: 8.1GB / 16.8GB (48.4% used)
-  Step    75/150 | Global   2791 | Loss: 2.4981 | LR: 3.03e-05 | Grad: 17.875 | Time: 4582s | 15 tok/s
+  [CASCADE CHECK] Initial Loss of this run: 2.9061
+  Memory: 7.9GB / 16.8GB (47.4% used)
+  Step     5/150 | Global   2799 | Loss: 2.3617 | LR: 2.50e-05 | Grad: 25.125 | Time: 4701s | 1 tok/s
 
 [CRITICAL] Received SIGTERM! Triggering graceful shutdown...
 
 [INTERRUPT] Training stopped by user. Saving progress...
-Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.16s/it]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.16s/it]
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.15s/it]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.15s/it]
   [SAVE] Checkpoint (weights only, skipping 2GB optimizer) -> ./checkpoint
 COMET INFO: ---------------------------------------------------------------------------------------
 COMET INFO: Comet.ml Experiment Summary
@@ -107,13 +77,13 @@ COMET INFO: --------------------------------------------------------------------
 COMET INFO:   Data:
 COMET INFO:     display_summary_level : 1
 COMET INFO:     name                  : hourly-train
-COMET INFO:     url                   : https://www.comet.com/meridianalgo/meridian-ai/143d41440ff74b1985b45f48caba8b0c
-COMET INFO:   Metrics [count] (min, max):
-COMET INFO:     global_step [15]    : (2721, 2791)
-COMET INFO:     grad_norm [15]      : (13.5, 46.5)
-COMET INFO:     loss [15]           : (2.0576056184634313, 3.0677796433728073)
-COMET INFO:     lr [15]             : (2.5e-05, 5e-05)
-COMET INFO:     tokens_per_sec [15] : (15.061949691231064, 15.46851865109183)
+COMET INFO:     url                   : https://www.comet.com/meridianalgo/meridian-ai/70cb2aa8f5ae4da381395371d391f65a
+COMET INFO:   Metrics:
+COMET INFO:     global_step    : 2799
+COMET INFO:     grad_norm      : 25.125
+COMET INFO:     loss           : 2.361696079210656
+COMET INFO:     lr             : 2.5e-05
+COMET INFO:     tokens_per_sec : 0.9343457280453484
 COMET INFO:   Others:
 COMET INFO:     Name : hourly-train
 COMET INFO:   Parameters:
@@ -126,7 +96,7 @@ COMET INFO:   Uploads:
 COMET INFO:     environment details      : 1
 COMET INFO:     filename                 : 1
 COMET INFO:     git metadata             : 1
-COMET INFO:     git-patch (uncompressed) : 1 (5.73 KB)
+COMET INFO:     git-patch (uncompressed) : 1 (8.57 KB)
 COMET INFO:     installed packages       : 1
 COMET INFO:     model graph              : 1
 COMET INFO:     os packages              : 1
@@ -137,8 +107,8 @@ COMET INFO:
 Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.03s/it]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.03s/it]
   [SAVE] Checkpoint (weights only, skipping 2GB optimizer) -> ./checkpoint
 
-  [INFO] Successfully processed 624 data items in this run.
-  [INFO] Advancing global dataset index to 21,576 for the next training session.
-  [OK] Dataset state saved (total processed: 21,576)
+  [INFO] Successfully processed 40 data items in this run.
+  [INFO] Advancing global dataset index to 21,616 for the next training session.
+  [OK] Dataset state saved (total processed: 21,616)
 
   TRAINING RUN #1 COMPLETE.
