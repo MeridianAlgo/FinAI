@@ -325,6 +325,7 @@ def main():
             _tok_cfg_path = os.path.join(checkpoint_path, "tokenizer_config.json")
             if os.path.exists(_tok_cfg_path):
                 import json as _json
+
                 with open(_tok_cfg_path) as _f:
                     _tok_cfg = _json.load(_f)
                 if isinstance(_tok_cfg.get("extra_special_tokens"), list):

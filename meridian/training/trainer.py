@@ -578,9 +578,11 @@ class MeridianTrainer:
             self.model.save_pretrained(path, safe_serialization=True)
             # Remove stale pytorch_model.bin if a safetensors file was written
             stale_bin = os.path.join(path, "pytorch_model.bin")
-            if os.path.exists(stale_bin) and os.path.exists(os.path.join(path, "model.safetensors")):
+            if os.path.exists(stale_bin) and os.path.exists(
+                os.path.join(path, "model.safetensors")
+            ):
                 os.remove(stale_bin)
-                print(f"  [SAVE] Removed stale pytorch_model.bin (safetensors is canonical)")
+                print("  [SAVE] Removed stale pytorch_model.bin (safetensors is canonical)")
 
         # Save trainer state
         # The optimizer state is 2GB+, so we allow skipping it for fast testing

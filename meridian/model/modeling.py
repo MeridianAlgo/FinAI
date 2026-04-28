@@ -253,7 +253,10 @@ class ExpertRouter(nn.Module):
         # Loss = num_experts * sum(f(e) * P(e))
 
         # Calculate f(e): fraction of tokens routed to each expert (vectorized)
-        f_e = torch.bincount(topk_indices[:, 0], minlength=self.num_experts).float() / hidden_states.shape[0]
+        f_e = (
+            torch.bincount(topk_indices[:, 0], minlength=self.num_experts).float()
+            / hidden_states.shape[0]
+        )
 
         # Calculate P(e): mean routing probability
         P_e = router_probs.mean(dim=0)
