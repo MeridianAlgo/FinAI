@@ -575,8 +575,12 @@ class MeridianTrainer:
                 self.model.config.save_pretrained(path)
             torch.save(self.model.state_dict(), os.path.join(path, "pytorch_model.bin"))
         else:
-            # Disabling safe_serialization to avoid mmap lock issues on Windows
-            self.model.save_pretrained(path, safe_serialization=False)
+            self.model.save_pretrained(path, safe_serialization=True)
+            # Remove stale pytorch_model.bin if a safetensors file was written
+            stale_bin = os.path.join(path, "pytorch_model.bin")
+            if os.path.exists(stale_bin) and os.path.exists(os.path.join(path, "model.safetensors")):
+                os.remove(stale_bin)
+                print(f"  [SAVE] Removed stale pytorch_model.bin (safetensors is canonical)")
 
         # Save trainer state
         # The optimizer state is 2GB+, so we allow skipping it for fast testing

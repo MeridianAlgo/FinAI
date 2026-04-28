@@ -157,7 +157,8 @@ jobs:
           OPTIMIZER: 'adafactor'
           FREE_OPTIMIZER_BEFORE_FISHER: '1'
           FISHER_SEQ_LEN: '64'
-          FISHER_THRESHOLD: '1e-6'
+          FISHER_THRESHOLD: '1e-4'
+          USE_LIGHT_DATASETS: '0'
           GC_EVERY_STEPS: '5'
           PYTHONPATH: .
           PYTHONUNBUFFERED: '1'
@@ -261,6 +262,7 @@ jobs:
                   path_in_repo='checkpoint',
                   commit_message='Hourly training update [skip ci]',
                   token=token,
+                  delete_patterns=['checkpoint/pytorch_model.bin'],
               )
               print('Checkpoint upload successful')
           except Exception as e:

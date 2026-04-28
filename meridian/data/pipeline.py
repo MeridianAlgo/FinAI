@@ -242,6 +242,36 @@ class FinanceDataPipeline:
             "instruction_field": None,
             "weight": 0.006,
         },
+        {
+            "name": "sujet-ai/Sujet-Finance-Instruct-177k",
+            "config": None,
+            "split": "train",
+            "text_field": "answer",
+            "instruction_field": "user_prompt",
+            "weight": 0.12,
+        },
+        {
+            "name": "FinGPT/fingpt-sentiment-train",
+            "config": None,
+            "split": "train",
+            "text_field": "input",
+            "instruction_field": None,
+            "label_field": "output",
+            "label_map": None,
+            "prompt_template": "What is the sentiment of this news? Answer with: negative, neutral, or positive.\n\nNews:\n{text}",
+            "weight": 0.04,
+        },
+        {
+            "name": "nickmuchi/financial-classification",
+            "config": None,
+            "split": "train",
+            "text_field": "text",
+            "instruction_field": None,
+            "label_field": "labels",
+            "label_map": {0: "negative", 1: "neutral", 2: "positive"},
+            "prompt_template": "Classify the sentiment (negative/neutral/positive) of this financial text.\n\nText:\n{text}",
+            "weight": 0.02,
+        },
     ]
 
     LIGHT_DATASETS = [
@@ -448,6 +478,36 @@ class FinanceDataPipeline:
             "instruction_field": None,
             "weight": 0.02,
         },
+        {
+            "name": "sujet-ai/Sujet-Finance-Instruct-177k",
+            "config": None,
+            "split": "train",
+            "text_field": "answer",
+            "instruction_field": "user_prompt",
+            "weight": 0.12,
+        },
+        {
+            "name": "FinGPT/fingpt-sentiment-train",
+            "config": None,
+            "split": "train",
+            "text_field": "input",
+            "instruction_field": None,
+            "label_field": "output",
+            "label_map": None,
+            "prompt_template": "What is the sentiment of this news? Answer with: negative, neutral, or positive.\n\nNews:\n{text}",
+            "weight": 0.04,
+        },
+        {
+            "name": "nickmuchi/financial-classification",
+            "config": None,
+            "split": "train",
+            "text_field": "text",
+            "instruction_field": None,
+            "label_field": "labels",
+            "label_map": {0: "negative", 1: "neutral", 2: "positive"},
+            "prompt_template": "Classify the sentiment (negative/neutral/positive) of this financial text.\n\nText:\n{text}",
+            "weight": 0.02,
+        },
     ]
 
     def __init__(
@@ -463,7 +523,7 @@ class FinanceDataPipeline:
         self.max_bytes_per_run = max_bytes_per_run
         self.items_processed = 0
         self.datasets = (
-            self.LIGHT_DATASETS if int(os.getenv("USE_LIGHT_DATASETS", "1")) == 1 else self.DATASETS
+            self.LIGHT_DATASETS if int(os.getenv("USE_LIGHT_DATASETS", "0")) == 1 else self.DATASETS
         )
 
     def _load_stream(self, ds_config: dict):
