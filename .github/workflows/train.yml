@@ -105,7 +105,8 @@ jobs:
                   snapshot_download(
                       repo_id=repo_id,
                       local_dir=temp_dir,
-                      token=token
+                      token=token,
+                      ignore_patterns=['checkpoint/pytorch_model.bin'],
                   )
                   if os.path.exists(os.path.join(temp_dir, 'checkpoint')):
                       if os.path.exists('./checkpoint'):
@@ -118,6 +119,8 @@ jobs:
                       if os.path.exists(path):
                           size_mb = os.path.getsize(path) / (1024 * 1024)
                           print(f'  - {cf} ({size_mb:.2f} MB)')
+                      else:
+                          print(f'  - {cf} NOT FOUND')
 
                   if os.path.exists(temp_dir):
                       shutil.rmtree(temp_dir)
@@ -262,7 +265,7 @@ jobs:
                   path_in_repo='checkpoint',
                   commit_message='Hourly training update [skip ci]',
                   token=token,
-                  delete_patterns=['checkpoint/pytorch_model.bin'],
+                  delete_patterns=['checkpoint/pytorch_model.bin', '**/pytorch_model.bin'],
               )
               print('Checkpoint upload successful')
           except Exception as e:
