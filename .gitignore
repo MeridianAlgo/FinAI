@@ -48,3 +48,5 @@ Thumbs.db
 
 # Local Log
 train_output_local.log
+train_output.log
+train_errors.txt

@@ -43,6 +43,10 @@ FinAI/
 │   ├── seed_hf_repo.py          # Initialise HF repo with fresh weights
 │   ├── evaluate_model.py        # Run eval prompts
 │   └── ...
+├── examples/
+│   ├── 01_inference.py          # Run model generation locally
+│   ├── 02_dataset_pipeline.py   # Test the dataset streaming curriculum
+│   └── 03_model_config.py       # Initialise model from scratch
 ├── train.py                     # Main training entry point
 ├── requirements.txt
 ├── .github/
@@ -145,6 +149,20 @@ with torch.no_grad():
 
 print(tokenizer.decode(out[0], skip_special_tokens=True))
 ```
+
+---
+
+## Examples
+
+We have provided several heavily documented scripts in the `examples/` directory to demonstrate how Meridian.AI works under the hood. To run them, make sure you have installed the requirements, and then execute:
+
+```bash
+python examples/01_inference.py
+python examples/02_dataset_pipeline.py
+python examples/03_model_config.py
+```
+
+These scripts cover basic model inference, testing the data streaming pipeline, and interacting with the custom model architecture and configurations.
 
 ---
 
