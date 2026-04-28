@@ -268,7 +268,7 @@ jobs:
               exit(1)
 
           # Upload model card to HF repo root
-          model_card_path = './FinAI/README.md'
+          model_card_path = './README.md'
           if os.path.exists(model_card_path):
               print('Uploading model card...')
               try:

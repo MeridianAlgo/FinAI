@@ -252,12 +252,8 @@ class ExpertRouter(nn.Module):
         # 2. f(e) = Fraction of tokens routed to expert e
         # Loss = num_experts * sum(f(e) * P(e))
 
-        # Calculate f(e): fraction of tokens routed to each expert
-        # Use only first expert for f(e) calculation to keep it simple & standard
-        tokens_per_expert = torch.zeros(self.num_experts, device=hidden_states.device)
-        for i in range(self.num_experts):
-            tokens_per_expert[i] = (topk_indices[:, 0] == i).float().sum()
-        f_e = tokens_per_expert / hidden_states.shape[0]
+        # Calculate f(e): fraction of tokens routed to each expert (vectorized)
+        f_e = torch.bincount(topk_indices[:, 0], minlength=self.num_experts).float() / hidden_states.shape[0]
 
         # Calculate P(e): mean routing probability
         P_e = router_probs.mean(dim=0)
@@ -307,13 +303,8 @@ class MeridianMoELayer(nn.Module):
             expert_input = flat_hidden[unique_rows]
             expert_out = self.experts[expert_idx](expert_input)
 
-            # Map unique output back to individual token/k-slot positions
-            # This is more efficient than looping over tokens
-            # We use the weights from the router
-            row_to_idx = {r.item(): i for i, r in enumerate(unique_rows)}
-            mapped_indices = torch.tensor(
-                [row_to_idx[r.item()] for r in row_indices], device=hidden_states.device
-            )
+            # Map each row_index to its position in unique_rows (vectorized, no Python dict)
+            mapped_indices = torch.searchsorted(unique_rows.contiguous(), row_indices.contiguous())
 
             # Collect and add to final output
             w = router_weights[row_indices, k_slots].unsqueeze(-1)
@@ -487,7 +478,7 @@ class MeridianForCausalLM(PreTrainedModel):
     config_class = MeridianConfig
     base_model_prefix = "model"
     supports_gradient_checkpointing = True
-    _tied_weights_keys = {"lm_head.weight": "model.embed_tokens.weight"}
+    _tied_weights_keys = ["lm_head.weight"]
 
     def __init__(self, config: MeridianConfig):
         super().__init__(config)

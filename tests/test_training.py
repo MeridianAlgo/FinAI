@@ -97,8 +97,8 @@ class TestEWC:
             for param in model.parameters():
                 param.add_(torch.randn_like(param) * 0.01)
 
-        penalty = ewc.penalty(model)
-        assert penalty.item() > 0
+        penalty = ewc.penalty_value(model)
+        assert penalty > 0
 
     def test_ewc_save_load(self, small_setup, tmp_path):
         model, dataloader, _ = small_setup

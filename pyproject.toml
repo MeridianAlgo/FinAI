@@ -1,7 +1,7 @@
 [project]
 name = "meridian-smoe"
-version = "5.0.0"
-description = "Meridian-SMoE: A 650M-param Sparse MoE Financial Intelligence LLM"
+version = "5.1.0"
+description = "Meridian-SMoE: Sparse MoE Finance LLM with hourly continual learning"
 requires-python = ">=3.10"
 
 [tool.ruff]

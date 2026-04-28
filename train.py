@@ -47,7 +47,7 @@ signal.signal(signal.SIGTERM, sigterm_handler)
 
 def main():
     print("=" * 70)
-    print("  MeridianAI v1.0 — Finance LLM Training")
+    print("  MeridianAI v5.1.0 — Finance LLM Training (Qwen2.5-0.5B base)")
     print("  Architecture: Sparse MoE + GQA + RoPE + SwiGLU + Numeracy Encoding")
     print("=" * 70)
 
@@ -87,7 +87,6 @@ def main():
             gradient_checkpointing=False,
             use_numeracy_encoding=True,
             numeracy_embed_dim=32,
-            use_ewc=False,
         )
         model = MeridianForCausalLM(config)
         total_params = sum(p.numel() for p in model.parameters())
