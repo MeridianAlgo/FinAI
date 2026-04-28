@@ -1,6 +1,7 @@
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
+
 def main():
     # Load the tokenizer
     # The model uses the Qwen2.5-0.5B tokenizer
@@ -13,7 +14,7 @@ def main():
     model = AutoModelForCausalLM.from_pretrained(
         repo_id,
         subfolder="checkpoint",
-        trust_remote_code=True, # Required because it's a custom architecture
+        trust_remote_code=True,  # Required because it's a custom architecture
         torch_dtype=torch.float32,
         low_cpu_mem_usage=True,
     )
@@ -28,7 +29,7 @@ Explain the concept of 'Elastic Weight Consolidation' in continual learning and 
 
     print("\nGenerating response...")
     inputs = tokenizer(prompt, return_tensors="pt")
-    
+
     # Generate text
     with torch.no_grad():
         outputs = model.generate(
@@ -44,9 +45,10 @@ Explain the concept of 'Elastic Weight Consolidation' in continual learning and 
 
     # Decode and print the output
     response = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    print("\n" + "="*50)
+    print("\n" + "=" * 50)
     print(response)
-    print("="*50)
+    print("=" * 50)
+
 
 if __name__ == "__main__":
     main()
