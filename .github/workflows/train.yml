@@ -162,6 +162,7 @@ jobs:
           FREE_OPTIMIZER_BEFORE_FISHER: '1'
           FISHER_SEQ_LEN: '64'
           FISHER_THRESHOLD: '5e-4'
+          FISHER_TOP_K_RATIO: '0.08'
           USE_LIGHT_DATASETS: '0'
           GC_EVERY_STEPS: '5'
           PYTHONPATH: .

@@ -118,19 +118,39 @@ class ElasticWeightConsolidation:
         for name in fisher:
             fisher[name] /= max(count, 1)
 
-        fisher_threshold = float(os.getenv("FISHER_THRESHOLD", "1e-6"))
+        # ── Pruning strategy: keep top-K% parameters by total Fisher magnitude ──
+        # This is more effective than the per-element threshold approach which
+        # keeps entire parameter tensors if ANY element exceeds the threshold
+        # (resulting in ~all params kept, and 1.9 GB EWC state files).
+        # Top-K by total magnitude keeps only the parameters that contribute most
+        # to the EWC penalty, dramatically reducing file size.
+        top_k_ratio = float(os.getenv("FISHER_TOP_K_RATIO", "0.08"))  # Keep top 8%
+
+        # Compute total Fisher magnitude per parameter
+        fisher_magnitudes = {name: f.sum().item() for name, f in fisher.items()}
+        sorted_params = sorted(fisher_magnitudes.items(), key=lambda x: -x[1])
+        n_total = len(sorted_params)
+        n_keep = max(10, int(n_total * top_k_ratio))
+        keep_names = {name for name, _ in sorted_params[:n_keep]}
 
         named_params = dict(model.named_parameters())
         kept_fisher: Dict[str, torch.Tensor] = {}
         kept_prev: Dict[str, torch.Tensor] = {}
-        for name, f in fisher.items():
-            # Keep only non-trivial fisher entries to reduce RAM
-            mask = f > fisher_threshold
-            if mask.any():
-                kept_fisher[name] = f
+        for name in keep_names:
+            if name in fisher:
+                kept_fisher[name] = fisher[name]
                 kept_prev[name] = named_params[name].data.to(named_params[name].dtype).clone()
 
-        print(f"  [EWC] Keeping {len(kept_fisher)}/{len(fisher)} params above threshold")
+        total_params_kept = sum(t.numel() for t in kept_fisher.values())
+        total_params_all = sum(t.numel() for t in fisher.values())
+        pct = 100.0 * total_params_kept / max(total_params_all, 1)
+        # ~2 tensors (fisher + prev) × bytes/element
+        elem_bytes = next(iter(kept_fisher.values())).element_size() if kept_fisher else 2
+        est_mb = (total_params_kept * 2 * elem_bytes) / (1024 * 1024)
+        print(
+            f"  [EWC] Keeping {n_keep}/{n_total} param tensors ({pct:.1f}% of elements, "
+            f"~{est_mb:.0f} MB estimated)"
+        )
         self.fisher_diag = kept_fisher
         self.prev_params = kept_prev
         self._initialized = True
