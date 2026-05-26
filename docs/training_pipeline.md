@@ -38,8 +38,8 @@ Full flow inside `train.py`:
 1. Load model — resume checkpoint if architecture matches (`model_type` must be `qwen2` or `llama`)
 2. Load tokenizer from `TOKENIZER_ID` (default: `Qwen/Qwen2.5-0.5B`)
 3. Restore EWC state from `checkpoint/ewc_state.pt` if available
-4. Resume dataset position from `checkpoint/dataset_state.json`
-5. Create streaming dataloader with weighted curriculum mix
+4. Load dataset position counter from `checkpoint/dataset_state.json` (used to derive shuffle seed)
+5. Create streaming dataloader with weighted curriculum mix (shuffled with run-specific seed)
 6. Train for `MAX_STEPS` gradient update steps
 7. Save checkpoint (weights only — optimizer is omitted to save space)
 8. Compute Fisher Information Matrix for next run's EWC
@@ -115,7 +115,7 @@ FinanceDataPipeline.DATASETS = [
     {"name": "sujet-ai/Sujet-Finance-Instruct-177k",    "weight": 0.18},  # Finance instruct
     {"name": "nvidia/OpenMathInstruct-2",               "weight": 0.15},  # Math reasoning
     {"name": "HuggingFaceFW/fineweb-edu",               "weight": 0.12},  # General knowledge
-    {"name": "mhenrichsen/alpaca_data_cleaned",         "weight": 0.05},  # Instruction format
+    {"name": "yahma/alpaca-cleaned",                    "weight": 0.05},  # Instruction format
     # + FinGPT, nickmuchi/financial-classification, 20 FinanceMTEB datasets
 ]
 ```
@@ -130,7 +130,7 @@ Data is formatted as instruction-response pairs:
 {text or label}{eos_token}
 ```
 
-The pipeline tracks `processed_items` (total examples seen across all runs) and skips ahead on resume via `dataset.skip(n)`, ensuring no example is repeated unless the dataset wraps around.
+The pipeline tracks `processed_items` (total examples seen across all runs) and derives a **shuffle seed** (`processed_items % 100_000`) for each dataset. This ensures each hourly run samples a different region of every dataset without the sequential `dataset.skip(N)` overhead that was previously used — which required downloading thousands of items before yielding training examples (causing ~70-minute wasted time per run when `processed_items` was large).
 
 Per-run data intake is capped at `MAX_BYTES` (default: 25 MB as of v6.0.0, previously 15 MB) to keep each run's training data consistent regardless of step count.
 

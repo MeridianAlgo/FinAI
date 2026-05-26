@@ -14,7 +14,7 @@ datasets:
 - sujet-ai/Sujet-Finance-Instruct-177k
 - nvidia/OpenMathInstruct-2
 - HuggingFaceFW/fineweb-edu
-- mhenrichsen/alpaca_data_cleaned
+- yahma/alpaca-cleaned
 library_name: transformers
 pipeline_tag: text-generation
 ---
@@ -369,7 +369,7 @@ Training data is a weighted mix of finance-focused HuggingFace datasets, streame
 | `sujet-ai/Sujet-Finance-Instruct-177k` | 18% | High-quality finance instruction pairs |
 | `nvidia/OpenMathInstruct-2` | 15% | Math reasoning (quantitative finance) |
 | `HuggingFaceFW/fineweb-edu` | 12% | General knowledge foundation |
-| `mhenrichsen/alpaca_data_cleaned` | 5% | General instruction format |
+| `yahma/alpaca-cleaned` | 5% | General instruction format |
 | `FinGPT/fingpt-sentiment-train` | 4% | Financial news sentiment |
 | `FinanceMTEB/financial_phrasebank` | 1% | Sentiment classification |
 | `FinanceMTEB/FinQA` | 1% | Financial QA pairs |
