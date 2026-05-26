@@ -7,18 +7,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [6.0.1] — 2026-05-26
 
-> **Hotfix:** Streaming dataset skip overhead was silently killing per-run training throughput (5 steps/run instead of 150). Replace sequential `.skip()` with shuffle-seed approach. Fix broken `mhenrichsen/alpaca_data_cleaned` dataset (removed from HF Hub). Fix CI upload `delete_patterns` path prefix bug.
+> **Hotfix batch:** Four critical fixes discovered after v6.0.0 deploy.
 
 ### Changes
 
-#### Critical Performance Fix
+#### Critical — Training Throughput (was 5 steps/run, target 120+)
 - **Replace `.skip()` with `.shuffle(seed)` in FinanceDataPipeline** — The previous approach called `dataset.skip(N)` on each streaming dataset, which downloads and discards thousands of items before yielding training examples. With `processed_items=67,720`, this took ~70 minutes per run — leaving only ~5 actual training steps in the 80-minute timeout window. New approach: each run derives a shuffle seed from the `processed_items` counter so different runs sample different dataset regions without the skip overhead. Training throughput: ~5 steps/run → ~120+ steps/run.
 
-#### Dataset Fix
+#### Critical — EWC State File Size (1.88 GB → ~158 MB)
+- **Fix EWC pruning: top-K-ratio by Fisher magnitude** — The previous `FISHER_THRESHOLD` per-element check kept entire parameter tensors if ANY element exceeded the threshold — resulting in all 494M parameters being retained (1.88 GB file). New approach: keep top 8% of parameters by total Fisher magnitude (`FISHER_TOP_K_RATIO=0.08`). Result: ~39.5M params kept, ~158 MB EWC state file.
+
+#### High — Broken Dataset
 - **Replace `mhenrichsen/alpaca_data_cleaned` → `yahma/alpaca-cleaned`** — The `mhenrichsen/alpaca_data_cleaned` dataset was removed from HuggingFace Hub, causing a `[FAIL]` on every training run. `yahma/alpaca-cleaned` is the canonical maintained version of the same Alpaca cleaned dataset.
 
-#### CI Fix
+#### Medium — CI Fixes
 - **Fix `delete_patterns` prefix in Upload Checkpoint step** — The `upload_folder(path_in_repo='checkpoint', delete_patterns=['checkpoint/pytorch_model.bin', ...])` was silently failing because huggingface_hub matches patterns relative to `path_in_repo`. Corrected to `['pytorch_model.bin', ...]`.
+- **Add generation smoke test** — After each upload, run 2 finance prompts and log response quality (token count, uniqueness ratio). Catches silent generation failures before the next run builds on a broken checkpoint.
 
 ---
 
