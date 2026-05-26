@@ -3,13 +3,15 @@
 import pytest
 import torch
 
-from meridian.model.configuration import MeridianConfig
+from meridian.model.configuration import MeridianSMoEConfig as MeridianConfig
 from meridian.model.modeling import (
-    MeridianForCausalLM,
     MeridianMoELayer,
     MeridianSwiGLU,
     NumeracyEncoder,
     RMSNorm,
+)
+from meridian.model.modeling import (
+    MeridianSMoEForCausalLM as MeridianForCausalLM,
 )
 
 

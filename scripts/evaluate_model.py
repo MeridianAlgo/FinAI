@@ -1,6 +1,6 @@
 """Meridian.AI - Model Evaluation Script.
 
-Tests the fine-tuned checkpoint against the base SmolLM2-360M model.
+Tests the fine-tuned checkpoint against the base Qwen2.5-0.5B model.
 Measures:
   1. Perplexity on finance-specific text
   2. Generation quality on finance prompts
@@ -61,7 +61,7 @@ def load_model(model_path, model_name="model"):
     except Exception as e:
         print(f"  [WARN] Tokenizer load from {model_path} failed: {e}")
         # Fall back to the known base tokenizer
-        fallback = "HuggingFaceTB/SmolLM2-360M"
+        fallback = "Qwen/Qwen2.5-0.5B"
         print(f"  [INFO] Falling back to tokenizer from {fallback}")
         tokenizer = AutoTokenizer.from_pretrained(fallback, trust_remote_code=True)
 
@@ -227,11 +227,11 @@ def evaluate_model(model, tokenizer, model_name="Model"):
 def main():
     print("=" * 60)
     print("  MERIDIAN.AI - MODEL EVALUATION")
-    print("  Comparing fine-tuned checkpoint vs base model")
+    print("  Comparing fine-tuned checkpoint vs Qwen2.5-0.5B base model")
     print("=" * 60)
 
     checkpoint_path = os.getenv("CHECKPOINT_PATH", "./hf_model/checkpoint")
-    base_model_id = os.getenv("BASE_MODEL", "HuggingFaceTB/SmolLM2-360M")
+    base_model_id = os.getenv("BASE_MODEL", "Qwen/Qwen2.5-0.5B")
     skip_base = os.getenv("SKIP_BASE", "0") == "1"
 
     all_results = {}
@@ -255,12 +255,12 @@ def main():
     # ── Evaluate base model ───────────────────────────────────────────
     if not skip_base:
         print("\n\n" + "#" * 60)
-        print("  EVALUATING: BASE MODEL (SmolLM2-360M)")
+        print("  EVALUATING: BASE MODEL (Qwen2.5-0.5B)")
         print("#" * 60)
 
         try:
-            base_model, base_tokenizer = load_model(base_model_id, "Base SmolLM2-360M")
-            base_results = evaluate_model(base_model, base_tokenizer, "Base SmolLM2-360M")
+            base_model, base_tokenizer = load_model(base_model_id, "Base Qwen2.5-0.5B")
+            base_results = evaluate_model(base_model, base_tokenizer, "Base Qwen2.5-0.5B")
             all_results["base"] = base_results
             del base_model
             gc.collect()

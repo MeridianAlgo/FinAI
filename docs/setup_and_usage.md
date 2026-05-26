@@ -44,7 +44,7 @@ tokenizer = AutoTokenizer.from_pretrained(repo_id, subfolder="checkpoint")
 model = AutoModelForCausalLM.from_pretrained(
     repo_id,
     subfolder="checkpoint",
-    trust_remote_code=True,   # required for custom architecture
+    # trust_remote_code=True is NOT needed — this is standard Qwen2, not a custom arch
     torch_dtype=torch.float32,
     low_cpu_mem_usage=True,
 )
@@ -117,7 +117,7 @@ python train.py
 This will:
 1. Pull the latest checkpoint from `meridianal/FinAI` on HuggingFace
 2. Load Qwen2.5-0.5B (or resume from checkpoint if architecture matches)
-3. Stream financial datasets and train for 150 steps (default)
+3. Stream financial datasets and train for 150 steps (default, v6.0.0)
 4. Save the checkpoint locally and upload back to HuggingFace
 
 ### Training Without HuggingFace
@@ -174,7 +174,7 @@ Expected: all tests pass in ~30–60 seconds on CPU.
 
 ## Code Examples
 
-Annotated scripts are in `docs/examples/`:
+Annotated scripts are in `examples/`:
 
 | Script | What It Demonstrates |
 |:---|:---|
@@ -185,9 +185,9 @@ Annotated scripts are in `docs/examples/`:
 Run any example from the repo root:
 
 ```bash
-python docs/examples/01_inference.py
-python docs/examples/02_dataset_pipeline.py
-python docs/examples/03_model_config.py
+python examples/01_inference.py
+python examples/02_dataset_pipeline.py
+python examples/03_model_config.py
 ```
 
 ---

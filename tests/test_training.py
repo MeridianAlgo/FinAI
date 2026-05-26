@@ -4,8 +4,8 @@ import pytest
 import torch
 
 from meridian.data.pipeline import create_smoke_dataloader
-from meridian.model.configuration import MeridianConfig
-from meridian.model.modeling import MeridianForCausalLM
+from meridian.model.configuration import MeridianSMoEConfig as MeridianConfig
+from meridian.model.modeling import MeridianSMoEForCausalLM as MeridianForCausalLM
 from meridian.training.ewc import ElasticWeightConsolidation
 from meridian.training.trainer import MeridianTrainer, TrainingConfig
 

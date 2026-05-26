@@ -91,9 +91,11 @@ This auxiliary loss (scaled by `router_aux_loss_coef=0.01`) discourages all toke
 
 ### Financial Numeracy Encoding
 
-A learned 64-dimensional embedding for numeric magnitude, added to the token embedding layer with a scale factor of 0.05. The embedding is indexed by `input_id % 32` — a heuristic bucket that gives nearby token IDs similar magnitude signals.
+A learned 64-dimensional embedding for numeric magnitude, added to the token embedding layer with a scale factor of 0.05. The embedding is indexed by `input_id % 32` — a heuristic bucket that groups token IDs by modulo position.
 
-This provides dedicated representational capacity for quantitative reasoning without modifying the tokenizer.
+> **Known Limitation (v6.0.0 target):** The current `input_id % 32` heuristic has no relationship to actual numeric magnitude — token ID 1234 modulo 32 = 18, which has nothing to do with whether token 1234 decodes to "100" or "0.001". A proper implementation would detect digit tokens in the vocabulary and assign magnitude buckets based on the decoded numeric value. This is tracked as a v6 improvement.
+
+This provides some additional representational capacity for tokens in structured numeric positions, but does not yet capture true financial magnitude signals.
 
 ### Elastic Weight Consolidation (EWC)
 

@@ -24,7 +24,12 @@ from dotenv import load_dotenv
 from transformers import AutoTokenizer
 
 from meridian.data.pipeline import create_dataloader, create_smoke_dataloader
-from meridian.model import MeridianConfig, MeridianForCausalLM
+from meridian.model import (
+    MeridianSMoEConfig as MeridianConfig,
+)
+from meridian.model import (
+    MeridianSMoEForCausalLM as MeridianForCausalLM,
+)
 from meridian.training.trainer import MeridianTrainer, TrainingConfig
 
 load_dotenv()
@@ -47,8 +52,8 @@ signal.signal(signal.SIGTERM, sigterm_handler)
 
 def main():
     print("=" * 70)
-    print("  MeridianAI v5.1.0 — Finance LLM Training (Qwen2.5-0.5B base)")
-    print("  Architecture: Sparse MoE + GQA + RoPE + SwiGLU + Numeracy Encoding")
+    print("  MeridianAI v6.0.0 — Finance LLM Training (Qwen2.5-0.5B base)")
+    print("  Fine-tuning: Qwen2.5-0.5B via AdaFactor + EWC continual learning")
     print("=" * 70)
 
     # FAST_MODE is for quick local debugging on CPU (keeps the real model, but avoids heavy pipelines)

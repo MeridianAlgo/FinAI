@@ -5,7 +5,7 @@ from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
 
 
 def main() -> None:
-    model_id = os.getenv("HF_MODEL_ID", "hpcai-tech/openmoe-base")
+    model_id = os.getenv("HF_MODEL_ID", "meridianal/FinAI")
     print(f"[INFO] Download/load: {model_id}")
 
     config = AutoConfig.from_pretrained(model_id, trust_remote_code=True)

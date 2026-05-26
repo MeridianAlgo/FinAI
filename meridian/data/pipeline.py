@@ -3,13 +3,18 @@
 Curriculum-aware dataset mixing with finance, math, and general knowledge.
 Uses streaming to avoid downloading massive datasets.
 
-Dataset mix:
- - 40% FinanceAlpaca (financial QA & instructions)
- - 30% OpenMathInstruct (math reasoning — critical for finance)
- - 30% FineWeb-Edu (general knowledge foundation)
- - and more
-This mix ensures the model excels at finance + math while maintaining
-broad language understanding.
+Dataset mix (v6.0.0 weights):
+ - 26% gbharti/finance-alpaca        (financial Q&A instructions)
+ - 18% sujet-ai/Sujet-Finance-Instruct-177k  (high-quality finance instruct)
+ - 15% nvidia/OpenMathInstruct-2     (math reasoning for quantitative finance)
+ - 12% HuggingFaceFW/fineweb-edu    (general knowledge foundation)
+ - 05% mhenrichsen/alpaca_data_cleaned  (general instruction format)
+ - ~24% FinanceMTEB + FinGPT + misc  (sentiment, ESG, fraud, FLS, events, etc.)
+
+Weights rebalanced in v6.0.0:
+ - Reduced OpenMathInstruct 0.25→0.15 (math training caused factual confusion)
+ - Increased Sujet-Finance-Instruct 0.12→0.18 (highest quality finance instruct)
+ - Added alpaca_data_cleaned 0.05 (improves response format consistency)
 """
 
 from __future__ import annotations
@@ -37,7 +42,7 @@ class FinanceDataPipeline:
             "split": "train",
             "text_field": "output",  # Financial instructions
             "instruction_field": "instruction",
-            "weight": 0.30,
+            "weight": 0.26,
         },
         {
             "name": "nvidia/OpenMathInstruct-2",
@@ -45,7 +50,7 @@ class FinanceDataPipeline:
             "split": "train_1M",
             "text_field": "generated_solution",
             "instruction_field": "problem",
-            "weight": 0.25,
+            "weight": 0.15,
         },
         {
             "name": "HuggingFaceFW/fineweb-edu",
@@ -53,7 +58,7 @@ class FinanceDataPipeline:
             "split": "train",
             "text_field": "text",
             "instruction_field": None,
-            "weight": 0.20,
+            "weight": 0.12,
         },
         {
             "name": "FinanceMTEB/financial_phrasebank",
@@ -248,7 +253,7 @@ class FinanceDataPipeline:
             "split": "train",
             "text_field": "answer",
             "instruction_field": "user_prompt",
-            "weight": 0.12,
+            "weight": 0.18,
         },
         {
             "name": "FinGPT/fingpt-sentiment-train",
@@ -271,6 +276,15 @@ class FinanceDataPipeline:
             "label_map": {0: "negative", 1: "neutral", 2: "positive"},
             "prompt_template": "Classify the sentiment (negative/neutral/positive) of this financial text.\n\nText:\n{text}",
             "weight": 0.02,
+        },
+        # High-quality general instruction-following — added v6.0.0 for format consistency
+        {
+            "name": "mhenrichsen/alpaca_data_cleaned",
+            "config": None,
+            "split": "train",
+            "text_field": "output",
+            "instruction_field": "instruction",
+            "weight": 0.05,
         },
     ]
 

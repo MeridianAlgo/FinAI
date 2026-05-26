@@ -20,7 +20,7 @@ import torch.nn.functional as F
 from transformers import PreTrainedModel
 from transformers.modeling_outputs import CausalLMOutputWithPast
 
-from meridian.model.configuration import MeridianConfig
+from meridian.model.configuration import MeridianConfig, MeridianSMoEConfig
 
 # ---------------------------------------------------------------------------
 # Primitives
@@ -475,37 +475,51 @@ class MeridianModel(nn.Module):
         return hidden_states, all_kvs, total_aux_loss
 
 
-class MeridianForCausalLM(PreTrainedModel):
+class MeridianSMoEForCausalLM(PreTrainedModel):
     """Meridian.AI for causal language modeling."""
 
-    config_class = MeridianConfig
+    config_class = MeridianSMoEConfig
     base_model_prefix = "model"
     supports_gradient_checkpointing = True
-    _tied_weights_keys = ["lm_head.weight"]
+    # Default: no class-level tied keys. Set dynamically in __init__ based on config.
+    # transformers>=5.0 expects _tied_weights_keys as a dict {tied_key: source_key}
+    _tied_weights_keys: dict = {}
 
-    def __init__(self, config: MeridianConfig):
+    def __init__(self, config: MeridianSMoEConfig):
         super().__init__(config)
         self.config = config
         self.model = MeridianModel(config)
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
+        # Set weight tying keys dynamically — only when tie_word_embeddings=True
+        if config.tie_word_embeddings:
+            self._tied_weights_keys = {"lm_head.weight": "model.embed_tokens.weight"}
+        else:
+            self._tied_weights_keys = {}
+
         self.post_init()
 
     def _init_weights(self, module: nn.Module) -> None:
-        """Improved weight initialization for stable training."""
+        """Improved weight initialization for stable training.
+
+        Uses torch.nn.init.* functions (not tensor.data.normal_()) so that
+        transformers>=5.0's @init.guard_torch_init_functions() decorator can
+        correctly mark initialized tensors and skip re-initialization after
+        loading from a checkpoint.
+        """
         std = self.config.initializer_range
         if isinstance(module, nn.Linear):
             # Normal distribution based on Xavier/Kaiming principles
             if getattr(module, "_is_residual", False):
-                module.weight.data.normal_(
-                    mean=0.0, std=std / math.sqrt(2 * self.config.num_layers)
+                nn.init.normal_(
+                    module.weight, mean=0.0, std=std / math.sqrt(2 * self.config.num_layers)
                 )
             else:
-                module.weight.data.normal_(mean=0.0, std=std)
+                nn.init.normal_(module.weight, mean=0.0, std=std)
             if module.bias is not None:
-                module.bias.data.zero_()
+                nn.init.zeros_(module.bias)
         elif isinstance(module, nn.Embedding):
-            module.weight.data.normal_(mean=0.0, std=std)
+            nn.init.normal_(module.weight, mean=0.0, std=std)
             if module.padding_idx is not None:
                 module.weight.data[module.padding_idx].zero_()
 
@@ -601,3 +615,7 @@ class MeridianForCausalLM(PreTrainedModel):
                 break
 
         return generated
+
+
+# Backward-compatibility alias
+MeridianForCausalLM = MeridianSMoEForCausalLM

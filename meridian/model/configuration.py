@@ -12,10 +12,10 @@ Architecture highlights:
 from transformers import PretrainedConfig
 
 
-class MeridianConfig(PretrainedConfig):
+class MeridianSMoEConfig(PretrainedConfig):
     """Configuration for Meridian.AI."""
 
-    model_type = "meridian"
+    model_type = "meridian_smoe"
 
     def __init__(
         self,
@@ -85,3 +85,7 @@ class MeridianConfig(PretrainedConfig):
             eos_token_id=eos_token_id,
             **kwargs,
         )
+
+
+# Backward-compatibility alias
+MeridianConfig = MeridianSMoEConfig

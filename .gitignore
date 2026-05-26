@@ -14,6 +14,15 @@ temp_download/
 pytorch_model.bin
 trainer_state.pt
 
+# Downloaded HuggingFace models (local testing)
+hf_model/
+
+# CometML run artifacts
+.cometml-runs/
+
+# Evaluation output
+eval_results.json
+
 # Python
 __pycache__/
 *.pyc
@@ -46,7 +55,7 @@ Thumbs.db
 
 # TRACK: dataset_state.json (critical for GitHub Actions persistence)
 
-# Local Log
+# Local Logs
 train_output_local.log
 train_output.log
 train_errors.txt

@@ -34,7 +34,7 @@ def main():
     except Exception as e:
         print(f"Repo creation note: {e}")
 
-    # Initialize model from SmolLM2-360M (standard Llama arch, pre-trained on 600B tokens)
+    # Load fresh Qwen2.5-0.5B (standard Qwen2 arch, pre-trained on 18T tokens)
     print(f"  Fetching base model {base_model_id}...")
     from transformers import AutoModelForCausalLM
 
@@ -48,10 +48,10 @@ def main():
     total_params = sum(p.numel() for p in model.parameters())
     print(f"  Total parameters: {total_params:,}")
 
-    # Save locally
+    # Save locally — safetensors only (no pytorch_model.bin)
     save_path = "./checkpoint"
     os.makedirs(save_path, exist_ok=True)
-    model.save_pretrained(save_path, safe_serialization=False)
+    model.save_pretrained(save_path, safe_serialization=True)
 
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token_id = tokenizer.eos_token_id

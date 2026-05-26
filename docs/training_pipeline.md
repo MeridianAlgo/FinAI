@@ -79,7 +79,7 @@ When RAM exceeds the hard ceiling, the trainer immediately saves a weights-only 
 
 ### Fisher Threshold Pruning
 
-After training, EWC stores Fisher values only for parameters exceeding `FISHER_THRESHOLD` (default: 1e-6). Parameters below this are near-zero and contribute negligibly to forgetting prevention. Pruning reduces EWC state size by 40–60%.
+After training, EWC stores Fisher values only for parameters exceeding `FISHER_THRESHOLD` (default: `5e-4` as of v6.0.0, previously `1e-4`). Parameters below this are near-zero and contribute negligibly to forgetting prevention. Pruning reduces EWC state size significantly — the threshold was raised in v6 because the `ewc_state.pt` file grew to ~1.88 GB (larger than the model weights themselves), which consumed excessive RAM during the training start phase.
 
 ### Optimizer State Skipped on Save
 
@@ -111,10 +111,12 @@ Training data is never fully downloaded. `datasets` library streams examples rec
 
 ```python
 FinanceDataPipeline.DATASETS = [
-    {"name": "gbharti/finance-alpaca",        "weight": 0.30},  # Finance Q&A
-    {"name": "nvidia/OpenMathInstruct-2",      "weight": 0.25},  # Math reasoning
-    {"name": "HuggingFaceFW/fineweb-edu",     "weight": 0.20},  # General knowledge
-    # + 20 FinanceMTEB datasets at 0.006-0.010 each
+    {"name": "gbharti/finance-alpaca",                  "weight": 0.26},  # Finance Q&A
+    {"name": "sujet-ai/Sujet-Finance-Instruct-177k",    "weight": 0.18},  # Finance instruct
+    {"name": "nvidia/OpenMathInstruct-2",               "weight": 0.15},  # Math reasoning
+    {"name": "HuggingFaceFW/fineweb-edu",               "weight": 0.12},  # General knowledge
+    {"name": "mhenrichsen/alpaca_data_cleaned",         "weight": 0.05},  # Instruction format
+    # + FinGPT, nickmuchi/financial-classification, 20 FinanceMTEB datasets
 ]
 ```
 
@@ -130,7 +132,7 @@ Data is formatted as instruction-response pairs:
 
 The pipeline tracks `processed_items` (total examples seen across all runs) and skips ahead on resume via `dataset.skip(n)`, ensuring no example is repeated unless the dataset wraps around.
 
-Per-run data intake is capped at `MAX_BYTES` (default: 15 MB) to keep each run's training data consistent regardless of step count.
+Per-run data intake is capped at `MAX_BYTES` (default: 25 MB as of v6.0.0, previously 15 MB) to keep each run's training data consistent regardless of step count.
 
 ---
 
@@ -180,28 +182,29 @@ Individual NaN batches are skipped automatically. Training continues until `MAX_
 
 See [README.md](../README.md#environment-variables-reference) for the complete table.
 
-### Quick Reference (CI Defaults)
+### Quick Reference (CI Defaults — v6.0.0)
 
 ```bash
-MAX_STEPS=150          # Steps per run
+MAX_STEPS=150          # Steps per run (unchanged; BLOCK_SIZE 256→512 absorbs the budget)
 BATCH_SIZE=1           # Micro-batch size
-GRAD_ACCUM=8           # Effective batch size = 8
-BLOCK_SIZE=256         # Sequence length
+GRAD_ACCUM=4           # Effective batch size = 4 (down from 8)
+BLOCK_SIZE=512         # Sequence length (up from 256)
 LEARNING_RATE=5e-5     # Peak LR
 DTYPE=bfloat16         # Model precision
 OPTIMIZER=adafactor    # Memory-efficient optimizer
 USE_EWC=1              # Enable continual learning
-EWC_SAMPLES=5          # Fisher estimation batches
+EWC_LAMBDA=75.0        # EWC regularization (down from 500)
+EWC_SAMPLES=20         # Fisher estimation batches (up from 5)
 HARD_RAM_GUARD=1       # Emergency save at 14.5 GB
 MAX_RAM_GB=14.5
 SOFT_RAM_GB=12.5       # Begin sequence throttle
 SOFT_RAM_PCT=80
-MAX_BYTES=15728640     # 15 MB data per run
+MAX_BYTES=26214400     # 25 MB data per run (up from 15 MB)
 GRADIENT_CHECKPOINTING=1
 SKIP_OPTIMIZER_SAVE=1
 FREE_OPTIMIZER_BEFORE_FISHER=1
 FISHER_SEQ_LEN=64
-FISHER_THRESHOLD=1e-6
+FISHER_THRESHOLD=5e-4  # Raised from 1e-4 to reduce EWC state file size
 ```
 
 ---

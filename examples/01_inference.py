@@ -9,12 +9,11 @@ def main():
     print(f"Loading tokenizer from {repo_id}...")
     tokenizer = AutoTokenizer.from_pretrained(repo_id, subfolder="checkpoint")
 
-    # Load the Meridian.AI MoE model
+    # Load the deployed model (standard Qwen2 architecture — no custom code needed)
     print(f"Loading model from {repo_id}...")
     model = AutoModelForCausalLM.from_pretrained(
         repo_id,
         subfolder="checkpoint",
-        trust_remote_code=True,  # Required because it's a custom architecture
         torch_dtype=torch.float32,
         low_cpu_mem_usage=True,
     )
