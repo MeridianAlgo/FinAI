@@ -461,10 +461,12 @@ class MeridianTrainer:
                         self._log_memory()
                         elapsed = time.time() - start_time
                         tps = tokens_processed / elapsed if elapsed > 0 else 0
+                        ppl = math.exp(min(avg_loss, 20.0))  # cap to avoid overflow
                         print(
                             f"  Step {self.run_step:>5}/{self.config.max_steps} "
                             f"| Global {self.global_step:>6} "
                             f"| Loss: {avg_loss:.4f} "
+                            f"| PPL: {ppl:.2f} "
                             f"| LR: {lr:.2e} "
                             f"| Grad: {grad_norm:.3f} "
                             f"| Time: {elapsed:.0f}s "
@@ -475,6 +477,7 @@ class MeridianTrainer:
                             self.experiment.log_metrics(
                                 {
                                     "loss": avg_loss,
+                                    "perplexity": ppl,
                                     "lr": lr,
                                     "grad_norm": (
                                         grad_norm.item()
@@ -548,19 +551,27 @@ class MeridianTrainer:
             self._log_memory()
 
         elapsed = time.time() - start_time
+        best_ppl = math.exp(min(self.best_loss, 20.0))
         print(f"\n{'=' * 70}")
         print("  TRAINING COMPLETE")
-        print(f"  Steps: {self.run_step} | Time: {elapsed:.0f}s | Best loss: {self.best_loss:.4f}")
+        print(f"  Steps: {self.run_step} | Time: {elapsed:.0f}s | Best loss: {self.best_loss:.4f} (PPL {best_ppl:.2f})")
         if initial_loss_val is not None:
             final_print_val = final_loss_val if final_loss_val is not None else initial_loss_val
             diff = final_print_val - initial_loss_val
+            init_ppl = math.exp(min(initial_loss_val, 20.0))
+            final_ppl = math.exp(min(final_print_val, 20.0))
             print(
-                f"  Initial loss: {initial_loss_val:.4f} | Final loss: {final_print_val:.4f} | Diff: {diff:+.4f}"
+                f"  Initial loss: {initial_loss_val:.4f} (PPL {init_ppl:.2f}) | "
+                f"Final loss: {final_print_val:.4f} (PPL {final_ppl:.2f}) | Δ: {diff:+.4f}"
             )
         print(f"  Tokens processed: {tokens_processed:,}")
         print(f"{'=' * 70}\n")
 
         if self.experiment:
+            self.experiment.log_metrics(
+                {"final_loss": self.best_loss, "final_perplexity": best_ppl},
+                step=self.global_step,
+            )
             self.experiment.end()
 
     def save_checkpoint(self, path: str, skip_optimizer: bool = False) -> None:
