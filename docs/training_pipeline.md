@@ -77,9 +77,14 @@ When RAM exceeds the soft threshold, the sequence length of the current batch is
 
 When RAM exceeds the hard ceiling, the trainer immediately saves a weights-only checkpoint and exits cleanly. The next run resumes from this checkpoint.
 
-### Fisher Threshold Pruning
+### Fisher Top-K Pruning (v6.0.1)
 
-After training, EWC stores Fisher values only for parameters exceeding `FISHER_THRESHOLD` (default: `5e-4` as of v6.0.0, previously `1e-4`). Parameters below this are near-zero and contribute negligibly to forgetting prevention. Pruning reduces EWC state size significantly — the threshold was raised in v6 because the `ewc_state.pt` file grew to ~1.88 GB (larger than the model weights themselves), which consumed excessive RAM during the training start phase.
+After training, EWC uses a **top-K-ratio pruning** strategy (`FISHER_TOP_K_RATIO=0.08`): the 8% of parameter tensors with the highest total Fisher magnitude are kept; the rest are discarded. This is much more effective than the previous `FISHER_THRESHOLD` per-element approach, which kept entire parameter tensors if ANY element exceeded the threshold — resulting in all 290 tensors being retained (~1.88 GB).
+
+With top-K=8%:
+- ~23 of 290 parameter tensors retained (the most Fisher-important weights)
+- Estimated EWC state size: ~158 MB (down from 1.88 GB)
+- Parameters kept represent the most "critical" weights for the EWC penalty
 
 ### Optimizer State Skipped on Save
 
@@ -204,7 +209,8 @@ GRADIENT_CHECKPOINTING=1
 SKIP_OPTIMIZER_SAVE=1
 FREE_OPTIMIZER_BEFORE_FISHER=1
 FISHER_SEQ_LEN=64
-FISHER_THRESHOLD=5e-4  # Raised from 1e-4 to reduce EWC state file size
+FISHER_THRESHOLD=5e-4
+FISHER_TOP_K_RATIO=0.08  # Keep top 8% of params by Fisher magnitude (~158 MB EWC state)
 ```
 
 ---

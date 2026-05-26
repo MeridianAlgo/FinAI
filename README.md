@@ -26,7 +26,7 @@ pipeline_tag: text-generation
 [![Base Model](https://img.shields.io/badge/Base-Qwen2.5--0.5B-success.svg)](https://huggingface.co/Qwen/Qwen2.5-0.5B)
 [![Training](https://img.shields.io/badge/Training-Hourly_CI-orange.svg)](https://github.com/MeridianAlgo/FinAI/actions)
 [![HuggingFace](https://img.shields.io/badge/HuggingFace-meridianal%2FFinAI-yellow.svg)](https://huggingface.co/meridianal/FinAI)
-[![Version](https://img.shields.io/badge/version-6.0.0-blueviolet.svg)]()
+[![Version](https://img.shields.io/badge/version-6.0.1-blueviolet.svg)]()
 
 Meridian.AI is a finance-specialized language model that trains itself continuously, every hour, entirely on free GitHub Actions infrastructure. It continuously fine-tunes a **Qwen2.5-0.5B** backbone on 25+ finance and math datasets using **Elastic Weight Consolidation (EWC)** to prevent catastrophic forgetting across training sessions.
 
