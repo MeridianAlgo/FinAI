@@ -554,7 +554,9 @@ class MeridianTrainer:
         best_ppl = math.exp(min(self.best_loss, 20.0))
         print(f"\n{'=' * 70}")
         print("  TRAINING COMPLETE")
-        print(f"  Steps: {self.run_step} | Time: {elapsed:.0f}s | Best loss: {self.best_loss:.4f} (PPL {best_ppl:.2f})")
+        print(
+            f"  Steps: {self.run_step} | Time: {elapsed:.0f}s | Best loss: {self.best_loss:.4f} (PPL {best_ppl:.2f})"
+        )
         if initial_loss_val is not None:
             final_print_val = final_loss_val if final_loss_val is not None else initial_loss_val
             diff = final_print_val - initial_loss_val
