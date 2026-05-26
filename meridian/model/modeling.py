@@ -322,22 +322,77 @@ class MeridianMoELayer(nn.Module):
 
 
 class NumeracyEncoder(nn.Module):
-    """Magnitude-aware signals for numeric tokens."""
+    """Magnitude-aware signals for numeric tokens.
+
+    Injects a lightweight learned signal based on the order-of-magnitude bucket
+    for each input token. Tokens that represent numbers get a signal indicating
+    their approximate magnitude (units, thousands, millions, etc.); non-numeric
+    tokens get bucket 0 (a near-zero signal since the embedding is zero-initialized
+    and the weight is small).
+
+    Usage:
+        # At model init time, optionally call register_digit_tokens() with a tokenizer
+        # to populate proper magnitude buckets. Without this call, all tokens map to
+        # bucket 0 and the encoder produces no net signal (correct fall-back).
+        encoder.register_digit_tokens(tokenizer)
+    """
 
     def __init__(self, hidden_size: int, numeracy_dim: int = 64, vocab_size: int = 151_665):
         super().__init__()
         self.num_buckets = 32
+        self.vocab_size = vocab_size
+        # Bucket 0 = "non-numeric / unknown", buckets 1-31 = order-of-magnitude bands
         self.magnitude_embed = nn.Embedding(self.num_buckets, numeracy_dim)
+        nn.init.zeros_(self.magnitude_embed.weight)  # Zero-init → no signal until trained
         self.proj = nn.Linear(numeracy_dim, hidden_size, bias=False)
+        nn.init.zeros_(self.proj.weight)  # Zero-init → no distortion at start
+
+        # Static lookup: token_id → magnitude bucket (populated by register_digit_tokens)
+        self.register_buffer(
+            "magnitude_buckets", torch.zeros(vocab_size, dtype=torch.long)
+        )
+
+    def register_digit_tokens(self, tokenizer) -> int:
+        """Populate magnitude_buckets from a tokenizer's vocabulary.
+
+        Iterates over all token strings, tries to parse each as a number, and
+        assigns it to a magnitude bucket: bucket = clamp(floor(log10(|val|)) + 8, 0, 31).
+        Non-numeric tokens stay at bucket 0.
+
+        Returns the number of numeric tokens found.
+        """
+        import math
+
+        buckets = torch.zeros(self.vocab_size, dtype=torch.long)
+        numeric_count = 0
+
+        vocab = tokenizer.get_vocab()
+        for token_str, token_id in vocab.items():
+            if token_id >= self.vocab_size:
+                continue
+            # Strip BPE prefix artifacts (▁, Ġ, etc.) and whitespace
+            clean = token_str.lstrip("▁Ġ").strip()
+            try:
+                val = float(clean)
+                if val != 0:
+                    magnitude = int(math.log10(abs(val)))  # e.g. 1→0, 10→1, 1000→3
+                else:
+                    magnitude = -8  # zero gets bucket 0
+                bucket = max(0, min(self.num_buckets - 1, magnitude + 8))
+                buckets[token_id] = bucket
+                numeric_count += 1
+            except (ValueError, TypeError, OverflowError):
+                pass  # Non-numeric token → stays at bucket 0
+
+        self.magnitude_buckets = buckets
+        return numeric_count
 
     def forward(self, hidden_states: torch.Tensor, input_ids: torch.Tensor) -> torch.Tensor:
-        # Heuristic: Magnitude signal based on token proximity in vocab
-        # (Assuming numeric tokens are clustered)
-        bucket_ids = input_ids % self.num_buckets
+        # Clamp to valid range (guard against out-of-vocab IDs)
+        ids = input_ids.clamp(0, self.vocab_size - 1)
+        bucket_ids = self.magnitude_buckets[ids]
         numeracy_emb = self.magnitude_embed(bucket_ids)
         numeracy_signal = self.proj(numeracy_emb)
-
-        # Small auxiliary signal
         return hidden_states + 0.05 * numeracy_signal
 
 
