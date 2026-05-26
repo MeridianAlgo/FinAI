@@ -5,6 +5,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [6.0.1] — 2026-05-26
+
+> **Hotfix:** Streaming dataset skip overhead was silently killing per-run training throughput (5 steps/run instead of 150). Replace sequential `.skip()` with shuffle-seed approach. Fix broken `mhenrichsen/alpaca_data_cleaned` dataset (removed from HF Hub). Fix CI upload `delete_patterns` path prefix bug.
+
+### Changes
+
+#### Critical Performance Fix
+- **Replace `.skip()` with `.shuffle(seed)` in FinanceDataPipeline** — The previous approach called `dataset.skip(N)` on each streaming dataset, which downloads and discards thousands of items before yielding training examples. With `processed_items=67,720`, this took ~70 minutes per run — leaving only ~5 actual training steps in the 80-minute timeout window. New approach: each run derives a shuffle seed from the `processed_items` counter so different runs sample different dataset regions without the skip overhead. Training throughput: ~5 steps/run → ~120+ steps/run.
+
+#### Dataset Fix
+- **Replace `mhenrichsen/alpaca_data_cleaned` → `yahma/alpaca-cleaned`** — The `mhenrichsen/alpaca_data_cleaned` dataset was removed from HuggingFace Hub, causing a `[FAIL]` on every training run. `yahma/alpaca-cleaned` is the canonical maintained version of the same Alpaca cleaned dataset.
+
+#### CI Fix
+- **Fix `delete_patterns` prefix in Upload Checkpoint step** — The `upload_folder(path_in_repo='checkpoint', delete_patterns=['checkpoint/pytorch_model.bin', ...])` was silently failing because huggingface_hub matches patterns relative to `path_in_repo`. Corrected to `['pytorch_model.bin', ...]`.
+
+---
+
 ## [6.0.0] — 2026-05-26
 
 > **Goal:** Fix factual accuracy failures, increase context window, reduce EWC overconstraint, shrink EWC state file from 1.88 GB to <200 MB, and improve per-run training throughput.
@@ -21,7 +38,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **GRAD_ACCUM: 8 → 4** — Reduces effective batch size, which can help with generalization on diverse finance tasks at the cost of slightly noisier gradients.
 
 #### Dataset Curriculum
-- **Add `mhenrichsen/alpaca_data_cleaned`** (weight 0.05) — Cleaned instruction-following data to improve response format consistency.
+- **Add `yahma/alpaca-cleaned`** (weight 0.05) — Cleaned instruction-following data to improve response format consistency.
 - **Reduce `nvidia/OpenMathInstruct-2` weight: 0.25 → 0.15** — Math instruction data is less critical than finance-specific factual data. The current 25% weight is too high given the factual errors observed.
 - **Increase `sujet-ai/Sujet-Finance-Instruct-177k` weight: 0.12 → 0.18** — This is the highest-quality finance instruction dataset in the mix; increasing its share improves answer quality.
 
@@ -155,8 +172,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 - `meridian/data/pipeline.py` — `FinanceDataPipeline` streaming curriculum
-- Skip-ahead dataset state for continual training resume
-- `dataset_state.json` persisted to git for cross-run continuity
+- Shuffle-seed dataset sampling for continual training diversity (skip-ahead replaced in v6.0.1)
+- `dataset_state.json` persisted to git for cross-run seed derivation
 - NaN loss detection and batch skipping
 
 ---

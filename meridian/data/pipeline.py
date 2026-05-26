@@ -1,20 +1,23 @@
 """Finance-Focused Data Pipeline.
 
-Curriculum-aware dataset mixing with finance, math, and general knowledge.
-Uses streaming to avoid downloading massive datasets.
+Shuffle-seed-based dataset mixing with finance, math, and general knowledge.
+Uses streaming to avoid downloading massive datasets. Each training run derives
+a shuffle seed from the processed_items counter so it samples a different region
+of each dataset without sequential .skip() overhead (which downloads thousands
+of items before yielding a single training example).
 
 Dataset mix (v6.0.0 weights):
  - 26% gbharti/finance-alpaca        (financial Q&A instructions)
  - 18% sujet-ai/Sujet-Finance-Instruct-177k  (high-quality finance instruct)
  - 15% nvidia/OpenMathInstruct-2     (math reasoning for quantitative finance)
  - 12% HuggingFaceFW/fineweb-edu    (general knowledge foundation)
- - 05% mhenrichsen/alpaca_data_cleaned  (general instruction format)
+ - 05% yahma/alpaca-cleaned               (general instruction format)
  - ~24% FinanceMTEB + FinGPT + misc  (sentiment, ESG, fraud, FLS, events, etc.)
 
 Weights rebalanced in v6.0.0:
  - Reduced OpenMathInstruct 0.25→0.15 (math training caused factual confusion)
  - Increased Sujet-Finance-Instruct 0.12→0.18 (highest quality finance instruct)
- - Added alpaca_data_cleaned 0.05 (improves response format consistency)
+ - Added yahma/alpaca-cleaned 0.05 (improves response format consistency)
 """
 
 from __future__ import annotations
@@ -279,7 +282,7 @@ class FinanceDataPipeline:
         },
         # High-quality general instruction-following — added v6.0.0 for format consistency
         {
-            "name": "mhenrichsen/alpaca_data_cleaned",
+            "name": "yahma/alpaca-cleaned",
             "config": None,
             "split": "train",
             "text_field": "output",
@@ -534,6 +537,10 @@ class FinanceDataPipeline:
         self.tokenizer = tokenizer
         self.block_size = block_size
         self.skip_items = skip_items
+        # Derive a shuffle seed from skip_items so each "epoch" sees different data.
+        # This replaces the old sequential .skip() approach which required downloading
+        # and discarding thousands of streaming items (70+ min overhead per run).
+        self.shuffle_seed = skip_items % 100_000
         self.max_bytes_per_run = max_bytes_per_run
         self.items_processed = 0
         self.datasets = (
@@ -608,9 +615,14 @@ class FinanceDataPipeline:
         for ds_config in self.datasets:
             dataset = self._load_stream(ds_config)
             if dataset is not None:
-                if self.skip_items > 0:
-                    per_ds_skip = int(self.skip_items * ds_config["weight"])
-                    dataset = dataset.skip(per_ds_skip)
+                # Shuffle with a seed derived from the run's position counter.
+                # This gives each hourly run a different data sample without the
+                # O(skip_items) sequential download overhead of dataset.skip().
+                # buffer_size=2000 gives good diversity with ~2000-item look-ahead.
+                try:
+                    dataset = dataset.shuffle(seed=self.shuffle_seed, buffer_size=2000)
+                except Exception:
+                    pass  # Some datasets may not support shuffle; use as-is
                 streams.append((iter(dataset), ds_config))
                 print(f"  [OK] Loaded {ds_config['name']} (weight: {ds_config['weight']})")
 

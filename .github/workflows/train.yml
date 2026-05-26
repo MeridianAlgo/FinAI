@@ -266,7 +266,7 @@ jobs:
                   path_in_repo='checkpoint',
                   commit_message='Hourly training update [skip ci]',
                   token=token,
-                  delete_patterns=['checkpoint/pytorch_model.bin', '**/pytorch_model.bin'],
+                  delete_patterns=['pytorch_model.bin', '**/pytorch_model.bin'],
               )
               print('Checkpoint upload successful')
           except Exception as e:
