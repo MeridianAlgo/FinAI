@@ -348,9 +348,7 @@ class NumeracyEncoder(nn.Module):
         nn.init.zeros_(self.proj.weight)  # Zero-init → no distortion at start
 
         # Static lookup: token_id → magnitude bucket (populated by register_digit_tokens)
-        self.register_buffer(
-            "magnitude_buckets", torch.zeros(vocab_size, dtype=torch.long)
-        )
+        self.register_buffer("magnitude_buckets", torch.zeros(vocab_size, dtype=torch.long))
 
     def register_digit_tokens(self, tokenizer) -> int:
         """Populate magnitude_buckets from a tokenizer's vocabulary.
