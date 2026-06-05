@@ -3,6 +3,50 @@
 All notable changes across training versions are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+> **Versioning note (2026-06-05):** `v1.0.0` is the first **production** release.
+> Every version below it (`6.0.1`, `6.0.0`, `5.1.x`, `5.0.0`, `4.0.0`, `3.0.0`, `2.0.0`,
+> and the original `0.1.0` prototype) was a **pre-production test / research iteration**.
+> The corresponding git tags (`v1.0.0-smollm2`, `v2.0.0-qwen`, `v5.1.0`, `v5.1.1`,
+> `v6.0.0`) have been **deleted** — they were experimental checkpoints, not releases.
+> History is preserved below for the engineering audit trail.
+
+---
+
+## [1.0.0] — 2026-06-05 — **Production**
+
+> **First production release.** Promotes the continually-trained Qwen2.5-0.5B finance model
+> out of the test phase, and fixes the hourly CI run that was dying with `exit code 143`.
+
+### Fixed — CI training killed with exit code 143 (SIGTERM)
+
+- **Root cause:** the hourly run was being SIGTERM-killed (`128 + 15 = 143`) by the GitHub
+  Actions runner during the **first backward pass**. The log signature was output that
+  stopped immediately after `[CASCADE CHECK] Initial Loss of this run: ...` — the forward
+  pass succeeded, but backprop pushed peak RAM past the ~16 GB runner ceiling. Because the
+  kill hit the whole step process tree, the workflow's `exit 0` safety net never ran, so the
+  step surfaced 143 instead of a clean early-stop.
+- **Why the guards missed it:** `_memory_guard()` / soft-throttle only evaluate *between*
+  micro-steps, so they cannot intercept a memory spike that happens *inside* a single
+  `backward()` call. The `BLOCK_SIZE` jump `256 → 512` in v6.0.0 is what started tripping
+  this intermittently on 16 GB runners.
+- **Fix:** lowered the per-step activation peak and made throttling more aggressive:
+  - `BLOCK_SIZE` `512 → 384`
+  - `SOFT_RAM_GB` `12.5 → 11.0` (sequence truncation kicks in earlier)
+  - `MAX_RAM_GB` `14.5 → 14.0` (more headroom before the hard guard)
+
+### Changed
+
+- Version banner in `train.py` updated to `v1.0.0 (Production)`.
+- README version badge → `1.0.0 Production`; added a **Training Status & Observability**
+  section (live signals, how to read a run, current trajectory) and an exit-143
+  troubleshooting entry.
+
+### Docs
+
+- `README.md`, `docs/training_pipeline.md`, and `docs/setup_and_usage.md` updated to v1.0.0
+  defaults. The canonical HuggingFace model card is the repo-root `README.md`, which CI
+  uploads after every run.
+
 ---
 
 ## [6.0.1] — 2026-05-26
@@ -182,9 +226,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
-## [1.0.0] — 2025-03-01 (approx.)
+## [0.1.0] — 2025-03-01 (approx.) — *prototype (was tagged 1.0.0)*
 
-### Initial Release
+### Initial Prototype
 - Proof-of-concept finance LLM with hourly CI training on GitHub Actions.
 - Base model: DistilGPT-2
 - Training data: `gbharti/finance-alpaca`, `HuggingFaceFW/fineweb-edu`, `FinanceMTEB/financial_phrasebank`

@@ -26,9 +26,11 @@ pipeline_tag: text-generation
 [![Base Model](https://img.shields.io/badge/Base-Qwen2.5--0.5B-success.svg)](https://huggingface.co/Qwen/Qwen2.5-0.5B)
 [![Training](https://img.shields.io/badge/Training-Hourly_CI-orange.svg)](https://github.com/MeridianAlgo/FinAI/actions)
 [![HuggingFace](https://img.shields.io/badge/HuggingFace-meridianal%2FFinAI-yellow.svg)](https://huggingface.co/meridianal/FinAI)
-[![Version](https://img.shields.io/badge/version-6.0.1-blueviolet.svg)]()
+[![Version](https://img.shields.io/badge/version-1.0.0_Production-brightgreen.svg)]()
 
 Meridian.AI is a finance-specialized language model that trains itself continuously, every hour, entirely on free GitHub Actions infrastructure. It continuously fine-tunes a **Qwen2.5-0.5B** backbone on 25+ finance and math datasets using **Elastic Weight Consolidation (EWC)** to prevent catastrophic forgetting across training sessions.
+
+> **Status: `v1.0.0` — Production.** This is the first production-grade release. All earlier tagged builds (`v1.0.0-smollm2`, `v2.0.0-qwen`, `v5.1.0`, `v5.1.1`, `v6.0.0`) were pre-production test/research iterations and have been retired — see the [CHANGELOG](CHANGELOG.md) for the full history.
 
 **Model checkpoints:** [huggingface.co/meridianal/FinAI](https://huggingface.co/meridianal/FinAI)
 
@@ -46,6 +48,7 @@ Meridian.AI is a finance-specialized language model that trains itself continuou
 - [Local Training](#local-training)
 - [Environment Variables Reference](#environment-variables-reference)
 - [CI/CD Training Pipeline](#cicd-training-pipeline)
+- [Training Status & Observability](#training-status--observability)
 - [Dataset Curriculum](#dataset-curriculum)
 - [Repository Structure](#repository-structure)
 - [Troubleshooting](#troubleshooting)
@@ -274,7 +277,7 @@ All variables are optional. CI defaults are shown in `.github/workflows/train.ym
 | `BATCH_SIZE` | `1` | Samples per micro-step |
 | `GRAD_ACCUM` | `4` | Micro-steps before each optimizer update |
 | `LEARNING_RATE` | `5e-5` | Peak learning rate |
-| `BLOCK_SIZE` | `512` | Token sequence length |
+| `BLOCK_SIZE` | `384` | Token sequence length (lowered from 512 in v1.0.0 to keep backward-pass peak RAM under the 16 GB runner ceiling) |
 | `DTYPE` | `bfloat16` | Model dtype (`bfloat16` or `float32`) |
 | `OPTIMIZER` | `adafactor` | Optimizer (`adafactor` or `adamw`) |
 
@@ -283,9 +286,9 @@ All variables are optional. CI defaults are shown in `.github/workflows/train.ym
 | Variable | CI Default | Description |
 |:---|:---|:---|
 | `HARD_RAM_GUARD` | `1` | Enable emergency save + stop at RAM ceiling |
-| `MAX_RAM_GB` | `14.5` | Hard RAM limit in GB |
-| `SOFT_RAM_GB` | `12.5` | Soft limit — begins sequence truncation |
-| `SOFT_RAM_PCT` | `80` | Soft limit as % of total RAM |
+| `MAX_RAM_GB` | `14.0` | Hard RAM limit in GB |
+| `SOFT_RAM_GB` | `11.0` | Soft limit — begins sequence truncation (lowered in v1.0.0 to throttle earlier) |
+| `SOFT_RAM_PCT` | `72` | Soft limit as % of total RAM |
 | `MIN_THROTTLE_SEQ_LEN` | `64` | Minimum sequence length during throttle |
 | `GRADIENT_CHECKPOINTING` | `1` | Trade compute for activation memory |
 | `SKIP_OPTIMIZER_SAVE` | `1` | Omit optimizer state from checkpoint |
@@ -334,10 +337,10 @@ Every hour (GitHub Actions cron: '0 * * * *')
 ├── Train (timeout: 90 minutes)
 │     • Load Qwen2.5-0.5B (or resume checkpoint)
 │     • Stream finance datasets (25+ sources, weighted curriculum mix)
-│     • 150 AdaFactor steps with gradient checkpointing
+│     • 150 AdaFactor steps with gradient checkpointing (BLOCK_SIZE=384)
 │     • EWC regularization (lambda=75, 20 Fisher samples)
-│     • Auto-throttle sequence length if RAM > 12.5 GB
-│     • Emergency save + exit if RAM > 14.5 GB
+│     • Auto-throttle sequence length if RAM > 11.0 GB
+│     • Emergency save + exit if RAM > 14.0 GB
 │
 ├── Upload checkpoint to HuggingFace Hub
 │     ./checkpoint/  →  meridianal/FinAI/checkpoint/
@@ -356,6 +359,46 @@ From the GitHub Actions tab, click **Meridian.AI Train** → **Run workflow**. Y
 To wipe the HuggingFace checkpoint and restart training from a fresh Qwen2.5-0.5B:
 
 Run workflow with **force_seed: true**. This runs `scripts/seed_hf_repo.py` before training.
+
+---
+
+## Training Status & Observability
+
+Because training runs unattended every hour, the project exposes several windows into what the model is doing.
+
+### Live progress signals
+
+| Where | What you see |
+|:---|:---|
+| **GitHub Actions** → *Meridian.AI Train* | Per-run logs: datasets loaded, initial/final loss, memory usage, steps completed |
+| **HuggingFace** [`meridianal/FinAI`](https://huggingface.co/meridianal/FinAI) | Latest checkpoint + commit history of every hourly upload |
+| **Comet ML** (`meridian-ai` workspace) | Loss curves, EWC penalty, learning rate, throughput across runs |
+| **`dataset_state.json`** (git) | `processed_items` — cumulative training examples seen across all runs |
+
+### How to read a run
+
+Every run prints a header and a **cascade check** so you can tell at a glance whether the model is still learning:
+
+```
+==================== STARTING TRAINING RUN #1 ====================
+  MERIDIAN.AI TRAINING ENGINE
+  Steps: 150 | BS: 1 | Accum: 4
+  LR: 5e-05 | Global step: 10127
+  Memory: 2.4GB / 16.8GB (14.1% used)
+  [CASCADE CHECK] Initial Loss of this run: 2.6146   ← compare across runs; a steady decline = healthy
+```
+
+- **Global step** is the cumulative optimizer-step counter; it persists across runs via `trainer_state.pt`.
+- **Initial loss** should trend down over many runs (with hourly noise). Sudden spikes usually mean a new dataset region or a too-high LR.
+- **Memory** is logged at the start and on every guard check — if you see `[THROTTLE]` or `[GUARD]` lines, the run hit a RAM limit and adapted.
+
+### Current trajectory
+
+As of the `v1.0.0` cutover the model has processed **~74,000** training examples (`processed_items: 73980`) across hourly runs, resuming from **global step ~10,127**. Reference perplexity on finance text from the most recent diagnostic was **~6.78**. Each hourly run advances the dataset cursor and pushes a fresh checkpoint, so the numbers above move continuously — check the live sources in the table for current values.
+
+### Generation smoke test
+
+After every upload the CI runs two finance prompts and logs token count + uniqueness ratio (see the *Generation Smoke Test* step in `train.yml`). This catches silent generation collapse before the next run builds on a broken checkpoint.
 
 ---
 
@@ -443,6 +486,15 @@ Reduce memory usage:
 BATCH_SIZE=1 GRAD_ACCUM=4 BLOCK_SIZE=256 SOFT_RAM_GB=10.0 python train.py
 ```
 
+### CI run dies with `Process completed with exit code 143`
+Exit code 143 is `128 + 15` (SIGTERM) — the process tree was killed by the runner, almost always from **memory pressure during the backward pass**. The tell-tale sign is a log that stops right after `[CASCADE CHECK] Initial Loss ...` (the forward pass succeeded; the backward pass blew the RAM ceiling).
+
+The hard/soft RAM guards only check *between* micro-steps, so they cannot catch a spike that happens *inside* a single `backward()` call. The fix is to lower the per-step activation peak:
+- `BLOCK_SIZE` was reduced `512 → 384` in v1.0.0 (the v6.0.0 jump to 512 is what started triggering this on 16 GB runners).
+- `SOFT_RAM_GB` was lowered `12.5 → 11.0` so sequence truncation kicks in earlier.
+
+If you still see it, drop `BLOCK_SIZE` further (e.g. `256`) or lower `SOFT_RAM_GB` so throttling starts sooner.
+
 ### Checkpoint architecture mismatch warning
 If you see `[WARN] Checkpoint architecture mismatch (old model)`, the saved `config.json` has a `model_type` that doesn't match `qwen2`. The checkpoint will be discarded and training restarts from the base model. This is expected when switching base architectures.
 
@@ -462,7 +514,7 @@ FISHER_THRESHOLD=1e-3 python train.py
 ```
 
 ### Slow training on CPU
-Expected — these are CPU-only runners. With `BATCH_SIZE=1 BLOCK_SIZE=512 MAX_STEPS=200`, expect ~50–80 minutes per run. This fits the 90-minute CI timeout.
+Expected — these are CPU-only runners. With `BATCH_SIZE=1 BLOCK_SIZE=384 MAX_STEPS=150`, expect ~50–80 minutes per run. This fits the 90-minute CI timeout.
 
 ---
 

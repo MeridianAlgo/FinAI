@@ -181,30 +181,42 @@ The CI workflow monitors training output for error patterns:
 
 Individual NaN batches are skipped automatically. Training continues until `MAX_STEPS` is reached.
 
+### Exit code 143 (SIGTERM) — backward-pass OOM
+
+`Process completed with exit code 143` means the runner SIGTERM-killed the whole step process tree (`128 + 15`). It is **not** a clean exit — the workflow's `exit 0` safety net never runs because bash itself is killed. The signature in the log is output that stops immediately after:
+
+```
+[CASCADE CHECK] Initial Loss of this run: 2.6146
+```
+
+i.e. the forward pass completed but the **backward pass** pushed peak RAM past the ~16 GB runner ceiling. The hard/soft RAM guards only evaluate *between* micro-steps, so they cannot intercept a spike inside a single `backward()`.
+
+**Mitigation (applied in v1.0.0):** `BLOCK_SIZE 512 → 384` (lower activation peak) and `SOFT_RAM_GB 12.5 → 11.0` (earlier sequence truncation). If it recurs, lower `BLOCK_SIZE` to `256`.
+
 ---
 
 ## Environment Variables — Full Reference
 
 See [README.md](../README.md#environment-variables-reference) for the complete table.
 
-### Quick Reference (CI Defaults — v6.0.0)
+### Quick Reference (CI Defaults — v1.0.0 Production)
 
 ```bash
-MAX_STEPS=150          # Steps per run (unchanged; BLOCK_SIZE 256→512 absorbs the budget)
+MAX_STEPS=150          # Steps per run
 BATCH_SIZE=1           # Micro-batch size
-GRAD_ACCUM=4           # Effective batch size = 4 (down from 8)
-BLOCK_SIZE=512         # Sequence length (up from 256)
+GRAD_ACCUM=4           # Effective batch size = 4
+BLOCK_SIZE=384         # Sequence length (lowered 512→384 in v1.0.0 to fit 16 GB backward peak)
 LEARNING_RATE=5e-5     # Peak LR
 DTYPE=bfloat16         # Model precision
 OPTIMIZER=adafactor    # Memory-efficient optimizer
 USE_EWC=1              # Enable continual learning
-EWC_LAMBDA=75.0        # EWC regularization (down from 500)
-EWC_SAMPLES=20         # Fisher estimation batches (up from 5)
-HARD_RAM_GUARD=1       # Emergency save at 14.5 GB
-MAX_RAM_GB=14.5
-SOFT_RAM_GB=12.5       # Begin sequence throttle
-SOFT_RAM_PCT=80
-MAX_BYTES=26214400     # 25 MB data per run (up from 15 MB)
+EWC_LAMBDA=75.0        # EWC regularization
+EWC_SAMPLES=20         # Fisher estimation batches
+HARD_RAM_GUARD=1       # Emergency save at 14.0 GB
+MAX_RAM_GB=14.0
+SOFT_RAM_GB=11.0       # Begin sequence throttle (lowered 12.5→11.0 in v1.0.0)
+SOFT_RAM_PCT=72
+MAX_BYTES=26214400     # 25 MB data per run
 GRADIENT_CHECKPOINTING=1
 SKIP_OPTIMIZER_SAVE=1
 FREE_OPTIMIZER_BEFORE_FISHER=1

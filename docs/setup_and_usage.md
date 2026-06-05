@@ -117,7 +117,7 @@ python train.py
 This will:
 1. Pull the latest checkpoint from `meridianal/FinAI` on HuggingFace
 2. Load Qwen2.5-0.5B (or resume from checkpoint if architecture matches)
-3. Stream financial datasets and train for 150 steps (default, v6.0.0)
+3. Stream financial datasets and train for 150 steps (CI default)
 4. Save the checkpoint locally and upload back to HuggingFace
 
 ### Training Without HuggingFace

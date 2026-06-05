@@ -52,7 +52,7 @@ signal.signal(signal.SIGTERM, sigterm_handler)
 
 def main():
     print("=" * 70)
-    print("  MeridianAI v6.0.0 — Finance LLM Training (Qwen2.5-0.5B base)")
+    print("  MeridianAI v1.0.0 (Production) — Finance LLM Training (Qwen2.5-0.5B base)")
     print("  Fine-tuning: Qwen2.5-0.5B via AdaFactor + EWC continual learning")
     print("=" * 70)
 
