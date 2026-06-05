@@ -12,6 +12,33 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.0.1] — 2026-06-05 — Hotfix
+
+> **Hotfix:** the hourly CI run kept dying with HuggingFace **HTTP 429 (Too Many Requests)**
+> while downloading the `Qwen/Qwen2.5-0.5B` base model.
+
+### Fixed — CI training killed by HF 429 rate limiting
+
+- **Root cause:** when the checkpoint pull didn't land a local `model.safetensors`,
+  `train.py` re-downloaded the **base model from HuggingFace on every run**. Shared GitHub
+  Actions IPs get aggressively rate-limited, so `config.json` HEAD requests returned 429,
+  exhausted the 5 built-in retries, and the run crashed with `OSError: couldn't connect`.
+  Nothing persisted the base model between runs, so every hour hammered the Hub again.
+- **Fixes:**
+  - **Persistent HF cache** — the workflow now caches `HF_HOME` (`actions/cache`, key
+    `hf-cache-qwen2.5-0.5b-v1`). The base model + tokenizer download once and are reused;
+    when HF returns 429, transformers transparently falls back to the cached copy instead
+    of failing.
+  - **Resilient loaders in `train.py`** — base-model and tokenizer loads now pass `HF_TOKEN`,
+    retry with exponential backoff (`hf_load_with_retry`), and finally fall back to the local
+    cache (`local_files_only=True`).
+  - **Tokenizer prefers the checkpoint** — when a tokenizer is present in `./checkpoint`, it
+    loads from there (zero Hub calls) instead of re-fetching from Qwen every run.
+  - **Checkpoint pull retries** — `snapshot_download` now retries 3× with backoff.
+  - Added `HF_HUB_DOWNLOAD_TIMEOUT=60` to the training job.
+
+---
+
 ## [1.0.0] — 2026-06-05 — **Production**
 
 > **First production release.** Promotes the continually-trained Qwen2.5-0.5B finance model

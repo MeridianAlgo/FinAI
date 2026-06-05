@@ -60,6 +60,11 @@ jobs:
     permissions:
       contents: write
       issues: write
+    env:
+      # Persisted across runs via actions/cache so the Qwen base model + tokenizer are
+      # downloaded once. When HF returns 429, transformers falls back to this cache.
+      HF_HOME: ${{ github.workspace }}/.hf_cache
+      HF_HUB_DOWNLOAD_TIMEOUT: '60'
 
     steps:
       - uses: actions/checkout@v4
@@ -72,6 +77,14 @@ jobs:
         with:
           python-version: '3.11'
           cache: 'pip'
+
+      - name: Cache HuggingFace base model
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/.hf_cache
+          key: hf-cache-qwen2.5-0.5b-v1
+          restore-keys: |
+            hf-cache-
 
       - name: Install Dependencies
         run: |
@@ -102,12 +115,22 @@ jobs:
               if checkpoint_files:
                   print(f'Found {len(checkpoint_files)} checkpoint files')
                   temp_dir = './temp_download'
-                  snapshot_download(
-                      repo_id=repo_id,
-                      local_dir=temp_dir,
-                      token=token,
-                      ignore_patterns=['checkpoint/pytorch_model.bin'],
-                  )
+                  import time as _t
+                  for _attempt in range(1, 4):
+                      try:
+                          snapshot_download(
+                              repo_id=repo_id,
+                              local_dir=temp_dir,
+                              token=token,
+                              ignore_patterns=['checkpoint/pytorch_model.bin'],
+                          )
+                          break
+                      except Exception as _e:
+                          print(f'  Checkpoint pull attempt {_attempt}/3 failed: {_e}')
+                          if _attempt < 3:
+                              _t.sleep(10 * _attempt)
+                          else:
+                              raise
                   if os.path.exists(os.path.join(temp_dir, 'checkpoint')):
                       if os.path.exists('./checkpoint'):
                           shutil.rmtree('./checkpoint')

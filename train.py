@@ -50,9 +50,41 @@ def sigterm_handler(signum, frame):
 signal.signal(signal.SIGTERM, sigterm_handler)
 
 
+def hf_load_with_retry(build, label: str, max_attempts: int = 5):
+    """Run an HF ``from_pretrained`` loader with backoff, then fall back to cache.
+
+    HuggingFace frequently returns HTTP 429 (rate limit) to shared GitHub Actions
+    IPs. ``build(offline)`` constructs the object; we retry the online path with
+    exponential backoff, and as a last resort load from the local HF cache
+    (``local_files_only=True``) — which succeeds whenever a previous run cached
+    the base model/tokenizer.
+    """
+    delay = 4
+    last_err = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return build(False)
+        except Exception as e:  # noqa: BLE001 — we genuinely want to retry on anything
+            last_err = e
+            msg = str(e)
+            rate = "429" in msg or "Too Many Requests" in msg or "couldn't connect" in msg
+            kind = "rate-limit/connection" if rate else "error"
+            print(f"  [WARN] {label} load attempt {attempt}/{max_attempts} failed ({kind}).")
+            if attempt < max_attempts:
+                print(f"  [INFO] Retrying {label} in {delay}s...")
+                time.sleep(delay)
+                delay = min(delay * 2, 60)
+    try:
+        print(f"  [INFO] {label}: Hub unreachable — trying local HF cache (offline)...")
+        return build(True)
+    except Exception as e:  # noqa: BLE001
+        print(f"  [FAIL] {label}: local cache fallback failed ({e}).")
+        raise last_err
+
+
 def main():
     print("=" * 70)
-    print("  MeridianAI v1.0.0 (Production) — Finance LLM Training (Qwen2.5-0.5B base)")
+    print("  MeridianAI v1.0.1 (Production) — Finance LLM Training (Qwen2.5-0.5B base)")
     print("  Fine-tuning: Qwen2.5-0.5B via AdaFactor + EWC continual learning")
     print("=" * 70)
 
@@ -217,22 +249,27 @@ def main():
         print(f"  Loading pre-trained model {model_id} from HuggingFace...")
         from transformers import AutoModelForCausalLM
 
-        try:
-            model = AutoModelForCausalLM.from_pretrained(
-                model_id,
-                torch_dtype=torch.bfloat16 if use_bf16 else torch.float32,
-                low_cpu_mem_usage=True,
-            )
-        except Exception as e:
-            if use_bf16:
-                print(f"  [WARN] bf16 load failed ({e}). Falling back to float32.")
-                model = AutoModelForCausalLM.from_pretrained(
+        hf_token = os.getenv("HF_TOKEN")
+
+        def _build_model(offline: bool):
+            common = dict(low_cpu_mem_usage=True, local_files_only=offline)
+            if hf_token:
+                common["token"] = hf_token
+            try:
+                return AutoModelForCausalLM.from_pretrained(
                     model_id,
-                    torch_dtype=torch.float32,
-                    low_cpu_mem_usage=True,
+                    torch_dtype=torch.bfloat16 if use_bf16 else torch.float32,
+                    **common,
                 )
-            else:
+            except Exception as e:
+                if use_bf16 and "429" not in str(e) and "Too Many Requests" not in str(e):
+                    print(f"  [WARN] bf16 load failed ({e}). Falling back to float32.")
+                    return AutoModelForCausalLM.from_pretrained(
+                        model_id, torch_dtype=torch.float32, **common
+                    )
                 raise
+
+        model = hf_load_with_retry(_build_model, label=f"base model {model_id}")
 
     if os.getenv("GRADIENT_CHECKPOINTING", "1") == "1":
         try:
@@ -246,9 +283,23 @@ def main():
     total_params = sum(p.numel() for p in model.parameters())
     print(f"  Total parameters: {total_params:,}")
 
-    # 4. Tokenizer
-    print(f"  Loading tokenizer from {tokenizer_id}...")
-    tokenizer = AutoTokenizer.from_pretrained(tokenizer_id)
+    # 4. Tokenizer — prefer the copy saved in the checkpoint (no Hub call); else Qwen Hub.
+    hf_token = os.getenv("HF_TOKEN")
+    local_tok = os.path.join(checkpoint_path, "tokenizer_config.json")
+    if os.path.exists(local_tok):
+        tok_source = checkpoint_path
+        print(f"  Loading tokenizer from local checkpoint {checkpoint_path}...")
+    else:
+        tok_source = tokenizer_id
+        print(f"  Loading tokenizer from {tokenizer_id}...")
+
+    def _build_tokenizer(offline: bool):
+        kwargs = {"local_files_only": offline}
+        if hf_token:
+            kwargs["token"] = hf_token
+        return AutoTokenizer.from_pretrained(tok_source, **kwargs)
+
+    tokenizer = hf_load_with_retry(_build_tokenizer, label=f"tokenizer {tok_source}")
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token_id = tokenizer.eos_token_id
 

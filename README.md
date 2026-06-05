@@ -5,7 +5,7 @@
 [![Base Model](https://img.shields.io/badge/Base-Qwen2.5--0.5B-success.svg)](https://huggingface.co/Qwen/Qwen2.5-0.5B)
 [![Training](https://img.shields.io/badge/Training-Hourly_CI-orange.svg)](https://github.com/MeridianAlgo/FinAI/actions)
 [![HuggingFace](https://img.shields.io/badge/HuggingFace-meridianal%2FFinAI-yellow.svg)](https://huggingface.co/meridianal/FinAI)
-[![Version](https://img.shields.io/badge/version-1.0.0_Production-brightgreen.svg)]()
+[![Version](https://img.shields.io/badge/version-1.0.1_Production-brightgreen.svg)]()
 
 Meridian.AI is a finance-specialized language model that trains itself continuously, every hour, entirely on free GitHub Actions infrastructure. It continuously fine-tunes a **Qwen2.5-0.5B** backbone on 25+ finance and math datasets using **Elastic Weight Consolidation (EWC)** to prevent catastrophic forgetting across training sessions.
 
@@ -472,6 +472,18 @@ The hard/soft RAM guards only check *between* micro-steps, so they cannot catch 
 - `SOFT_RAM_GB` was lowered `12.5 → 11.0` so sequence truncation kicks in earlier.
 
 If you still see it, drop `BLOCK_SIZE` further (e.g. `256`) or lower `SOFT_RAM_GB` so throttling starts sooner.
+
+### HuggingFace `429 Too Many Requests` during model download
+HF rate-limits shared GitHub Actions IPs. If a run logs repeated
+`HTTP Error 429 ... resolve/main/config.json` and then `OSError: couldn't connect`, the base
+model couldn't be fetched. Mitigations (in place as of v1.0.1):
+- The CI caches `HF_HOME` (`actions/cache`), so the Qwen base model + tokenizer download once
+  and are reused — and when HF returns 429, transformers falls back to that cache instead of failing.
+- `train.py` retries model/tokenizer loads with backoff and finally loads `local_files_only=True`.
+- The tokenizer loads from `./checkpoint` when present, avoiding a Hub call entirely.
+
+For local runs, set `HF_TOKEN` (authenticated requests get higher limits) and, once the base
+model is cached, you can force offline mode with `TRANSFORMERS_OFFLINE=1`.
 
 ### Checkpoint architecture mismatch warning
 If you see `[WARN] Checkpoint architecture mismatch (old model)`, the saved `config.json` has a `model_type` that doesn't match `qwen2`. The checkpoint will be discarded and training restarts from the base model. This is expected when switching base architectures.
