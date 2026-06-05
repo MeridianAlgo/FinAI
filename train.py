@@ -84,7 +84,7 @@ def hf_load_with_retry(build, label: str, max_attempts: int = 5):
 
 def main():
     print("=" * 70)
-    print("  MeridianAI v1.0.1 (Production) — Finance LLM Training (Qwen2.5-0.5B base)")
+    print("  MeridianAI v1.0.2 (Production) — Finance LLM Training (Qwen2.5-0.5B base)")
     print("  Fine-tuning: Qwen2.5-0.5B via AdaFactor + EWC continual learning")
     print("=" * 70)
 
@@ -326,6 +326,7 @@ def main():
         learning_rate=float(os.getenv("LEARNING_RATE", "5e-5")),
         output_dir=checkpoint_path,
         save_steps=int(os.getenv("SAVE_STEPS", "50")),
+        log_steps=int(os.getenv("LOG_STEPS", "5")),
         use_ewc=os.getenv("USE_EWC", "1") == "1",
         ewc_lambda=float(os.getenv("EWC_LAMBDA", "500.0")),
         ewc_samples=int(os.getenv("EWC_SAMPLES", "50")),

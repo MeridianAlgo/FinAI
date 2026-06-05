@@ -5,7 +5,7 @@
 [![Base Model](https://img.shields.io/badge/Base-Qwen2.5--0.5B-success.svg)](https://huggingface.co/Qwen/Qwen2.5-0.5B)
 [![Training](https://img.shields.io/badge/Training-Hourly_CI-orange.svg)](https://github.com/MeridianAlgo/FinAI/actions)
 [![HuggingFace](https://img.shields.io/badge/HuggingFace-meridianal%2FFinAI-yellow.svg)](https://huggingface.co/meridianal/FinAI)
-[![Version](https://img.shields.io/badge/version-1.0.1_Production-brightgreen.svg)]()
+[![Version](https://img.shields.io/badge/version-1.0.2_Production-brightgreen.svg)]()
 
 Meridian.AI is a finance-specialized language model that trains itself continuously, every hour, entirely on free GitHub Actions infrastructure. It continuously fine-tunes a **Qwen2.5-0.5B** backbone on 25+ finance and math datasets using **Elastic Weight Consolidation (EWC)** to prevent catastrophic forgetting across training sessions.
 
@@ -353,6 +353,13 @@ Because training runs unattended every hour, the project exposes several windows
 | **HuggingFace** [`meridianal/FinAI`](https://huggingface.co/meridianal/FinAI) | Latest checkpoint + commit history of every hourly upload |
 | **Comet ML** (`meridian-ai` workspace) | Loss curves, EWC penalty, learning rate, throughput across runs |
 | **`dataset_state.json`** (git) | `processed_items` — cumulative training examples seen across all runs |
+
+> **Continuous Comet graph (v1.0.2+):** the trainer resumes **one persistent Comet
+> experiment** across hourly runs (its key lives in `checkpoint/comet_experiment.json`), so
+> `loss`, `perplexity`, `ewc_loss`, `lr`, and `tokens_per_sec` form a **single continuous
+> curve over `global_step`** instead of one fragment per run. Metrics are logged **every
+> optimizer step** (plus an initial datapoint at the cascade check), so the graph is never
+> empty even if a run is short. Set `COMET_CONTINUOUS=0` to revert to per-run experiments.
 
 ### How to read a run
 

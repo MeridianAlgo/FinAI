@@ -11,6 +11,7 @@ Key features:
 
 from __future__ import annotations
 
+import json
 import math
 import os
 import time
@@ -22,7 +23,7 @@ import torch
 import torch.nn as nn
 
 try:
-    from comet_ml import Experiment
+    from comet_ml import ExistingExperiment, Experiment
 
     HAS_COMET = True
 except ImportError:
@@ -135,27 +136,60 @@ class MeridianTrainer:
                     print("[WARN] EWC state incompatible with current model — deleting stale file")
                     os.remove(ewc_path)
 
-        # Comet ML
+        # Comet ML — by default resume ONE persistent experiment across hourly runs so the
+        # loss/perplexity graphs form a single continuous curve over global_step (instead of
+        # one fragment per run). Set COMET_CONTINUOUS=0 to create a fresh experiment each run.
         self.experiment: Optional[Experiment] = None
         if HAS_COMET and os.getenv("COMET_API_KEY"):
-            try:
-                self.experiment = Experiment(
-                    api_key=os.getenv("COMET_API_KEY"),
-                    project_name=config.project_name,
-                    auto_metric_logging=False,
-                )
-                self.experiment.set_name(config.experiment_name)
-                self.experiment.log_parameters(
-                    {
-                        "batch_size": config.batch_size,
-                        "grad_accum": config.gradient_accumulation_steps,
-                        "max_steps": config.max_steps,
-                        "lr": config.learning_rate,
-                        "ewc": config.use_ewc,
-                    }
-                )
-            except Exception as e:
-                print(f"[WARN] Comet ML init failed: {e}")
+            api_key = os.getenv("COMET_API_KEY")
+            continuous = os.getenv("COMET_CONTINUOUS", "1") == "1"
+            key_file = os.path.join(config.output_dir, "comet_experiment.json")
+            prev_key = None
+            if continuous and os.path.exists(key_file):
+                try:
+                    with open(key_file) as f:
+                        prev_key = json.load(f).get("experiment_key")
+                except Exception:
+                    prev_key = None
+
+            # Try to resume the previous experiment for a continuous graph.
+            if prev_key:
+                try:
+                    self.experiment = ExistingExperiment(
+                        api_key=api_key, previous_experiment=prev_key
+                    )
+                    print(f"[OK] Resumed Comet experiment {prev_key[:9]} (continuous graph)")
+                except Exception as e:
+                    print(f"[WARN] Could not resume Comet experiment ({e}); starting a new one.")
+                    self.experiment = None
+
+            # Otherwise (or on failure) create a fresh experiment and remember its key.
+            if self.experiment is None:
+                try:
+                    self.experiment = Experiment(
+                        api_key=api_key,
+                        project_name=config.project_name,
+                        auto_metric_logging=False,
+                    )
+                    self.experiment.set_name(config.experiment_name)
+                    self.experiment.log_parameters(
+                        {
+                            "batch_size": config.batch_size,
+                            "grad_accum": config.gradient_accumulation_steps,
+                            "max_steps": config.max_steps,
+                            "lr": config.learning_rate,
+                            "ewc": config.use_ewc,
+                        }
+                    )
+                    if continuous:
+                        try:
+                            os.makedirs(config.output_dir, exist_ok=True)
+                            with open(key_file, "w") as f:
+                                json.dump({"experiment_key": self.experiment.get_key()}, f)
+                        except Exception as e:
+                            print(f"[WARN] Could not persist Comet experiment key: {e}")
+                except Exception as e:
+                    print(f"[WARN] Comet ML init failed: {e}")
 
     def _get_param_groups(self) -> list:
         """Separate parameters for weight decay (skip biases & norms)."""
@@ -358,6 +392,18 @@ class MeridianTrainer:
                     initial_loss_val = loss.item()
                     print(f"\n  [CASCADE CHECK] Initial Loss of this run: {initial_loss_val:.4f}")
                     first_batch_logged = True
+                    # Log an immediate datapoint so the Comet graph is never empty, even
+                    # if the run stalls or is killed before completing an optimizer step.
+                    if self.experiment:
+                        try:
+                            self.experiment.log_metric(
+                                "loss", initial_loss_val, step=self.global_step
+                            )
+                            self.experiment.log_metric(
+                                "initial_loss", initial_loss_val, step=self.global_step
+                            )
+                        except Exception as e:
+                            print(f"[WARN] Comet initial-loss log failed: {e}")
 
                 # Check for NaN loss
                 if torch.isnan(loss):
@@ -456,39 +502,45 @@ class MeridianTrainer:
                     ) / self.config.gradient_accumulation_steps
                     final_loss_val = avg_loss
 
-                    # Logging
+                    # Metric logging: every optimizer step so the loss curve is dense even
+                    # for short or stalling runs. Console printing stays on log_steps cadence.
+                    elapsed = time.time() - start_time
+                    tps = tokens_processed / elapsed if elapsed > 0 else 0
+                    ppl = math.exp(min(avg_loss, 20.0))  # cap to avoid overflow
+                    ewc_component = accumulated_ewc_loss / self.config.gradient_accumulation_steps
+                    grad_norm_val = (
+                        grad_norm.item() if isinstance(grad_norm, torch.Tensor) else grad_norm
+                    )
+
+                    if self.experiment:
+                        try:
+                            self.experiment.log_metrics(
+                                {
+                                    "loss": avg_loss,
+                                    "ewc_loss": ewc_component,
+                                    "perplexity": ppl,
+                                    "lr": lr,
+                                    "grad_norm": grad_norm_val,
+                                    "tokens_per_sec": tps,
+                                    "global_step": self.global_step,
+                                },
+                                step=self.global_step,
+                            )
+                        except Exception as e:
+                            print(f"[WARN] Comet metric log failed: {e}")
+
                     if self.run_step % self.config.log_steps == 0:
                         self._log_memory()
-                        elapsed = time.time() - start_time
-                        tps = tokens_processed / elapsed if elapsed > 0 else 0
-                        ppl = math.exp(min(avg_loss, 20.0))  # cap to avoid overflow
                         print(
                             f"  Step {self.run_step:>5}/{self.config.max_steps} "
                             f"| Global {self.global_step:>6} "
                             f"| Loss: {avg_loss:.4f} "
                             f"| PPL: {ppl:.2f} "
                             f"| LR: {lr:.2e} "
-                            f"| Grad: {grad_norm:.3f} "
+                            f"| Grad: {grad_norm_val:.3f} "
                             f"| Time: {elapsed:.0f}s "
                             f"| {tps:.0f} tok/s"
                         )
-
-                        if self.experiment:
-                            self.experiment.log_metrics(
-                                {
-                                    "loss": avg_loss,
-                                    "perplexity": ppl,
-                                    "lr": lr,
-                                    "grad_norm": (
-                                        grad_norm.item()
-                                        if isinstance(grad_norm, torch.Tensor)
-                                        else grad_norm
-                                    ),
-                                    "tokens_per_sec": tps,
-                                    "global_step": self.global_step,
-                                },
-                                step=self.global_step,
-                            )
 
                     if avg_loss < self.best_loss:
                         self.best_loss = avg_loss

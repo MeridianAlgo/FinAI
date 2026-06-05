@@ -12,6 +12,38 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.0.2] — 2026-06-05 — Observability
+
+> **Fixes empty/sparse Comet loss graphs.** Audit of the Comet project showed many runs
+> logged **0 or 1 loss points**, so the graphs were effectively blank.
+
+### Fixed — loss graphs not rendering
+
+- **Root cause:** loss was only logged every `log_steps` (5) optimizer steps, and many runs
+  either died before the first log (OOM/429) or stalled after a handful of steps — so Comet
+  received 0–1 points and drew no curve. Each hourly run was also a *separate* Comet
+  experiment, so there was no continuous training curve across runs.
+- **Fixes:**
+  - **Log metrics every optimizer step** (not every 5) so the curve is dense even for short
+    or stalling runs. Console printing stays on the `log_steps` cadence to avoid log spam.
+  - **Always log an initial datapoint** at the first forward pass (`[CASCADE CHECK]`), so a
+    run that's killed before completing a step still contributes a point.
+  - **Continuous experiment** — by default the trainer now *resumes one persistent Comet
+    experiment* across hourly runs (key stored in `checkpoint/comet_experiment.json`, which
+    round-trips through HF). Loss/perplexity now form a single continuous curve over
+    `global_step`. Set `COMET_CONTINUOUS=0` for the old per-run behaviour.
+  - **Added `ewc_loss`** as its own metric; `tokens_per_sec` is now logged every step so
+    throughput stalls are visible on a graph.
+  - `log_steps` is configurable via `LOG_STEPS`.
+
+### Known issue (surfaced, not yet fixed)
+
+- Some runs complete only ~5–7 optimizer steps in the 80-minute window (vs ~120 for healthy
+  runs) — a throughput collapse, most likely dataset-stream stalls. It's now visible via the
+  per-step `tokens_per_sec` metric and is the next thing to investigate.
+
+---
+
 ## [1.0.1] — 2026-06-05 — Hotfix
 
 > **Hotfix:** the hourly CI run kept dying with HuggingFace **HTTP 429 (Too Many Requests)**
