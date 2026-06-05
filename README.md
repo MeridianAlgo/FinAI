@@ -1,24 +1,3 @@
----
-language:
-- en
-license: mit
-tags:
-- finance
-- continual-learning
-- qwen2
-- causal-lm
-- ewc
-base_model: Qwen/Qwen2.5-0.5B
-datasets:
-- gbharti/finance-alpaca
-- sujet-ai/Sujet-Finance-Instruct-177k
-- nvidia/OpenMathInstruct-2
-- HuggingFaceFW/fineweb-edu
-- yahma/alpaca-cleaned
-library_name: transformers
-pipeline_tag: text-generation
----
-
 # Meridian.AI — Continual-Learning Finance LLM
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
@@ -30,7 +9,7 @@ pipeline_tag: text-generation
 
 Meridian.AI is a finance-specialized language model that trains itself continuously, every hour, entirely on free GitHub Actions infrastructure. It continuously fine-tunes a **Qwen2.5-0.5B** backbone on 25+ finance and math datasets using **Elastic Weight Consolidation (EWC)** to prevent catastrophic forgetting across training sessions.
 
-> **Status: `v1.0.0` — Production.** This is the first production-grade release. All earlier tagged builds (`v1.0.0-smollm2`, `v2.0.0-qwen`, `v5.1.0`, `v5.1.1`, `v6.0.0`) were pre-production test/research iterations and have been retired — see the [CHANGELOG](CHANGELOG.md) for the full history.
+> **Status: `v1.0.0` — Production.** This is the first production-grade release. All earlier tagged builds (`v1.0.0-smollm2`, `v2.0.0-qwen`, `v5.1.0`, `v5.1.1`, `v6.0.0`) were pre-production test/research iterations and have been retired — see the [CHANGELOG](docs/CHANGELOG.md) for the full history.
 
 **Model checkpoints:** [huggingface.co/meridianal/FinAI](https://huggingface.co/meridianal/FinAI)
 
@@ -221,7 +200,7 @@ tokenizer = AutoTokenizer.from_pretrained("./checkpoint")
 model = AutoModelForCausalLM.from_pretrained("./checkpoint")
 ```
 
-See [examples/01_inference.py](examples/01_inference.py) for a complete, annotated script.
+See [docs/setup_and_usage.md](docs/setup_and_usage.md) for a complete inference walkthrough and recommended generation parameters.
 
 ---
 
@@ -440,25 +419,23 @@ FinAI/
 │       ├── trainer.py                 # MeridianTrainer (AdaFactor, EWC, RAM guards)
 │       └── ewc.py                     # Elastic Weight Consolidation
 │
-├── scripts/
-│   ├── seed_hf_repo.py                # Nuke & reseed HuggingFace repo
+├── scripts/                          # Operational + diagnostic tooling
+│   ├── seed_hf_repo.py                # Nuke & reseed HuggingFace repo (used by CI seed job)
 │   ├── migrate_legacy_and_seed.py     # Copy checkpoint → legacy/ and seed fresh model
 │   ├── cleanup_hf_checkpoint.py       # Remove stale pytorch_model.bin from HF
 │   ├── evaluate_model.py              # Evaluation: perplexity + generation quality
 │   ├── diagnose_and_test.py           # Full diagnostic report (download + test)
 │   ├── download_and_save_hf.py        # Download checkpoint to local directory
 │   ├── hf_download_and_test.py        # Download + quick generation test
+│   ├── test_generation.py            # Standalone generation sanity check
+│   ├── nuke_repo.py                  # Wipe the HuggingFace repo
 │   └── count_params.py                # Parameter counting utility
-│
-├── examples/
-│   ├── 01_inference.py                # HuggingFace inference example
-│   ├── 02_dataset_pipeline.py         # Dataset streaming walkthrough
-│   └── 03_model_config.py             # Custom arch instantiation
 │
 ├── docs/
 │   ├── architecture.md                # Detailed architecture spec (custom SMoE)
 │   ├── training_pipeline.md           # Pipeline, env vars, memory management
-│   └── setup_and_usage.md             # Setup guide and inference examples
+│   ├── setup_and_usage.md             # Setup guide and inference examples
+│   └── CHANGELOG.md                   # Version history and training audit
 │
 ├── tests/
 │   ├── test_model.py                  # Architecture unit tests
@@ -471,7 +448,8 @@ FinAI/
 │       └── dependency-cache.yml
 │
 ├── train.py                           # Main training entry point
-├── CHANGELOG.md                       # Version history and training audit
+├── README.md                          # This file (GitHub landing page)
+├── MODEL_CARD.md                      # HuggingFace model card (uploaded by CI)
 ├── requirements.txt                   # Python dependencies
 └── pyproject.toml                     # Ruff + Black + mypy config
 ```
@@ -530,7 +508,7 @@ Expected — these are CPU-only runners. With `BATCH_SIZE=1 BLOCK_SIZE=384 MAX_S
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md) for the full version history, training audit, and issue tracker.
+See [docs/CHANGELOG.md](docs/CHANGELOG.md) for the full version history, training audit, and issue tracker.
 
 ---
 

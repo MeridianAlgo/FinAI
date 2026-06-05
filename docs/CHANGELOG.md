@@ -41,11 +41,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   section (live signals, how to read a run, current trajectory) and an exit-143
   troubleshooting entry.
 
-### Docs
+### Docs & Repository Layout
 
 - `README.md`, `docs/training_pipeline.md`, and `docs/setup_and_usage.md` updated to v1.0.0
-  defaults. The canonical HuggingFace model card is the repo-root `README.md`, which CI
-  uploads after every run.
+  defaults.
+- **Split the GitHub README from the HuggingFace model card.** The root `README.md` no
+  longer carries YAML frontmatter (which GitHub rendered as an ugly metadata table at the
+  top of the repo page). A dedicated `MODEL_CARD.md` now carries the frontmatter and is what
+  CI uploads to HuggingFace as the model card.
+- **Moved `CHANGELOG.md` → `docs/CHANGELOG.md`** so all documentation lives under `docs/`.
+- **Removed the `examples/` directory** — the inference/usage snippets in `README.md` and
+  `docs/setup_and_usage.md` cover the same ground.
+- `scripts/` retained: the CI seed job runs `scripts/seed_hf_repo.py`, and the others are
+  referenced operational/diagnostic tooling.
 
 ---
 

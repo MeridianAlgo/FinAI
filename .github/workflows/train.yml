@@ -274,8 +274,9 @@ jobs:
               print(f'Checkpoint upload failed: {e}')
               exit(1)
 
-          # Upload model card to HF repo root
-          model_card_path = './README.md'
+          # Upload model card to HF repo root (MODEL_CARD.md carries the HF YAML frontmatter;
+          # the repo README.md is the GitHub landing page and intentionally has no frontmatter)
+          model_card_path = './MODEL_CARD.md'
           if os.path.exists(model_card_path):
               print('Uploading model card...')
               try:
@@ -290,7 +291,7 @@ jobs:
               except Exception as e:
                   print(f'Model card upload failed (non-fatal): {e}')
           else:
-              print('No model card found at FinAI/README.md, skipping')
+              print('No MODEL_CARD.md found, skipping model card upload')
           "
 
       - name: Generation Smoke Test

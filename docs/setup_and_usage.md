@@ -172,22 +172,23 @@ Expected: all tests pass in ~30–60 seconds on CPU.
 
 ---
 
-## Code Examples
+## Diagnostic & Operational Scripts
 
-Annotated scripts are in `examples/`:
+The `scripts/` directory holds operational and diagnostic tooling. The most useful ones:
 
-| Script | What It Demonstrates |
+| Script | What It Does |
 |:---|:---|
-| `01_inference.py` | Full HuggingFace inference pipeline from Hub |
-| `02_dataset_pipeline.py` | Dataset streaming, curriculum weights, data preview |
-| `03_model_config.py` | Direct instantiation of `MeridianConfig` + `MeridianForCausalLM` |
+| `seed_hf_repo.py` | Nuke & reseed the HuggingFace repo with a fresh Qwen2.5-0.5B (used by the CI seed job) |
+| `download_and_save_hf.py` | Download the latest checkpoint to a local directory |
+| `evaluate_model.py` | Perplexity + generation-quality evaluation |
+| `diagnose_and_test.py` | Full diagnostic report (download + test generation) |
+| `count_params.py` | Parameter counting utility |
 
-Run any example from the repo root:
+Run any script from the repo root, e.g.:
 
 ```bash
-python examples/01_inference.py
-python examples/02_dataset_pipeline.py
-python examples/03_model_config.py
+python scripts/download_and_save_hf.py
+python scripts/evaluate_model.py
 ```
 
 ---
