@@ -80,8 +80,17 @@ class MeridianTrainer:
         self.dataloader = dataloader
         self.config = config
 
-        # Mandatory for 16GB runners: reduce activation memory.
-        if hasattr(self.model, "gradient_checkpointing_enable"):
+        # Gradient checkpointing trades compute for memory: it re-runs the forward
+        # pass during backward to avoid storing activations. That's a win for large
+        # batches/long sequences, but for a 0.5B model at batch=1/block=256 the
+        # activations are only a few hundred MB while the recompute ~doubles an
+        # already-slow CPU backward — which on the 16GB runner meant a single
+        # optimizer step couldn't finish before the RAM guard tripped (0 items
+        # trained). Default OFF here; gate behind GRADIENT_CHECKPOINTING=1 for the
+        # rare case of a larger model / longer context where memory is the binding
+        # constraint.
+        use_grad_ckpt = os.getenv("GRADIENT_CHECKPOINTING", "0") == "1"
+        if use_grad_ckpt and hasattr(self.model, "gradient_checkpointing_enable"):
             try:
                 self.model.gradient_checkpointing_enable()
                 if hasattr(self.model, "config") and hasattr(self.model.config, "use_cache"):
@@ -89,6 +98,8 @@ class MeridianTrainer:
                 print("[INFO] Gradient checkpointing enabled")
             except Exception as e:
                 print(f"[WARN] Failed to enable gradient checkpointing: {e}")
+        else:
+            print("[INFO] Gradient checkpointing disabled (faster CPU backward)")
 
         # Optimizer
         # NOTE: AdamW is memory-heavy on CPU for large models (m/v states ~= 2x params).
@@ -310,9 +321,19 @@ class MeridianTrainer:
         import gc
 
         try:
+            # GC cadence at the micro-step level. The HF streaming pipeline opens
+            # ~27 datasets at once and each advance pulls Parquet row-groups into
+            # Arrow memory. Python frees them but doesn't always collect promptly,
+            # so on slow CPU backwards memory could creep to the guard before the
+            # first optimizer step ran any gc. Collect every N micro-steps so the
+            # creep is bounded regardless of when (or if) an optimizer step commits.
+            micro_gc_every = int(os.getenv("GC_EVERY_MICROSTEPS", "4"))
+
             for micro_step in range(
                 self.config.max_steps * self.config.gradient_accumulation_steps
             ):
+                if micro_gc_every > 0 and micro_step > 0 and (micro_step % micro_gc_every == 0):
+                    gc.collect()
                 if self._memory_guard():
                     self.save_checkpoint(self.config.output_dir, skip_optimizer=True)
                     if self.experiment:
