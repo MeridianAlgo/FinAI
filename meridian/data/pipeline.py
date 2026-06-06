@@ -542,6 +542,11 @@ class FinanceDataPipeline:
         # and discarding thousands of streaming items (70+ min overhead per run).
         self.shuffle_seed = skip_items % 100_000
         self.max_bytes_per_run = max_bytes_per_run
+        # Streaming-shuffle look-ahead buffer PER dataset. With ~25 datasets opened at
+        # once, a large buffer multiplies: each one pulls that many items (and their
+        # backing Parquet row-groups) into Arrow memory, so buffer_size=2000 grew RSS by
+        # ~4.4GB after only 80 items and OOM-killed the 16GB CPU runner. Keep it small.
+        self.shuffle_buffer = max(1, int(os.getenv("SHUFFLE_BUFFER", "128")))
         self.items_processed = 0
         self.datasets = (
             self.LIGHT_DATASETS if int(os.getenv("USE_LIGHT_DATASETS", "0")) == 1 else self.DATASETS
@@ -618,9 +623,12 @@ class FinanceDataPipeline:
                 # Shuffle with a seed derived from the run's position counter.
                 # This gives each hourly run a different data sample without the
                 # O(skip_items) sequential download overhead of dataset.skip().
-                # buffer_size=2000 gives good diversity with ~2000-item look-ahead.
+                # buffer_size is kept small (see __init__) because ~25 concurrent streams
+                # multiply it into multi-GB Arrow row-group memory on the CPU runner.
                 try:
-                    dataset = dataset.shuffle(seed=self.shuffle_seed, buffer_size=2000)
+                    dataset = dataset.shuffle(
+                        seed=self.shuffle_seed, buffer_size=self.shuffle_buffer
+                    )
                 except Exception:
                     pass  # Some datasets may not support shuffle; use as-is
                 streams.append((iter(dataset), ds_config))

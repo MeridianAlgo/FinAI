@@ -189,14 +189,17 @@ jobs:
           DTYPE: 'bfloat16'
           SKIP_OPTIMIZER_SAVE: '1'
           HARD_RAM_GUARD: '1'
-          # Lowered from 14/11/72 — on the 16GB CPU runner the peak hit during the
-          # backward pass was OOM-killing the process (exit 143) before the guard could
-          # fire. Throttle the sequence length earlier (soft cap) and stop gracefully
-          # sooner (hard cap) so a backward pass never tips over the limit.
-          MAX_RAM_GB: '13.0'
-          SOFT_RAM_GB: '9.5'
-          SOFT_RAM_PCT: '65'
+          # The real OOM cause was the data pipeline, not the model: 25 streaming datasets
+          # each with a 2000-item shuffle buffer grew RSS past 15GB. With SHUFFLE_BUFFER
+          # small (below), steady usage is ~10-11GB, so these caps give room to actually
+          # train and only intervene near a genuine OOM. (model step peak ~5.75GB RSS,
+          # pipeline ~5GB — both measured.)
+          MAX_RAM_GB: '14.5'
+          SOFT_RAM_GB: '12.5'
+          SOFT_RAM_PCT: '80'
           MIN_THROTTLE_SEQ_LEN: '64'
+          # Streaming-shuffle look-ahead per dataset; small because ~25 run concurrently.
+          SHUFFLE_BUFFER: '128'
           DEBUG_STEPS: '0'
           MAX_STEPS: ${{ github.event.inputs.max_steps || '150' }}
           TOTAL_STEPS: '100000'
