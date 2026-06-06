@@ -242,6 +242,10 @@ jobs:
           # time; their multi-GB Parquet row-groups were filling the 16GB runner.
           # Which heavy dataset is active rotates per run, so both are still trained on.
           MAX_HEAVY_CONCURRENT: '1'
+          # fineweb-edu's huge Parquet row-groups blow the 16GB runner even alone
+          # (runs that rotated to it trained only 2-3 steps before the guard fired,
+          # vs ~50 for OpenMathInstruct-2). Drop it here; re-enable on a bigger runner.
+          EXCLUDE_DATASETS: 'HuggingFaceFW/fineweb-edu'
           GC_EVERY_STEPS: '2'
           # Collect freed Arrow row-groups every few micro-steps so streaming memory
           # can't creep to the guard before the first optimizer step runs any gc.

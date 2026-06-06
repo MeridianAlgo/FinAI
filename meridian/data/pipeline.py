@@ -562,6 +562,19 @@ class FinanceDataPipeline:
         self.datasets = (
             self.LIGHT_DATASETS if int(os.getenv("USE_LIGHT_DATASETS", "0")) == 1 else self.DATASETS
         )
+        # Some datasets simply don't fit a given runner. fineweb-edu is built from huge
+        # web-document Parquet shards with very large row-groups; HF streaming decodes a
+        # whole row-group into Arrow at once, so even ONE fineweb-edu stream spikes RAM
+        # past the 16GB CPU runner's guard within ~1 min (runs that rotated to it trained
+        # only 2-3 steps before stopping, vs ~50 for OpenMathInstruct-2). Exclude such
+        # datasets by name here; re-enable trivially on a larger runner by clearing the env.
+        exclude = {n.strip() for n in os.getenv("EXCLUDE_DATASETS", "").split(",") if n.strip()}
+        if exclude:
+            kept = [d for d in self.datasets if d["name"] not in exclude]
+            dropped = [d["name"] for d in self.datasets if d["name"] in exclude]
+            if dropped:
+                print(f"  [INFO] Excluding datasets (EXCLUDE_DATASETS): {dropped}")
+            self.datasets = kept
 
     def _load_stream(self, ds_config: dict):
         """Load a streaming dataset with retries."""
