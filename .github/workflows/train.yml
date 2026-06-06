@@ -238,6 +238,10 @@ jobs:
           FISHER_THRESHOLD: '5e-4'
           FISHER_TOP_K_RATIO: '0.08'
           USE_LIGHT_DATASETS: '0'
+          # Stream at most 1 heavy dataset (fineweb-edu / OpenMathInstruct-2) at a
+          # time; their multi-GB Parquet row-groups were filling the 16GB runner.
+          # Which heavy dataset is active rotates per run, so both are still trained on.
+          MAX_HEAVY_CONCURRENT: '1'
           GC_EVERY_STEPS: '2'
           # Collect freed Arrow row-groups every few micro-steps so streaming memory
           # can't creep to the guard before the first optimizer step runs any gc.

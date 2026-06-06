@@ -23,6 +23,7 @@ Weights rebalanced in v6.0.0:
 from __future__ import annotations
 
 import os
+import random
 import time
 from typing import Iterator
 
@@ -54,6 +55,9 @@ class FinanceDataPipeline:
             "text_field": "generated_solution",
             "instruction_field": "problem",
             "weight": 0.15,
+            # "heavy": multi-GB Parquet row-groups. Only a capped number of heavy
+            # datasets stream concurrently (see MAX_HEAVY_CONCURRENT) to bound RAM.
+            "heavy": True,
         },
         {
             "name": "HuggingFaceFW/fineweb-edu",
@@ -62,6 +66,7 @@ class FinanceDataPipeline:
             "text_field": "text",
             "instruction_field": None,
             "weight": 0.12,
+            "heavy": True,
         },
         {
             "name": "FinanceMTEB/financial_phrasebank",
@@ -547,6 +552,12 @@ class FinanceDataPipeline:
         # backing Parquet row-groups) into Arrow memory, so buffer_size=2000 grew RSS by
         # ~4.4GB after only 80 items and OOM-killed the 16GB CPU runner. Keep it small.
         self.shuffle_buffer = max(1, int(os.getenv("SHUFFLE_BUFFER", "128")))
+        # A few datasets (fineweb-edu, OpenMathInstruct-2) have multi-GB Parquet
+        # row-groups. Streaming all of them at once was the dominant RAM term that
+        # filled the 16GB runner. Cap how many "heavy" datasets stream concurrently;
+        # which heavy ones are active rotates per run (seeded by shuffle_seed), so the
+        # full curriculum is still covered across hourly runs. 0 = no cap.
+        self.max_heavy_concurrent = int(os.getenv("MAX_HEAVY_CONCURRENT", "1"))
         self.items_processed = 0
         self.datasets = (
             self.LIGHT_DATASETS if int(os.getenv("USE_LIGHT_DATASETS", "0")) == 1 else self.DATASETS
@@ -613,11 +624,35 @@ class FinanceDataPipeline:
             return f"{text}{eos}"
         return ""
 
+    def _select_datasets(self) -> list:
+        """Return the datasets to stream this run, capping concurrent heavy ones.
+
+        Heavy datasets have multi-GB Parquet row-groups; streaming all of them at
+        once exhausts the 16GB CPU runner. We keep every light dataset and admit at
+        most ``max_heavy_concurrent`` heavy ones, rotating which by a per-run seed so
+        all heavy data is still seen across hourly runs.
+        """
+        heavy = [d for d in self.datasets if d.get("heavy")]
+        light = [d for d in self.datasets if not d.get("heavy")]
+        if self.max_heavy_concurrent <= 0 or len(heavy) <= self.max_heavy_concurrent:
+            return self.datasets
+        rng = random.Random(self.shuffle_seed)
+        rng.shuffle(heavy)
+        selected_heavy = heavy[: self.max_heavy_concurrent]
+        if selected_heavy:
+            print(
+                "  [INFO] Heavy-dataset cap: streaming "
+                f"{[d['name'] for d in selected_heavy]} this run (of {len(heavy)} heavy)"
+            )
+        # Preserve original ordering for the rest of the pipeline's weighted round-robin.
+        keep = set(id(d) for d in light) | set(id(d) for d in selected_heavy)
+        return [d for d in self.datasets if id(d) in keep]
+
     def stream(self) -> Iterator[dict]:
         """Yield tokenized examples from mixed datasets."""
         # Load all dataset streams
         streams = []
-        for ds_config in self.datasets:
+        for ds_config in self._select_datasets():
             dataset = self._load_stream(ds_config)
             if dataset is not None:
                 # Shuffle with a seed derived from the run's position counter.
