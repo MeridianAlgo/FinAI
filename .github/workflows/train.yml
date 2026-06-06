@@ -104,6 +104,9 @@ jobs:
           # download itself uses few concurrent workers (high concurrency is what
           # trips HF's 429 rate limiter on shared GitHub Actions IPs).
           HF_HUB_DOWNLOAD_TIMEOUT: '60'
+          # Without this, Python buffers stdout and Actions flushes it all at the end,
+          # making every retry line share one timestamp (looks like no backoff happened).
+          PYTHONUNBUFFERED: '1'
         run: |
           python -c "
           from huggingface_hub import snapshot_download
@@ -121,10 +124,15 @@ jobs:
           ALLOW = ['checkpoint/**']
           IGNORE = ['checkpoint/pytorch_model.bin', '**/pytorch_model.bin']
 
+          # The pull is the single point of failure for the whole run (we abort rather
+          # than train from scratch), and HF/CloudFront blips can last several minutes.
+          # 8 attempts with capped exponential backoff = ~10+20+40+80+120+120+120s of
+          # waiting (~10 min total window) before giving up on a transient outage.
           temp_dir = './temp_download'
           delay = 10
+          attempts = 8
           last_err = None
-          for attempt in range(1, 7):
+          for attempt in range(1, attempts + 1):
               try:
                   snapshot_download(
                       repo_id=repo_id,
@@ -138,8 +146,8 @@ jobs:
                   break
               except Exception as _e:
                   last_err = _e
-                  print(f'  Checkpoint pull attempt {attempt}/6 failed: {_e}')
-                  if attempt < 6:
+                  print(f'  Checkpoint pull attempt {attempt}/{attempts} failed: {_e}')
+                  if attempt < attempts:
                       print(f'  Retrying in {delay}s...')
                       time.sleep(delay)
                       delay = min(delay * 2, 120)
