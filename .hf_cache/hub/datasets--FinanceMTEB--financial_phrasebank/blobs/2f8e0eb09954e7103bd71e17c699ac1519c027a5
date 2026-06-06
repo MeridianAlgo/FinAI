@@ -1,0 +1,26 @@
+---
+dataset_info:
+  features:
+  - name: text
+    dtype: string
+  - name: label_text
+    dtype: string
+  - name: label
+    dtype: int64
+  splits:
+  - name: train
+    num_bytes: 183764.6077738516
+    num_examples: 1264
+  - name: test
+    num_bytes: 145383.3922261484
+    num_examples: 1000
+  download_size: 184316
+  dataset_size: 329148.0
+configs:
+- config_name: default
+  data_files:
+  - split: train
+    path: data/train-*
+  - split: test
+    path: data/test-*
+---

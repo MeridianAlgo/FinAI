@@ -1,0 +1,56 @@
+---
+dataset_info:
+- config_name: corpus
+  features:
+  - name: _id
+    dtype: int64
+  - name: text
+    dtype: string
+  - name: title
+    dtype: string
+  splits:
+  - name: train
+    num_bytes: 33196444
+    num_examples: 8281
+  download_size: 13581592
+  dataset_size: 33196444
+- config_name: default
+  features:
+  - name: query-id
+    dtype: int64
+  - name: corpus-id
+    dtype: int64
+  - name: score
+    dtype: int64
+  splits:
+  - name: train
+    num_bytes: 198744
+    num_examples: 8281
+  download_size: 96849
+  dataset_size: 198744
+- config_name: queries
+  features:
+  - name: _id
+    dtype: int64
+  - name: text
+    dtype: string
+  splits:
+  - name: train
+    num_bytes: 887082
+    num_examples: 8281
+  download_size: 426609
+  dataset_size: 887082
+configs:
+- config_name: corpus
+  data_files:
+  - split: train
+    path: corpus/train-*
+- config_name: default
+  data_files:
+  - split: train
+    path: data/train-*
+- config_name: queries
+  data_files:
+  - split: train
+    path: queries/train-*
+---

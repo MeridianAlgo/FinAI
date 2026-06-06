@@ -1,0 +1,79 @@
+---
+license: apache-2.0
+task_categories:
+- text-generation
+- text2text-generation
+- question-answering
+language:
+- en
+size_categories:
+- 100K<n<1M
+tags:
+- finance
+---
+# Sujet Finance Dataset Overview
+
+The Sujet Finance dataset is a comprehensive collection designed for the fine-tuning of Language Learning Models (LLMs) for specialized tasks in the financial sector. It amalgamates data from 18 distinct datasets hosted on HuggingFace, resulting in a rich repository of 177,597 entries. These entries span across seven key financial LLM tasks, making Sujet Finance a versatile tool for developing and enhancing financial applications of AI.
+
+## Dataset Composition
+
+Sujet Finance integrates a wide array of financial textual data, distributed across different task types as follows:
+
+- **Sentiment Analysis**: 44,209 entries. This involves analyzing financial texts to categorize sentiments as positive, negative, neutral, bearish, or bullish.
+- **QA (Question Answering)**: 38,801 entries. Direct-answer finance questions that don't require additional context.
+- **QA with Context**: 40,475 entries. Finance questions necessitating context for answers.
+- **QA Conversation**: 15,613 entries. This category includes questions following a conversational history between a user and an LLM assistant.
+- **Yes/No Question**: 20,547 entries. Questions necessitating a simple yes or no answer.
+- **Topic Classification**: 16,990 entries. Tasks requiring the classification of financial texts into specific finance-related categories.
+- **NER (Named Entity Recognition) Sentiment Analysis**: 962 entries. This involves conducting sentiment analysis at the entity level within texts.
+
+## Data Sources
+
+The final de-duplicated dataset incorporates data from the following HuggingFace datasets:
+
+- **gbharti/finance-alpaca**: 58,485 entries
+- **ugursa/Yahoo-Finance-News-Sentences**: 22,458 entries
+- **AdaptLLM/finance-tasks_Headline**: 20,547 entries
+- **ceadar-ie/FinTalk-19k**: 19,105 entries
+- **zeroshot/twitter-financial-news-topic**: 16,990 entries
+- **dylanalloy/ehc-contrived-financial**: 12,450 entries
+- **zeroshot/twitter-financial-news-sentiment**: 9,538 entries
+- **financial_phrasebank**: 4,838 entries
+- **AdiOO7/llama-2-finance**: 4,838 entries
+- **amphora/lmsys-finance**: 3,163 entries
+- **AdaptLLM/finance-tasks_ConvFinQA**: 1,488 entries
+- **KennNguyenDev/FiQA_Financial_Phrasebank_Combined**: 1,111 entries
+- **AdaptLLM/finance-tasks_FPB**: 970 entries
+- **yixuantt/FinEntity**: 962 entries
+- **AdaptLLM/finance-tasks_FiQA_SA**: 235 entries
+- **nickmuchi/financial-classification**: 221 entries
+- **lighthouzai/finqabench**: 100 entries
+- **adityamavle/FinRiskAnalysis**: 98 entries
+
+## Data Preprocessing
+
+Sujet Finance underwent an extensive de-duplication process to address overlaps among the financial textual data derived from various sources. In this process, over 60,000 duplicate entries were identified and removed. Additionally, the dataset was preprocessed to eliminate non-Ascii and other irregular characters, ensuring a clean, usable dataset for LLM training.
+
+## Dataset Structure
+
+The structure of the Sujet Finance dataset is outlined as follows:
+
+- `inputs`: Contains the prepared instruction for LLM fine-tuning, including the system prompt based on the task, the nature of the original dataset, and the expected outcome.
+- `answer`: The response corresponding to the `inputs` column.
+- `system_prompt`: The specially designed prompt for the specific task type and input nature.
+- `user_prompt`: The original context, question, or request from the dataset.
+- `dataset`: The name of the original dataset from which the entry was sourced.
+- `task_type`: The category of financial LLM task.
+- `index_level` and `conversation_id`: These columns are unique to the 'amphora/lmsys-finance' dataset for the 'qa_conversation' tasks. They were added to allow the selection of varying lengths of the same conversation, a feature not present in the original dataset. For example, in a conversation with `conversation_id` == 0:
+
+    - User: Question 1
+    - Assistant: Answer 1
+    - User: Question 2
+    - Assistant: Answer 2
+    - User: Question 3
+    - Assistant: Answer 3
+
+    For this conversation:
+    - The row with `index_level` = 0 includes in `inputs`: system prompt + Question 1, and in `answer`: Answer 1.
+    - The row with `index_level` = 1 includes in `inputs`: system prompt + Question 1 + Answer 1 + Question 2, and in `answer`: Answer 2.
+    - The row with `index_level` = 2 includes in `inputs`: system prompt + Question 1 + Answer 1 + Question 2 + Answer 2 + Question 3, and in `answer`: Answer 3.
