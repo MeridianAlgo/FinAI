@@ -2,6 +2,7 @@
 
 import os
 import sys
+import time
 
 import torch
 from dotenv import load_dotenv
@@ -11,6 +12,33 @@ from transformers import AutoTokenizer
 load_dotenv()
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+def _load_with_retry(build, label, max_attempts=6):
+    """Run an HF ``from_pretrained`` loader with exponential backoff.
+
+    HF returns HTTP 429 (rate limit) to shared GitHub Actions IPs; the seed must
+    survive that to bootstrap the repo, so we retry the online path patiently
+    before falling back to any local cache (``local_files_only=True``).
+    """
+    delay = 5
+    last_err = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return build(False)
+        except Exception as e:  # noqa: BLE001 — retry on anything (429/connection)
+            last_err = e
+            print(f"  [WARN] {label} attempt {attempt}/{max_attempts} failed: {e}")
+            if attempt < max_attempts:
+                print(f"  [INFO] Retrying {label} in {delay}s...")
+                time.sleep(delay)
+                delay = min(delay * 2, 120)
+    try:
+        print(f"  [INFO] {label}: Hub unreachable — trying local HF cache (offline)...")
+        return build(True)
+    except Exception as e:  # noqa: BLE001
+        print(f"  [FAIL] {label}: local cache fallback failed ({e}).")
+        raise last_err
 
 
 def main():
@@ -38,12 +66,22 @@ def main():
     print(f"  Fetching base model {base_model_id}...")
     from transformers import AutoModelForCausalLM
 
-    model = AutoModelForCausalLM.from_pretrained(
-        base_model_id,
-        torch_dtype=torch.bfloat16,
-        low_cpu_mem_usage=True,
+    model = _load_with_retry(
+        lambda offline: AutoModelForCausalLM.from_pretrained(
+            base_model_id,
+            torch_dtype=torch.bfloat16,
+            low_cpu_mem_usage=True,
+            token=token,
+            local_files_only=offline,
+        ),
+        label=f"base model {base_model_id}",
     )
-    tokenizer = AutoTokenizer.from_pretrained(tokenizer_id)
+    tokenizer = _load_with_retry(
+        lambda offline: AutoTokenizer.from_pretrained(
+            tokenizer_id, token=token, local_files_only=offline
+        ),
+        label=f"tokenizer {tokenizer_id}",
+    )
 
     total_params = sum(p.numel() for p in model.parameters())
     print(f"  Total parameters: {total_params:,}")
