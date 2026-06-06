@@ -195,9 +195,13 @@ jobs:
           DTYPE: 'bfloat16'
           SKIP_OPTIMIZER_SAVE: '1'
           HARD_RAM_GUARD: '1'
-          MAX_RAM_GB: '14.0'
-          SOFT_RAM_GB: '11.0'
-          SOFT_RAM_PCT: '72'
+          # Lowered from 14/11/72 — on the 16GB CPU runner the peak hit during the
+          # backward pass was OOM-killing the process (exit 143) before the guard could
+          # fire. Throttle the sequence length earlier (soft cap) and stop gracefully
+          # sooner (hard cap) so a backward pass never tips over the limit.
+          MAX_RAM_GB: '13.0'
+          SOFT_RAM_GB: '9.5'
+          SOFT_RAM_PCT: '65'
           MIN_THROTTLE_SEQ_LEN: '64'
           DEBUG_STEPS: '0'
           MAX_STEPS: ${{ github.event.inputs.max_steps || '150' }}
@@ -205,7 +209,10 @@ jobs:
           GRAD_ACCUM: '4'
           BATCH_SIZE: '1'
           LEARNING_RATE: '5e-5'
-          BLOCK_SIZE: '384'
+          # Reduced 384 -> 256: activation memory scales with sequence length and is the
+          # dominant term in the backward-pass peak on the CPU runner. 256 still gives the
+          # model meaningful context while keeping peak RAM well under the 13GB hard cap.
+          BLOCK_SIZE: '256'
           MAX_BYTES: '26214400'
           USE_EWC: '1'
           EWC_LAMBDA: '75.0'

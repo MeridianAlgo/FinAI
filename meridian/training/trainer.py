@@ -414,6 +414,17 @@ class MeridianTrainer:
                 # Scale for gradient accumulation
                 scaled_loss = loss / self.config.gradient_accumulation_steps
 
+                # Hard-guard right before backward: this is where peak RAM hits, and a
+                # kernel OOM-kill here (exit 143) can't be caught in Python. If memory is
+                # already over the cap entering backward, stop gracefully and checkpoint
+                # instead of being killed mid-pass.
+                if self._memory_guard():
+                    del scaled_loss, outputs, loss
+                    self.save_checkpoint(self.config.output_dir, skip_optimizer=True)
+                    if self.experiment:
+                        self.experiment.end()
+                    return
+
                 try:
                     dprint("  [DEBUG] Starting main backward pass...")
                     scaled_loss.backward()
