@@ -47,6 +47,29 @@ PERPLEXITY_TEXTS = [
     "The yield curve shows the relationship between bond yields and maturities. An inverted yield curve, where short-term rates exceed long-term rates, has historically been a reliable predictor of economic recessions.",
 ]
 
+# Finance QA accuracy check. Each item is graded by keyword presence:
+# every group (inner list) must have at least one of its synonyms in the
+# answer. ponytail: keyword grading, not semantic — upgrade to an LLM judge
+# if false negatives bite. Greedy decoding keeps scores reproducible.
+FINANCE_QA = [
+    ("What does the acronym ETF stand for?", [["exchange"], ["traded", "trade"], ["fund"]]),
+    ("In the P/E ratio, what do the letters P and E stand for?", [["price"], ["earning"]]),
+    ("What does a yield curve inversion historically signal about the economy?", [["recession"]]),
+    ("Who developed the Black-Scholes option pricing model?", [["black"], ["scholes"]]),
+    (
+        "Which U.S. institution sets the federal funds rate?",
+        [["federal reserve", "the fed", "fomc"]],
+    ),
+    ("Is a bond a debt instrument or an equity instrument?", [["debt"]]),
+    ("What does the acronym IPO stand for?", [["initial"], ["public"], ["offering"]]),
+    ("What does diversification primarily reduce in an investment portfolio?", [["risk"]]),
+    ("What is the formula for compound interest?", [["p(1", "(1 +", "(1+", "p (1"]]),
+    (
+        "In dollar-cost averaging, is the invested amount fixed or variable each period?",
+        [["fixed"]],
+    ),
+]
+
 
 def load_model(model_path, model_name="model"):
     """Load a model and tokenizer from a path or HuggingFace ID."""
@@ -159,6 +182,47 @@ def generate_text(model, tokenizer, prompt, max_new_tokens=128, temperature=0.7)
     return response, new_tokens, gen_time, tokens_per_sec
 
 
+def grade_answer(answer, rubric):
+    """True if the answer satisfies every keyword group in the rubric."""
+    low = answer.lower()
+    return all(any(syn in low for syn in group) for group in rubric)
+
+
+def run_finance_qa(model, tokenizer, model_name="Model"):
+    """Greedy-decode each QA prompt and grade it by keyword presence."""
+    print(f"\n{'='*60}")
+    print(f"  FINANCE QA ACCURACY - {model_name}")
+    print(f"{'='*60}")
+
+    details = []
+    correct = 0
+    for i, (question, rubric) in enumerate(FINANCE_QA, 1):
+        formatted = f"### Instruction:\n{question}\n\n### Response:\n"
+        inputs = tokenizer(formatted, return_tensors="pt", truncation=True, max_length=512)
+        with torch.no_grad():
+            out = model.generate(
+                input_ids=inputs["input_ids"],
+                attention_mask=inputs.get("attention_mask"),
+                max_new_tokens=64,
+                min_new_tokens=4,
+                do_sample=False,
+                repetition_penalty=1.1,
+                pad_token_id=tokenizer.pad_token_id,
+                eos_token_id=tokenizer.eos_token_id,
+            )
+        full = tokenizer.decode(out[0], skip_special_tokens=True)
+        answer = full.split("### Response:")[-1].strip() if "### Response:" in full else full
+        ok = grade_answer(answer, rubric)
+        correct += int(ok)
+        details.append({"question": question, "answer": answer, "correct": ok})
+        print(f"  [{'PASS' if ok else 'FAIL'}] Q{i}: {question}")
+        print(f"         A: {answer[:140]}{'...' if len(answer) > 140 else ''}")
+
+    accuracy = correct / len(FINANCE_QA) if FINANCE_QA else 0.0
+    print(f"\n  Accuracy: {correct}/{len(FINANCE_QA)} = {accuracy:.1%}")
+    return accuracy, details
+
+
 def evaluate_model(model, tokenizer, model_name="Model"):
     """Run full evaluation on a model."""
     results = {"name": model_name, "prompts": [], "perplexity": None}
@@ -215,6 +279,11 @@ def evaluate_model(model, tokenizer, model_name="Model"):
     results["avg_repetition_rate"] = avg_rep
     results["avg_tokens_per_sec"] = avg_tps
     results["total_generation_time_s"] = round(total_time, 2)
+
+    # ── 3. Finance QA accuracy ─────────────────────────────────────────
+    accuracy, qa_details = run_finance_qa(model, tokenizer, model_name)
+    results["finance_qa_accuracy"] = accuracy
+    results["finance_qa"] = qa_details
 
     print("\n  Summary:")
     print(f"    Avg Repetition Rate: {avg_rep:.1%}")
@@ -285,6 +354,7 @@ def main():
         ("Perplexity", f"{ft['perplexity']:.2f}"),
         ("Avg Loss", f"{ft['avg_loss']:.4f}"),
         ("Avg Repetition", f"{ft['avg_repetition_rate']*100:.1f}%"),
+        ("Finance QA Acc", f"{ft['finance_qa_accuracy']*100:.1f}%"),
         ("Avg Tok/s", f"{ft['avg_tokens_per_sec']:.1f}"),
     ]
 
@@ -295,12 +365,14 @@ def main():
             base["perplexity"],
             base["avg_loss"],
             base["avg_repetition_rate"],
+            base["finance_qa_accuracy"],
             base["avg_tokens_per_sec"],
         ]
         ft_vals = [
             ft["perplexity"],
             ft["avg_loss"],
             ft["avg_repetition_rate"],
+            ft["finance_qa_accuracy"],
             ft["avg_tokens_per_sec"],
         ]
         for (name, ft_str), bv, fv in zip(rows, base_vals, ft_vals):  # noqa: B007
@@ -313,6 +385,10 @@ def main():
                 quality = "OK" if delta > 0 else "BAD" if delta < 0 else "="
 
             if name == "Avg Repetition":  # format as percentage
+                extended_rows.append(
+                    (name, ft_str, f"{bv*100:.1f}%", f"{delta*100:+.1f}% {direction} {quality}")
+                )
+            elif name == "Finance QA Acc":  # higher is better, percentage
                 extended_rows.append(
                     (name, ft_str, f"{bv*100:.1f}%", f"{delta*100:+.1f}% {direction} {quality}")
                 )

@@ -241,6 +241,28 @@ Compare your checkpoint against base Qwen2.5-0.5B:
 python scripts/evaluate_model.py
 ```
 
+The script reports perplexity, generation quality (repetition rate, tok/s) and a
+keyword-graded **Finance QA accuracy** check (10 factual finance questions, greedy
+decoding for reproducibility).
+
+#### Latest benchmark (fine-tuned vs base Qwen2.5-0.5B)
+
+Measured on CPU against the `checkpoint/` snapshot on HuggingFace (global step ~18.8k):
+
+| Metric | Fine-tuned | Base Qwen2.5-0.5B | Delta |
+|---|---|---|---|
+| Perplexity (lower better) | **4.84** | 5.00 | −0.16 ✅ |
+| Avg loss (lower better) | **1.578** | 1.610 | −0.032 ✅ |
+| Repetition rate (lower better) | **0.9%** | 4.7% | −3.8% ✅ |
+| Finance QA accuracy (higher better) | 80.0% | **90.0%** | −10.0% ⚠️ |
+| Throughput | **9.5 tok/s** | 8.4 tok/s | +1.0 ✅ |
+
+**Read it honestly:** continued pretraining has made the model more fluent and far
+less repetitive than stock Qwen, with lower perplexity — but it has *not* improved
+factual finance correctness, and currently trails base by 10 points on the QA check.
+Both models inherit Qwen's finance knowledge; the fine-tune so far sharpens
+style/format adherence more than facts. Worth watching as training continues.
+
 ---
 
 ## Environment Variables Reference
