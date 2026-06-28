@@ -242,7 +242,7 @@ python scripts/evaluate_model.py
 ```
 
 The script reports perplexity, generation quality (repetition rate, tok/s) and a
-keyword-graded **Finance QA accuracy** check (10 factual finance questions, greedy
+keyword-graded **Finance QA accuracy** check (24 factual finance questions, greedy
 decoding for reproducibility).
 
 #### Latest benchmark (fine-tuned vs base Qwen2.5-0.5B)
@@ -253,15 +253,27 @@ Measured on CPU against the `checkpoint/` snapshot on HuggingFace (global step ~
 |---|---|---|---|
 | Perplexity (lower better) | **4.84** | 5.00 | −0.16 ✅ |
 | Avg loss (lower better) | **1.578** | 1.610 | −0.032 ✅ |
-| Repetition rate (lower better) | **0.9%** | 4.7% | −3.8% ✅ |
-| Finance QA accuracy (higher better) | 80.0% | **90.0%** | −10.0% ⚠️ |
-| Throughput | **9.5 tok/s** | 8.4 tok/s | +1.0 ✅ |
+| Finance QA accuracy (higher better) | 87.5% (21/24) | **91.7%** (22/24) | −1 question ⚠️ |
+| Throughput | 8.9 tok/s | 8.9 tok/s | ≈ |
 
-**Read it honestly:** continued pretraining has made the model more fluent and far
-less repetitive than stock Qwen, with lower perplexity — but it has *not* improved
-factual finance correctness, and currently trails base by 10 points on the QA check.
-Both models inherit Qwen's finance knowledge; the fine-tune so far sharpens
-style/format adherence more than facts. Worth watching as training continues.
+**Read it honestly:** continued pretraining has lower perplexity than stock Qwen and is
+essentially at parity on factual QA (one question behind on a 24-question check — within
+noise). It hasn't yet *exceeded* base on facts. Both inherit Qwen's finance knowledge; the
+fine-tune so far sharpens style/perplexity more than correctness.
+
+#### Pushing past base: anti-forgetting changes (June 2026)
+
+The QA result said the model was *forgetting* base knowledge as fast as it learned finance.
+Root cause: an effective batch size of 1 (`BATCH_SIZE=1` × `GRAD_ACCUM=1`) made each
+optimizer step a single-example update — grad norms ~170, loss swinging 0.7↔3.6. Two
+low-risk training-config changes target this directly:
+
+- **`GRAD_ACCUM` 1 → 2** — halves gradient noise (safe now that gradient checkpointing is
+  off and the backward pass is fast enough to still commit ~20+ steps/run).
+- **`EWC_LAMBDA` 75 → 200** — stronger elastic anchor on the top-8% most-important params,
+  so finance learning displaces less of Qwen's general knowledge.
+
+Track the effect in the table above as new hourly checkpoints land.
 
 ---
 

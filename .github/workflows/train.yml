@@ -211,12 +211,14 @@ jobs:
           DEBUG_STEPS: '0'
           MAX_STEPS: ${{ github.event.inputs.max_steps || '150' }}
           TOTAL_STEPS: '100000'
-          # GRAD_ACCUM=1: on the slow CPU runner a single checkpointed backward could
-          # take minutes, so accumulating 4 micro-steps never committed an optimizer
-          # step before the RAM guard tripped -> "0 items trained" every run. With
-          # accum=1 every micro-step IS an optimizer step, so progress (global_step,
-          # checkpoint, loss curve) advances and is saved even if the run is cut short.
-          GRAD_ACCUM: '1'
+          # GRAD_ACCUM=2: effective batch size of 1 (accum=1 x batch=1) made every
+          # optimizer step a single-example update -> grad norms ~170, loss swinging
+          # 0.7<->3.6, which erodes base knowledge (QA fell below base Qwen). accum=4
+          # historically never committed a step before the RAM guard tripped, but that
+          # was WITH gradient checkpointing (~2x slower backward); checkpointing is now
+          # off, so accum=2 still commits ~20+ optimizer steps/run while halving the
+          # gradient noise. If a run shows "0 items trained" again, drop back to 1.
+          GRAD_ACCUM: '2'
           BATCH_SIZE: '1'
           LEARNING_RATE: '5e-5'
           # Reduced 384 -> 256: activation memory scales with sequence length and is the
@@ -225,7 +227,11 @@ jobs:
           BLOCK_SIZE: '256'
           MAX_BYTES: '26214400'
           USE_EWC: '1'
-          EWC_LAMBDA: '75.0'
+          # 75 -> 200: the model regressed below base Qwen on factual QA = catastrophic
+          # forgetting winning. EWC only penalizes the top 8% of params by Fisher
+          # importance (FISHER_TOP_K_RATIO), so a stronger anchor on those slows drift
+          # without freezing the model's ability to keep learning finance.
+          EWC_LAMBDA: '200.0'
           EWC_SAMPLES: '20'
           # OFF: at batch=1/block=256 checkpointing saves only ~300MB of activations
           # but ~doubles each (already slow) CPU backward by recomputing the forward.

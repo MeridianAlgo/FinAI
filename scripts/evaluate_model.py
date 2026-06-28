@@ -66,7 +66,42 @@ FINANCE_QA = [
     ("What is the formula for compound interest?", [["p(1", "(1 +", "(1+", "p (1"]]),
     (
         "In dollar-cost averaging, is the invested amount fixed or variable each period?",
-        [["fixed"]],
+        [["fixed", "constant", "same", "regular"]],
+    ),
+    ("What does the acronym GDP stand for?", [["gross"], ["domestic"], ["product"]]),
+    (
+        "Does inflation increase or decrease the purchasing power of money?",
+        [["decrease", "erode", "reduce", "lower"]],
+    ),
+    ("What does the acronym APR stand for?", [["annual"], ["percentage"], ["rate"]]),
+    (
+        "In stock terms, what does a bull market refer to?",
+        [["rising", "rise", "increasing", "upward", "going up"]],
+    ),
+    (
+        "What is the primary purpose of a stock's dividend?",
+        [["distribute", "pay", "share", "return", "profit", "earning", "income"]],
+    ),
+    ("What does the acronym ROI stand for?", [["return"], ["investment"]]),
+    (
+        "Which is generally considered higher risk: stocks or government bonds?",
+        [["stock", "equit"]],
+    ),
+    ("What does liquidity measure for an asset?", [["convert", "cash", "quick", "easily", "sell"]]),
+    ("What does the acronym EPS stand for?", [["earning"], ["per"], ["share"]]),
+    ("What is a 401(k) primarily used for?", [["retirement"]]),
+    (
+        "In bond investing, how do bond prices move when interest rates rise?",
+        [["fall", "decrease", "decline", "drop", "lower", "down", "inverse"]],
+    ),
+    (
+        "What does market capitalization measure for a company?",
+        [["value", "worth", "size", "price", "outstanding"]],
+    ),
+    ("What does the acronym CPI stand for?", [["consumer"], ["price"], ["index"]]),
+    (
+        "What is short selling in the stock market?",
+        [["borrow", "sell", "decline", "fall", "drop", "lower price", "betting against"]],
     ),
 ]
 
