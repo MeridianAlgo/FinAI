@@ -6,18 +6,21 @@ from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
 
 def main() -> None:
     model_id = os.getenv("HF_MODEL_ID", "meridianal/FinAI")
-    print(f"[INFO] Download/load: {model_id}")
+    # checkpoint lives in the "checkpoint" subfolder of the HF repo; root has no config.json
+    subfolder = os.getenv("HF_SUBFOLDER", "checkpoint")
+    print(f"[INFO] Download/load: {model_id}/{subfolder}")
 
-    config = AutoConfig.from_pretrained(model_id, trust_remote_code=True)
+    config = AutoConfig.from_pretrained(model_id, subfolder=subfolder, trust_remote_code=True)
     if hasattr(config, "hidden_act") and config.hidden_act == "swiglu":
         config.hidden_act = "silu"
 
-    tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained(model_id, subfolder=subfolder, trust_remote_code=True)
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token_id = tokenizer.eos_token_id
 
     model = AutoModelForCausalLM.from_pretrained(
         model_id,
+        subfolder=subfolder,
         config=config,
         trust_remote_code=True,
         dtype=torch.float32,
