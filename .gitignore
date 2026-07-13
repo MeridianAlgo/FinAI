@@ -35,6 +35,7 @@ venv/
 .venv/
 
 # Caches
+.hf_cache/
 .mypy_cache/
 .pytest_cache/
 .ruff_cache/
