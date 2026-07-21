@@ -24,12 +24,7 @@ from dotenv import load_dotenv
 from transformers import AutoTokenizer
 
 from meridian.data.pipeline import create_dataloader, create_smoke_dataloader
-from meridian.model import (
-    MeridianSMoEConfig as MeridianConfig,
-)
-from meridian.model import (
-    MeridianSMoEForCausalLM as MeridianForCausalLM,
-)
+from meridian.model import build_smoke_model
 from meridian.training.trainer import MeridianTrainer, TrainingConfig
 
 load_dotenv()
@@ -108,29 +103,14 @@ def main():
 
     # ── Smoke Test Mode ──────────────────────────────────────────────────
     if smoke_test:
-        print("\n[MODE] Smoke Test — verifying architecture works\n")
-        config = MeridianConfig(
-            vocab_size=4096,
-            hidden_size=128,
-            intermediate_size=352,
-            num_layers=4,
-            num_attention_heads=4,
-            num_key_value_heads=2,
-            num_experts=4,
-            num_experts_per_token=2,
-            expert_intermediate_size=176,
-            moe_layer_frequency=2,
-            max_position_embeddings=256,
-            gradient_checkpointing=False,
-            use_numeracy_encoding=True,
-            numeracy_embed_dim=32,
-        )
-        model = MeridianForCausalLM(config)
+        print("\n[MODE] Smoke Test — verifying training plumbing works\n")
+        vocab_size = 4096
+        model = build_smoke_model(vocab_size=vocab_size)
         total_params = sum(p.numel() for p in model.parameters())
         print(f"  Smoke model params: {total_params:,}")
 
         dl = create_smoke_dataloader(
-            vocab_size=config.vocab_size,
+            vocab_size=vocab_size,
             batch_size=int(os.getenv("BATCH_SIZE", "2")),
             block_size=int(os.getenv("BLOCK_SIZE", "64")),
         )

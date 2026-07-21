@@ -480,22 +480,6 @@ class MeridianTrainer:
                 # Optimizer step
                 if (micro_step + 1) % self.config.gradient_accumulation_steps == 0:
                     dprint(f"  [DEBUG] Step {self.run_step}: Starting optimization step...")
-                    # Check for NaN gradients before clipping
-                    has_nan_grads = False
-                    for p in self.model.parameters():
-                        if p.grad is not None:
-                            if torch.isnan(p.grad).any():
-                                has_nan_grads = True
-                                break
-
-                    if has_nan_grads:
-                        print(
-                            f"Warning: G] Step {self.run_step}: NaN gradients detected. Skipping step."
-                        )
-                        self.optimizer.zero_grad(set_to_none=True)
-                        accumulated_loss = 0.0
-                        accumulated_ewc_loss = 0.0
-                        continue
 
                     # Compute EWC penalty once per optimizer step (not per micro-step)
                     current_ewc_loss = 0.0
@@ -507,11 +491,23 @@ class MeridianTrainer:
                             print(f"[WARN] EWC penalty calculation failed: {e}")
                     accumulated_ewc_loss += current_ewc_loss
 
-                    # Gradient clipping
+                    # Gradient clipping. clip_grad_norm_ already scans every gradient to
+                    # compute the total norm, so we reuse that result instead of a separate
+                    # full-parameter isnan scan: a non-finite norm means some grad is NaN/inf,
+                    # so we skip the step (this also catches inf, which the old scan missed).
                     dprint(f"  [DEBUG] Step {self.run_step}: Clipping gradients...")
                     grad_norm = torch.nn.utils.clip_grad_norm_(
                         self.model.parameters(), self.config.max_grad_norm
                     )
+                    if not torch.isfinite(grad_norm):
+                        print(
+                            f"Warning: Step {self.run_step}: non-finite gradients "
+                            f"(norm={grad_norm}). Skipping step."
+                        )
+                        self.optimizer.zero_grad(set_to_none=True)
+                        accumulated_loss = 0.0
+                        accumulated_ewc_loss = 0.0
+                        continue
                     dprint(f"  [DEBUG] Step {self.run_step}: Grad norm: {grad_norm:.3f}")
 
                     # Update LR

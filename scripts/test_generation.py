@@ -7,30 +7,21 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 import torch
-from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
-
-from meridian.model.modeling import MeridianForCausalLM
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
 def main():
-    model_path = os.getenv("MODEL_PATH", "./checkpoint")
-    tokenizer_id = os.getenv("TOKENIZER_ID", "google/umt5-small")
+    model_path = os.getenv("MODEL_PATH", "Qwen/Qwen2.5-0.5B")
+    tokenizer_id = os.getenv("TOKENIZER_ID", model_path)
 
     print(f"Loading model from {model_path}...")
-    config = AutoConfig.from_pretrained(model_path, trust_remote_code=True)
-    if getattr(config, "model_type", None) == "meridian":
-        model = MeridianForCausalLM.from_pretrained(model_path)
-    else:
-        model = AutoModelForCausalLM.from_pretrained(
-            model_path,
-            trust_remote_code=True,
-            dtype=torch.float32,
-            low_cpu_mem_usage=True,
-            ignore_mismatched_sizes=True,
-        )
+    model = AutoModelForCausalLM.from_pretrained(
+        model_path,
+        dtype=torch.float32,
+        low_cpu_mem_usage=True,
+    )
     model.eval()
 
-    # OpenMoE uses the umT5 tokenizer (256k vocab). Load it explicitly.
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_id)
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token_id = tokenizer.eos_token_id
@@ -51,22 +42,17 @@ def main():
         tokens = tokenizer(prompt, return_tensors="pt")
         input_len = int(tokens["input_ids"].shape[-1])
         with torch.no_grad():
-            if hasattr(model, "generate_text"):
-                output_ids = model.generate_text(
-                    tokens["input_ids"], max_new_tokens=128, temperature=0.7
-                )
-            else:
-                output_ids = model.generate(
-                    input_ids=tokens["input_ids"],
-                    attention_mask=tokens.get("attention_mask"),
-                    max_new_tokens=128,
-                    min_new_tokens=32,
-                    do_sample=True,
-                    temperature=0.7,
-                    top_p=0.9,
-                    pad_token_id=tokenizer.pad_token_id,
-                    eos_token_id=tokenizer.eos_token_id,
-                )
+            output_ids = model.generate(
+                input_ids=tokens["input_ids"],
+                attention_mask=tokens.get("attention_mask"),
+                max_new_tokens=128,
+                min_new_tokens=32,
+                do_sample=True,
+                temperature=0.7,
+                top_p=0.9,
+                pad_token_id=tokenizer.pad_token_id,
+                eos_token_id=tokenizer.eos_token_id,
+            )
         output_len = int(output_ids.shape[-1])
         text = tokenizer.decode(output_ids[0], skip_special_tokens=True)
         text_with_special = tokenizer.decode(output_ids[0], skip_special_tokens=False)

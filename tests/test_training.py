@@ -4,38 +4,24 @@ import pytest
 import torch
 
 from meridian.data.pipeline import create_smoke_dataloader
-from meridian.model.configuration import MeridianSMoEConfig as MeridianConfig
-from meridian.model.modeling import MeridianSMoEForCausalLM as MeridianForCausalLM
+from meridian.model import build_smoke_model
 from meridian.training.ewc import ElasticWeightConsolidation
 from meridian.training.trainer import MeridianTrainer, TrainingConfig
 
 
 @pytest.fixture
 def small_setup():
-    config = MeridianConfig(
-        vocab_size=500,
-        hidden_size=64,
-        intermediate_size=176,
-        num_layers=2,
-        num_attention_heads=4,
-        num_key_value_heads=2,
-        num_experts=4,
-        num_experts_per_token=2,
-        expert_intermediate_size=88,
-        moe_layer_frequency=2,
-        max_position_embeddings=64,
-        gradient_checkpointing=False,
-        use_numeracy_encoding=False,
-        tie_word_embeddings=False,
+    vocab_size = 500
+    model = build_smoke_model(
+        vocab_size=vocab_size, hidden_size=64, num_layers=2, max_position_embeddings=64
     )
-    model = MeridianForCausalLM(config)
-    dataloader = create_smoke_dataloader(config.vocab_size, batch_size=2, block_size=32)
-    return model, dataloader, config
+    dataloader = create_smoke_dataloader(vocab_size, batch_size=2, block_size=32)
+    return model, dataloader, vocab_size
 
 
 class TestTrainer:
     def test_training_reduces_loss(self, small_setup, tmp_path):
-        model, dataloader, config = small_setup
+        model, dataloader, _ = small_setup
 
         train_config = TrainingConfig(
             batch_size=2,

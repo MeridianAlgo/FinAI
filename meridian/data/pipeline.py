@@ -28,7 +28,9 @@ import time
 from typing import Iterator
 
 import torch
-from datasets import load_dataset
+
+# ponytail: datasets imported lazily in _load_one so smoke tests / create_smoke_dataloader
+# don't require the heavy dep just to import this module.
 
 
 class FinanceDataPipeline:
@@ -588,6 +590,8 @@ class FinanceDataPipeline:
                 }
                 if ds_config["config"]:
                     kwargs["name"] = ds_config["config"]
+
+                from datasets import load_dataset
 
                 dataset = load_dataset(**kwargs)
                 return dataset
