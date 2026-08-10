@@ -26,8 +26,6 @@ jobs:
   seed:
     name: "Nuke & Seed HF"
     if: github.event.inputs.force_seed == 'true'
-    # Deliberately NOT on Blacksmith: this repo is public, so GitHub-hosted runners
-    # are free and unlimited. See the note on the train job below.
     runs-on: ubuntu-latest
     environment: HuggingFace Hub
     steps:
@@ -57,21 +55,18 @@ jobs:
     if: |
       always() && 
       (needs.seed.result == 'success' || needs.seed.result == 'skipped')
-    # Stays on GitHub-hosted (4 vCPU / 16GB, same specs as blacksmith-4vcpu-ubuntu-2404)
-    # because this repo is public and GitHub-hosted minutes are free and unlimited here.
-    # This job burns ~930 min/day of runner time; Blacksmith's free tier is 3,000
-    # "x64 2vCPU minutes"/month, and a 4vCPU runner consumes them at 2x — i.e. a ~25h
-    # monthly budget that this job would exhaust in ~1.5 days, then bill ~$210+/month
-    # (Blacksmith does not stop workflows at the free-tier limit). lint.yml and
-    # dependency-cache.yml are short and DO run on Blacksmith.
     runs-on: ubuntu-latest
     timeout-minutes: 90   # 1.5 hours max
     permissions:
       contents: write
       issues: write
     env:
-      # Persisted across runs via actions/cache so the Qwen base model + tokenizer are
-      # downloaded once. When HF returns 429, transformers falls back to this cache.
+      # Persisted across runs via actions/cache. In steady state this holds the
+      # `datasets` streaming metadata (HF_DATASETS_CACHE defaults to $HF_HOME/datasets),
+      # NOT the Qwen weights: the model and tokenizer both come from ./checkpoint, which
+      # is pulled with snapshot_download(local_dir=...) and so bypasses HF_HOME entirely.
+      # It only holds model weights on a fresh-start/seed run, which is what makes
+      # hf_load_with_retry's local_files_only fallback (train.py:72) work.
       HF_HOME: ${{ github.workspace }}/.hf_cache
       HF_HUB_DOWNLOAD_TIMEOUT: '60'
 
@@ -87,12 +82,18 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
-      - name: Cache HuggingFace base model
+      # The key MUST be unique per run. actions/cache only writes on an exact-key miss,
+      # so the previous static key ("hf-cache-qwen2.5-0.5b-v1") saved once on 2026-07-21
+      # and never updated again — every run since restored that same frozen 1.12 MiB
+      # entry and silently discarded whatever it downloaded. Rotating the key and
+      # recovering the newest entry via restore-keys makes the cache actually roll forward.
+      - name: Cache HuggingFace assets
         uses: actions/cache@v4
         with:
           path: ${{ github.workspace }}/.hf_cache
-          key: hf-cache-qwen2.5-0.5b-v1
+          key: hf-cache-qwen2.5-0.5b-v2-${{ github.run_id }}
           restore-keys: |
+            hf-cache-qwen2.5-0.5b-v2-
             hf-cache-
 
       - name: Install Dependencies
