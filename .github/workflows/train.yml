@@ -26,7 +26,7 @@ jobs:
   seed:
     name: "Nuke & Seed HF"
     if: github.event.inputs.force_seed == 'true'
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     environment: HuggingFace Hub
     steps:
       - uses: actions/checkout@v4
@@ -55,7 +55,7 @@ jobs:
     if: |
       always() && 
       (needs.seed.result == 'success' || needs.seed.result == 'skipped')
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 90   # 1.5 hours max
     permissions:
       contents: write
