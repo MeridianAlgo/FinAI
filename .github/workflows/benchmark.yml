@@ -1,0 +1,80 @@
+name: Meridian Benchmark
+
+# Phase 1 of docs/BASE_MODEL_PLAN.md — measure real CPU training throughput so the
+# target model size is chosen from data rather than from estimates.
+#
+# Manual only. This is a diagnostic, not part of the training loop, so it must not
+# compete with train.yml for runner time.
+
+on:
+  workflow_dispatch:
+    inputs:
+      budget:
+        description: 'Seconds per configuration'
+        type: string
+        default: '40'
+      quick:
+        description: 'Quick mode (25M only, batch 1 and 8)'
+        type: boolean
+        default: false
+      include_baseline:
+        description: 'Add the 494M bf16 batch-1 control (slow, ~5-10 min)'
+        type: boolean
+        default: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+concurrency:
+  group: meridian-benchmark-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  benchmark:
+    name: "CPU throughput sweep"
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch transformers psutil
+
+      - name: Report runner hardware
+        run: |
+          echo "--- lscpu ---"
+          lscpu || true
+          echo "--- memory ---"
+          free -h || true
+
+      - name: Run sweep
+        env:
+          PYTHONUNBUFFERED: '1'
+          PYTHONPATH: .
+        run: |
+          ARGS="--budget ${{ github.event.inputs.budget || '40' }}"
+          if [ "${{ github.event.inputs.quick }}" = "true" ]; then
+            ARGS="$ARGS --quick"
+          fi
+          if [ "${{ github.event.inputs.include_baseline }}" != "false" ]; then
+            ARGS="$ARGS --include-baseline"
+          fi
+          echo "Running: python scripts/benchmark_cpu.py $ARGS"
+          python scripts/benchmark_cpu.py $ARGS
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: docs/benchmarks/latest.json
+          if-no-files-found: warn
