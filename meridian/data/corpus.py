@@ -34,6 +34,65 @@ GENERAL_DATASETS = {
 # dataset at a time, but it stays opt-in via --include-heavy.
 HEAVY_DATASETS = {"HuggingFaceFW/fineweb-edu", "nvidia/OpenMathInstruct-2"}
 
+# Corrections to FinanceDataPipeline.DATASETS. The first corpus build revealed that 14 of
+# its 27 entries yield zero documents — their configured column simply does not exist, so
+# _format_text returns "" and every row is dropped. Since the trainer shares _format_text,
+# those datasets have been contributing nothing to training either; see
+# `scripts/validate_datasets.py`, which checks every spec against the live schema.
+#
+# Three distinct causes:
+#   1. The column is `sentence`, not `text`. Also switches to `label_text`, which is already
+#      a readable string, so the int->str label_map is unnecessary.
+#   2. MTEB *retrieval* sets whose `default` config holds only qrels (query-id, corpus-id,
+#      score). The documents live in the `corpus` config, which is where the finance text
+#      actually is — TATQA's, for instance, is markdown tables of financial statements.
+#   3. Sets published with only a `test` split.
+SPEC_OVERRIDES: dict[str, dict] = {
+    # 1. `sentence` column
+    **{
+        name: {"text_field": "sentence", "label_field": "label_text", "label_map": None}
+        for name in (
+            "FinanceMTEB/OpenFinDataSentiment",
+            "FinanceMTEB/SemEva2017_Headline",
+            "FinanceMTEB/FOMC",
+            "FinanceMTEB/FinancialFraud",
+            "FinanceMTEB/FinFE",
+            "FinanceMTEB/FinEvaSentiment",
+        )
+    },
+    # 2. retrieval sets — take the corpus documents as plain text
+    **{
+        name: {
+            "config": "corpus",
+            "split": "train",
+            "text_field": "text",
+            "instruction_field": None,
+            "label_field": None,
+            "label_map": None,
+            "prompt_template": None,
+        }
+        for name in (
+            "FinanceMTEB/FinQA",
+            "FinanceMTEB/TATQA",
+            "FinanceMTEB/TradeTheEventNews",
+            "FinanceMTEB/TradeTheEventEncyclopedia",
+        )
+    },
+    # 3. test-only split
+    "FinanceMTEB/synthetic_pii_finance_en": {"split": "test", "text_field": "sentences"},
+}
+
+# Dropped rather than repaired.
+#   - The three Chinese-language sets are noise for an English finance model; their combined
+#     weight is ~2.4%, and that budget is better spent on English filings.
+#   - Complaints exposes no readable schema on the Hub (no columns on its only split).
+DROP_DATASETS = {
+    "FinanceMTEB/AlphaFin",
+    "FinanceMTEB/FinChinaSentiment",
+    "FinanceMTEB/FinTruthQA",
+    "FinanceMTEB/Complaints",
+}
+
 
 class _EosOnlyTokenizer:
     """``_format_text`` touches the tokenizer only for ``.eos_token``.
@@ -56,17 +115,25 @@ def slug(dataset_name: str) -> str:
 
 
 def dataset_specs(include_heavy: bool = True, exclude: set[str] | None = None) -> list[dict]:
-    """The dataset mix, normalized so weights sum to 1.0 over whatever survives filtering."""
-    exclude = exclude or set()
-    specs = [
-        dict(spec)
-        for spec in FinanceDataPipeline.DATASETS
-        if spec["name"] not in exclude and (include_heavy or spec["name"] not in HEAVY_DATASETS)
-    ]
+    """The dataset mix with corrections applied, normalized to sum to 1.0.
+
+    Weights are renormalized *after* filtering, so dropping the Chinese sets redistributes
+    their share across the rest rather than quietly shrinking the corpus.
+    """
+    exclude = (exclude or set()) | DROP_DATASETS
+    specs = []
+    for raw in FinanceDataPipeline.DATASETS:
+        name = raw["name"]
+        if name in exclude or (not include_heavy and name in HEAVY_DATASETS):
+            continue
+        spec = dict(raw)
+        spec.update(SPEC_OVERRIDES.get(name, {}))
+        spec["domain"] = domain_of(name)
+        specs.append(spec)
+
     total = sum(spec.get("weight", 0.0) for spec in specs) or 1.0
     for spec in specs:
         spec["weight"] = spec.get("weight", 0.0) / total
-        spec["domain"] = domain_of(spec["name"])
     return specs
 
 

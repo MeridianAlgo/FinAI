@@ -14,9 +14,13 @@ on:
         type: string
         default: '20000'
       vocab_size:
-        description: 'Tokenizer vocab size'
+        description: 'Tokenizer vocab size to keep'
         type: string
         default: '16384'
+      vocab_sweep:
+        description: 'Vocab sizes to compare (space separated)'
+        type: string
+        default: '8192 16384 32768'
       target_tokens:
         description: 'Training tokens to emit (0 skips shard building)'
         type: string
@@ -52,6 +56,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install torch transformers tokenizers datasets numpy
 
+      # Gate on this: a spec whose column does not exist yields zero rows silently, which
+      # is how 14 of 27 datasets went unnoticed until the first corpus build.
+      - name: Validate dataset specs
+        env:
+          PYTHONUNBUFFERED: '1'
+          PYTHONPATH: .
+        run: python scripts/validate_datasets.py --json docs/benchmarks/datasets.json
+
       - name: Train tokenizer
         env:
           PYTHONUNBUFFERED: '1'
@@ -60,7 +72,8 @@ jobs:
         run: |
           python scripts/build_tokenizer.py \
             --vocab-size ${{ github.event.inputs.vocab_size || '16384' }} \
-            --docs-per-dataset ${{ github.event.inputs.docs_per_dataset || '20000' }}
+            --docs-per-dataset ${{ github.event.inputs.docs_per_dataset || '40000' }} \
+            --sweep ${{ github.event.inputs.vocab_sweep || '8192 16384 32768' }}
 
       - name: Upload tokenizer
         uses: actions/upload-artifact@v4

@@ -155,6 +155,10 @@ def main() -> int:
     parser.add_argument("--no-include-heavy", dest="include_heavy", action="store_false")
     parser.add_argument("--push-to-hub", action="store_true")
     parser.add_argument("--repo-id", default="meridianal/FinAI-corpus")
+    # Private by default: these shards are a derivative of the source datasets and are
+    # reconstructible back to their text given the tokenizer, so republishing them publicly
+    # is a licensing decision to make deliberately rather than a side effect of a build.
+    parser.add_argument("--public", action="store_true", help="Publish the dataset repo publicly")
     parser.add_argument("--keep-staging", action="store_true")
     args = parser.parse_args()
 
@@ -308,7 +312,7 @@ def main() -> int:
         from huggingface_hub import HfApi
 
         api = HfApi()
-        api.create_repo(args.repo_id, repo_type="dataset", exist_ok=True)
+        api.create_repo(args.repo_id, repo_type="dataset", exist_ok=True, private=not args.public)
         api.upload_folder(
             folder_path=args.out,
             repo_id=args.repo_id,

@@ -1,24 +1,30 @@
-"""Phase 2: train the 16k finance BPE and measure it against Qwen's.
+"""Phase 2: train the finance BPE and pick its vocab size from measurement.
 
-Why a domain tokenizer is the highest-leverage change in the plan, per
-``docs/BASE_MODEL_PLAN.md``:
+The plan asserted a 16k domain tokenizer would cut token count 10-20% against Qwen's 152k.
+The first build measured the opposite: 250 tokens vs 233, i.e. **7.3% worse**. A 16k vocab
+simply cannot hold as many whole English words -- ours splits ``Adjusted`` into
+``Ad``/``just``/``ed`` where Qwen has it whole -- and that loss outweighs the win on finance
+jargon (``EBITDA`` in 2 tokens against Qwen's 3).
 
-1. Parameters. Qwen's 152k vocab at d_model 384 is a 58M-parameter embedding table — more
-   than twice the entire 25M target model. At 16k it is 6.3M.
-2. Compression. General tokenizers shatter finance text: ``EBITDA``, ``10-Q``, ticker
-   symbols, ``$1.4B``. Fewer tokens for the same content is a straight multiplier on
-   effective data, and this script measures that rather than assuming it.
+So compression alone is the wrong objective. What actually matters for a fixed compute
+budget is how much text a model can process per FLOP, and training compute is
+``6 x params x tokens``. A bigger vocab means more embedding parameters but fewer tokens for
+the same text, so the quantity to minimize is their **product**:
 
-Two deliberate choices:
+    cost = (embedding_params + backbone_params) x tokens_for_a_fixed_corpus
 
-* **Digits are split individually.** Llama does this and it measurably helps arithmetic:
-  a model that sees ``1``/``4``/``.``/``2`` learns place value, whereas one that sees a
-  single ``14.2`` token has to memorize each magnitude separately. For a model expected to
-  reason about financial figures that trade is worth the extra tokens.
-* **Byte-level BPE**, so there is no UNK token and any input is representable.
+This script sweeps vocab sizes and reports that product, which turns vocab size into a
+measurement instead of a guess. The parameter side is not small: at d_model 384, Qwen's 152k
+vocab would be a 58.2M embedding table against a 18.9M backbone.
+
+Two other deliberate choices:
+
+* **Digits are split individually**, so the model learns place value rather than memorizing
+  each magnitude. Qwen does the same, so this costs nothing in the comparison.
+* **Byte-level BPE**, so there is no UNK and any input is representable.
 
 Usage:
-    python scripts/build_tokenizer.py --docs-per-dataset 20000 --vocab-size 16384
+    python scripts/build_tokenizer.py --sweep 8192 16384 32768 --vocab-size 16384
 """
 
 from __future__ import annotations
@@ -33,8 +39,12 @@ from meridian.data.corpus import dataset_specs, iter_documents
 
 EOS_TOKEN = "<|endoftext|>"
 
-# Held-out probes for the compression comparison. Deliberately the kind of text the model
-# is meant to be good at: filing prose, figures, tickers, and finance jargon.
+# Non-embedding parameters of the 25M target from docs/BASE_MODEL_PLAN.md. Vocab size does
+# not change the backbone, so it is the fixed term when comparing total model cost.
+BACKBONE_PARAMS = 18_883_584
+D_MODEL = 384
+
+# Held-out probes for the compression comparison: filing prose, figures, tickers, jargon.
 PROBE_TEXTS = [
     "Total revenue increased 14.2% to $1.43 billion for the three months ended June 30, 2026, "
     "driven by growth in subscription services.",
@@ -48,38 +58,58 @@ PROBE_TEXTS = [
     "board's decision to authorize a $500 million buyback.",
     "Diluted earnings per share of $2.14 missed consensus estimates of $2.21, and management "
     "guided FY27 revenue to $6.2-6.4 billion.",
+    "Net cash provided by operating activities was $1.28 billion, compared with $974 million "
+    "in the prior-year period, primarily due to favorable working capital.",
+    "The FOMC held the federal funds target range at 4.25-4.50% and signaled two cuts in 2027 "
+    "as core PCE inflation moderated to 2.4%.",
 ]
 
 
-def sample_corpus(
-    docs_per_dataset: int, include_heavy: bool, max_chars_per_dataset: int
-) -> Iterator[str]:
-    """Yield training text for the BPE, visiting one dataset at a time."""
+def sample_to_file(path: str, docs_per_dataset: int, include_heavy: bool, max_chars: int) -> int:
+    """Materialize the BPE training sample once, as JSONL.
+
+    Written to disk rather than held in memory so the same sample can train every vocab size
+    in the sweep -- streaming the corpus once per size would be both slow and, because the
+    sample would differ, not a controlled comparison.
+    """
     specs = dataset_specs(include_heavy=include_heavy)
     print(f"  Sampling from {len(specs)} datasets\n", flush=True)
+    total = 0
 
-    for spec in specs:
-        # Allocate documents by mix weight, with a floor so small datasets still contribute
-        # their vocabulary (FOMC language, ESG terms) rather than being rounded away.
-        quota = max(200, int(docs_per_dataset * spec["weight"] * len(specs)))
-        quota = min(quota, docs_per_dataset)
-        count = 0
-        started = time.perf_counter()
-        for text in iter_documents(spec, EOS_TOKEN, quota, max_chars_per_dataset):
-            count += 1
-            yield text
-        print(
-            f"    {spec['name']:<48} {count:>7,} docs  "
-            f"({spec['domain']}, {time.perf_counter() - started:.0f}s)",
-            flush=True,
-        )
+    with open(path, "w", encoding="utf-8") as fh:
+        for spec in specs:
+            # Allocate by mix weight with a floor, so small sets still contribute their
+            # vocabulary (FOMC language, ESG terms) instead of being rounded away.
+            quota = max(500, int(docs_per_dataset * spec["weight"] * len(specs)))
+            quota = min(quota, docs_per_dataset)
+            count = 0
+            started = time.perf_counter()
+            for text in iter_documents(spec, EOS_TOKEN, quota, max_chars):
+                fh.write(json.dumps(text) + "\n")
+                count += 1
+            total += count
+            status = "" if count else "   <-- YIELDED NOTHING"
+            print(
+                f"    {spec['name']:<48} {count:>7,} docs  "
+                f"({spec['domain']}, {time.perf_counter() - started:.0f}s){status}",
+                flush=True,
+            )
+
+    print(f"\n  Sampled {total:,} documents to {path}\n", flush=True)
+    return total
 
 
-def build(args: argparse.Namespace) -> dict:
+def read_sample(path: str) -> Iterator[str]:
+    with open(path, encoding="utf-8") as fh:
+        for line in fh:
+            yield json.loads(line)
+
+
+def train_bpe(vocab_size: int, sample_path: str):
     from tokenizers import Tokenizer, decoders, models, pre_tokenizers, processors, trainers
 
     tokenizer = Tokenizer(models.BPE(unk_token=None))
-    # Digits first so numbers are split before byte-level grouping can fuse them.
+    # Digits first, so numbers are split before byte-level grouping can fuse them.
     tokenizer.pre_tokenizer = pre_tokenizers.Sequence(
         [
             pre_tokenizers.Digits(individual_digits=True),
@@ -90,127 +120,147 @@ def build(args: argparse.Namespace) -> dict:
     tokenizer.post_processor = processors.ByteLevel(trim_offsets=False)
 
     trainer = trainers.BpeTrainer(
-        vocab_size=args.vocab_size,
+        vocab_size=vocab_size,
         special_tokens=[EOS_TOKEN],
         initial_alphabet=pre_tokenizers.ByteLevel.alphabet(),
-        show_progress=True,
+        show_progress=False,
         min_frequency=2,
     )
-
-    print("=" * 78)
-    print("  Phase 2 — training finance BPE")
-    print("=" * 78)
     started = time.perf_counter()
-    tokenizer.train_from_iterator(
-        sample_corpus(args.docs_per_dataset, args.include_heavy, args.max_chars_per_dataset),
-        trainer=trainer,
-    )
-    elapsed = time.perf_counter() - started
-    print(f"\n  Trained in {elapsed:.0f}s, vocab {tokenizer.get_vocab_size():,}\n", flush=True)
+    tokenizer.train_from_iterator(read_sample(sample_path), trainer=trainer)
+    return tokenizer, time.perf_counter() - started
 
-    os.makedirs(args.out, exist_ok=True)
-    tokenizer.save(os.path.join(args.out, "tokenizer.json"))
 
-    # Wrap as a PreTrainedTokenizerFast so the rest of the stack -- from_pretrained, the
-    # trainer, generate(), the HF upload -- treats it like any other tokenizer.
+def measure(encode, vocab_size: int) -> dict:
+    """Compression and total-model-cost metrics for one tokenizer."""
+    chars = sum(len(t) for t in PROBE_TEXTS)
+    tokens = sum(len(encode(t)) for t in PROBE_TEXTS)
+    embedding = vocab_size * D_MODEL
+    total_params = embedding + BACKBONE_PARAMS
+    return {
+        "vocab_size": vocab_size,
+        "tokens": tokens,
+        "chars_per_token": round(chars / tokens, 3),
+        "embedding_params": embedding,
+        "total_params": total_params,
+        # Proportional to the FLOPs needed to train on a fixed body of text.
+        "relative_cost": total_params * tokens,
+    }
+
+
+def save(tokenizer, out_dir: str) -> None:
+    os.makedirs(out_dir, exist_ok=True)
+    tokenizer.save(os.path.join(out_dir, "tokenizer.json"))
+
+    # Wrap as PreTrainedTokenizerFast so from_pretrained, the trainer, generate(), and the
+    # HF upload all treat it like any other tokenizer.
     from transformers import PreTrainedTokenizerFast
 
     fast = PreTrainedTokenizerFast(
-        tokenizer_file=os.path.join(args.out, "tokenizer.json"),
+        tokenizer_file=os.path.join(out_dir, "tokenizer.json"),
         eos_token=EOS_TOKEN,
         bos_token=None,
         unk_token=None,
         pad_token=EOS_TOKEN,
     )
-    fast.save_pretrained(args.out)
-    print(f"  Saved tokenizer to {args.out}/", flush=True)
-    return {"vocab_size": tokenizer.get_vocab_size(), "train_seconds": round(elapsed, 1)}
-
-
-def compare(args: argparse.Namespace) -> dict:
-    """Measure compression against Qwen's tokenizer on held-out finance text."""
-    from transformers import AutoTokenizer
-
-    ours = AutoTokenizer.from_pretrained(args.out)
-    try:
-        theirs = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-0.5B")
-    except Exception as exc:  # noqa: BLE001 — the comparison is informative, not required
-        print(f"  [WARN] Could not load Qwen tokenizer for comparison: {exc}")
-        return {}
-
-    total_chars = sum(len(t) for t in PROBE_TEXTS)
-    ours_tokens = sum(len(ours.encode(t)) for t in PROBE_TEXTS)
-    theirs_tokens = sum(len(theirs.encode(t)) for t in PROBE_TEXTS)
-
-    print("  Compression on held-out finance text")
-    print("  " + "-" * 62)
-    print(f"    {'':<22}{'tokens':>10}{'chars/token':>14}{'vs Qwen':>12}")
-    print(
-        f"    {'Meridian 16k':<22}{ours_tokens:>10,}{total_chars / ours_tokens:>14.2f}"
-        f"{(theirs_tokens - ours_tokens) / theirs_tokens * 100:>11.1f}%"
-    )
-    print(f"    {'Qwen2.5 152k':<22}{theirs_tokens:>10,}{total_chars / theirs_tokens:>14.2f}")
-    print()
-
-    for text in PROBE_TEXTS[:2]:
-        print(f"    {text[:70]}...")
-        print(f"      ours ({len(ours.encode(text)):>3}): {ours.tokenize(text)[:18]}")
-        print(f"      qwen ({len(theirs.encode(text)):>3}): {theirs.tokenize(text)[:18]}")
-    print()
-
-    embed_ours = ours.vocab_size * 384
-    embed_theirs = theirs.vocab_size * 384
-    print(f"  Embedding table at d_model 384: {embed_ours / 1e6:.1f}M vs {embed_theirs / 1e6:.1f}M")
-    print(f"  Saved: {(embed_theirs - embed_ours) / 1e6:.1f}M parameters\n")
-
-    return {
-        "probe_chars": total_chars,
-        "meridian_tokens": ours_tokens,
-        "qwen_tokens": theirs_tokens,
-        "token_reduction_pct": round((theirs_tokens - ours_tokens) / theirs_tokens * 100, 2),
-        "meridian_chars_per_token": round(total_chars / ours_tokens, 3),
-        "qwen_chars_per_token": round(total_chars / theirs_tokens, 3),
-        "embedding_params_saved": embed_theirs - embed_ours,
-    }
+    fast.save_pretrained(out_dir)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--vocab-size", type=int, default=16384)
-    parser.add_argument("--docs-per-dataset", type=int, default=20000)
-    parser.add_argument("--max-chars-per-dataset", type=int, default=60_000_000)
+    parser.add_argument("--vocab-size", type=int, default=16384, help="Vocab size to keep")
+    parser.add_argument("--sweep", type=int, nargs="*", default=[8192, 16384, 32768])
+    parser.add_argument("--docs-per-dataset", type=int, default=40000)
+    parser.add_argument("--max-chars-per-dataset", type=int, default=120_000_000)
     parser.add_argument("--include-heavy", action="store_true", default=True)
     parser.add_argument("--no-include-heavy", dest="include_heavy", action="store_false")
     parser.add_argument("--out", default="tokenizer")
+    parser.add_argument("--sample-file", default="tokenizer_sample.jsonl")
     parser.add_argument("--report", default="docs/benchmarks/tokenizer.json")
     args = parser.parse_args()
 
-    report = build(args)
-    report.update(compare(args))
+    print("=" * 78)
+    print("  Phase 2 — finance tokenizer")
+    print("=" * 78)
+    documents = sample_to_file(
+        args.sample_file, args.docs_per_dataset, args.include_heavy, args.max_chars_per_dataset
+    )
+    if documents == 0:
+        raise SystemExit("FATAL: sampled zero documents")
 
+    sizes = sorted({*(args.sweep or []), args.vocab_size})
+    rows, kept = [], None
+    for size in sizes:
+        tokenizer, seconds = train_bpe(size, args.sample_file)
+        row = measure(lambda t: tokenizer.encode(t).ids, tokenizer.get_vocab_size())
+        row["train_seconds"] = round(seconds, 1)
+        rows.append(row)
+        print(
+            f"  vocab {row['vocab_size']:>6,}: {row['tokens']:>5,} tokens, "
+            f"{row['chars_per_token']:>5.2f} chars/tok, "
+            f"{row['total_params'] / 1e6:>5.1f}M params, "
+            f"cost {row['relative_cost'] / 1e9:>8.1f}  ({seconds:.0f}s)",
+            flush=True,
+        )
+        if size == args.vocab_size:
+            kept = tokenizer
+
+    # Qwen as the reference point the plan's claim was made against.
+    baseline = None
+    try:
+        from transformers import AutoTokenizer
+
+        qwen = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-0.5B")
+        baseline = measure(lambda t: qwen.encode(t), qwen.vocab_size)
+        print(
+            f"  Qwen  {baseline['vocab_size']:>6,}: {baseline['tokens']:>5,} tokens, "
+            f"{baseline['chars_per_token']:>5.2f} chars/tok, "
+            f"{baseline['total_params'] / 1e6:>5.1f}M params, "
+            f"cost {baseline['relative_cost'] / 1e9:>8.1f}"
+        )
+    except Exception as exc:  # noqa: BLE001 — the comparison is informative, not required
+        print(f"  [WARN] Qwen tokenizer unavailable for comparison: {exc}")
+
+    best = min(rows, key=lambda r: r["relative_cost"])
+    print(f"\n  Lowest training cost: vocab {best['vocab_size']:,}")
+    if baseline:
+        saving = (1 - best["relative_cost"] / baseline["relative_cost"]) * 100
+        print(f"  {saving:.1f}% cheaper than Qwen's vocab at the same d_model\n")
+
+    if kept is None:
+        raise SystemExit(f"FATAL: --vocab-size {args.vocab_size} was not among {sizes}")
+    save(kept, args.out)
+    print(f"  Saved vocab-{args.vocab_size:,} tokenizer to {args.out}/")
+
+    report = {
+        "documents_sampled": documents,
+        "sweep": rows,
+        "qwen": baseline,
+        "kept": args.vocab_size,
+    }
     os.makedirs(os.path.dirname(args.report) or ".", exist_ok=True)
     with open(args.report, "w") as fh:
         json.dump(report, fh, indent=2)
     print(f"  Wrote {args.report}")
 
     summary_path = os.getenv("GITHUB_STEP_SUMMARY")
-    if summary_path and report.get("qwen_tokens"):
+    if summary_path:
         with open(summary_path, "a") as fh:
-            fh.write("## Phase 2 — finance tokenizer\n\n")
+            fh.write("## Phase 2 — tokenizer vocab sweep\n\n")
+            fh.write(f"Trained on {documents:,} sampled documents.\n\n")
+            fh.write("| Vocab | Tokens on probes | chars/token | Model params | Relative cost |\n")
+            fh.write("| ---: | ---: | ---: | ---: | ---: |\n")
+            for row in rows + ([baseline] if baseline else []):
+                label = f"{row['vocab_size']:,}"
+                if baseline and row is baseline:
+                    label += " (Qwen)"
+                fh.write(
+                    f"| {label} | {row['tokens']:,} | {row['chars_per_token']} | "
+                    f"{row['total_params'] / 1e6:.1f}M | {row['relative_cost'] / 1e9:.1f} |\n"
+                )
             fh.write(
-                f"Vocab **{report['vocab_size']:,}**, trained in {report['train_seconds']}s\n\n"
+                f"\nLowest cost: **vocab {best['vocab_size']:,}**. Kept: {args.vocab_size:,}.\n"
             )
-            fh.write("| Tokenizer | Tokens on probe set | chars/token |\n| --- | ---: | ---: |\n")
-            fh.write(
-                f"| Meridian 16k | {report['meridian_tokens']:,} | "
-                f"{report['meridian_chars_per_token']} |\n"
-            )
-            fh.write(
-                f"| Qwen2.5 152k | {report['qwen_tokens']:,} | "
-                f"{report['qwen_chars_per_token']} |\n\n"
-            )
-            fh.write(f"**{report['token_reduction_pct']}% fewer tokens** on finance text, ")
-            fh.write(f"and {report['embedding_params_saved'] / 1e6:.1f}M fewer embedding params.\n")
     return 0
 
 
