@@ -151,6 +151,25 @@ def format_edgar(item: dict, eos_token: str) -> str:
     return "\n\n".join(parts) + eos_token if parts else ""
 
 
+def resolve_parquet_urls(name: str, config: str, split: str) -> list[str]:
+    """Find the Hub's auto-converted parquet files for a dataset.
+
+    EDGAR-CORPUS is published as a loading *script*, and `datasets` 4.x dropped script
+    support ("Dataset scripts are no longer supported"), so `load_dataset` cannot open it at
+    all. The Hub separately converts every dataset to parquet on a `refs/convert/parquet`
+    branch, and those files load natively — so we resolve them and read those instead.
+    """
+    import json
+    import urllib.parse
+    import urllib.request
+
+    query = urllib.parse.urlencode({"dataset": name, "config": config})
+    url = f"https://datasets-server.huggingface.co/parquet?{query}"
+    with urllib.request.urlopen(url, timeout=60) as response:
+        payload = json.load(response)
+    return [f["url"] for f in payload.get("parquet_files", []) if f.get("split") == split]
+
+
 def iter_findb(eos_token: str, max_documents: int, cache_path: str = "findb.sqlite"):
     """Stream usable articles out of the FinDB SQLite database.
 
@@ -199,6 +218,9 @@ EXTRA_SOURCES: list[dict] = [
         "split": "train",
         "text_field": None,
         "formatter": "edgar",
+        # Published as a loading script, which datasets 4.x cannot execute; read the Hub's
+        # auto-converted parquet instead.
+        "loader": "parquet_auto",
         "weight": 0.60,
         "heavy": True,
     },
@@ -270,10 +292,18 @@ def iter_documents(
     try:
         from datasets import load_dataset
 
-        kwargs = {"path": spec["name"], "split": spec["split"], "streaming": True}
-        if spec.get("config"):
-            kwargs["name"] = spec["config"]
-        stream = load_dataset(**kwargs)
+        if spec.get("loader") == "parquet_auto":
+            urls = resolve_parquet_urls(
+                spec["name"], spec.get("config") or "default", spec["split"]
+            )
+            if not urls:
+                raise RuntimeError("no auto-converted parquet files published")
+            stream = load_dataset("parquet", data_files=urls, split="train", streaming=True)
+        else:
+            kwargs = {"path": spec["name"], "split": spec["split"], "streaming": True}
+            if spec.get("config"):
+                kwargs["name"] = spec["config"]
+            stream = load_dataset(**kwargs)
     except Exception as exc:  # noqa: BLE001 — any Hub or schema failure should skip, not abort
         print(f"    [SKIP] {spec['name']}: {exc}", flush=True)
         return

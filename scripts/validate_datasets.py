@@ -53,11 +53,11 @@ def check(spec: dict) -> dict:
         "columns": [],
     }
 
-    # Sources with a custom loader (FinDB reads a SQLite file out of a git repo) are not on
-    # the Hub, so there is no schema here to check.
-    if spec.get("loader"):
+    # FinDB reads a SQLite file out of a git repo, so there is no Hub schema to check.
+    # parquet_auto sources are still on the Hub and validate normally.
+    if spec.get("loader") == "findb":
         result["ok"] = True
-        result["problem"] = f"skipped: custom loader '{spec['loader']}'"
+        result["problem"] = "skipped: reads a SQLite file, not a Hub dataset"
         return result
 
     splits = api("splits", dataset=name)
