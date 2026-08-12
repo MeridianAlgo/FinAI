@@ -23,11 +23,17 @@ import argparse
 import json
 import os
 import platform
+import subprocess
+import sys
 import time
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 
 import torch
+
+# How a child process hands its measurement back to the parent.
+RESULT_PREFIX = "RESULT_JSON:"
+CONTROL_NAME = "494M-control"
 
 # FLOPs per token for forward + backward is ~6N (2N forward, 4N backward). Attention adds a
 # term that is small at these depths and context lengths; we note it rather than model it.
@@ -209,6 +215,106 @@ def run_config(
         return empty
 
 
+def parse_spec(spec: str) -> tuple[str, dict[str, int], int, str, int, int]:
+    """Decode ``name:dtype:batch:block`` into the arguments ``run_config`` needs."""
+    name, dtype_name, batch_raw, block_raw = spec.split(":")
+    if name == CONTROL_NAME:
+        shape, vocab = BASELINE_SHAPE, BASELINE_VOCAB
+    else:
+        shape, vocab = SHAPES[name], VOCAB_SIZE
+    return name, shape, vocab, dtype_name, int(batch_raw), int(block_raw)
+
+
+def run_spec_isolated(spec: str, budget_s: float, max_steps: int) -> Result:
+    """Run one config in a child process and return its Result.
+
+    Isolation is not optional here. A config that exhausts the runner's 15 GB is
+    SIGKILLed by the kernel OOM killer, which no ``except`` can intercept — in sweep 2
+    that killed the whole job at 126M/batch32 and cost every result after it. In a child,
+    the same kill costs one data point and the sweep continues.
+    """
+    name, _, _, dtype_name, batch_size, block_size = parse_spec(spec)
+    label = f"{name}/{dtype_name}/batch{batch_size}"
+    print(f"  [RUN ] {label} ...", flush=True)
+
+    # The warmup guard in run_config bounds a config at roughly two steps, but a pathological
+    # shape could still stall; cap it so one config cannot consume the whole job.
+    try:
+        proc = subprocess.run(
+            [
+                sys.executable,
+                os.path.abspath(__file__),
+                "--single",
+                spec,
+                "--budget",
+                str(budget_s),
+                "--max-steps",
+                str(max_steps),
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=max(900.0, budget_s * 20),
+        )
+    except subprocess.TimeoutExpired:
+        print(f"  [TIME] {label}: exceeded per-config wall clock", flush=True)
+        return Result(
+            shape=name,
+            params=0,
+            dtype=dtype_name,
+            batch_size=batch_size,
+            block_size=block_size,
+            steps_timed=0,
+            tokens=0,
+            seconds=0.0,
+            tokens_per_sec=0.0,
+            gflops=0.0,
+            peak_rss_gb=0.0,
+            status="timeout",
+            note="exceeded per-config wall clock",
+        )
+
+    for line in proc.stdout.splitlines():
+        if line.startswith(RESULT_PREFIX):
+            result = Result(**json.loads(line[len(RESULT_PREFIX) :]))
+            if result.status == "ok":
+                print(
+                    f"  [DONE] {label}: {result.tokens_per_sec:,.1f} tok/s, "
+                    f"{result.gflops:,.1f} GFLOP/s, {result.steps_timed} steps, "
+                    f"{result.peak_rss_gb:.1f} GB RSS",
+                    flush=True,
+                )
+            else:
+                print(f"  [{result.status.upper():4}] {label}: {result.note}", flush=True)
+            return result
+
+    # No result line: the child died before it could report. Negative return codes are
+    # signals, and -9 (SIGKILL) from the kernel means it ran the runner out of memory.
+    killed = proc.returncode == -9 or proc.returncode == 137
+    status = "oom-killed" if killed else "error"
+    note = (
+        "SIGKILL — exceeded runner memory"
+        if killed
+        else (proc.stderr.strip().splitlines() or ["no output"])[-1][:200]
+    )
+    print(f"  [{status.upper():4}] {label}: {note}", flush=True)
+    return Result(
+        shape=name,
+        params=0,
+        dtype=dtype_name,
+        batch_size=batch_size,
+        block_size=block_size,
+        steps_timed=0,
+        tokens=0,
+        seconds=0.0,
+        tokens_per_sec=0.0,
+        gflops=0.0,
+        peak_rss_gb=0.0,
+        status=status,
+        note=note,
+    )
+
+
 def markdown_table(results: list[Result]) -> str:
     header = (
         "| Shape | Params | dtype | Batch | Steps | tok/s | GFLOP/s | Peak RSS | Status |\n"
@@ -301,10 +407,24 @@ def main() -> int:
         help="Add the 494M bf16 batch-1 control (slow: several minutes)",
     )
     parser.add_argument("--out", default="docs/benchmarks/latest.json")
+    parser.add_argument(
+        "--single",
+        metavar="NAME:DTYPE:BATCH:BLOCK",
+        help="Internal: measure one config and emit its Result as JSON. Used by the parent "
+        "sweep so an OOM kill costs one data point instead of the whole job.",
+    )
     args = parser.parse_args()
 
     threads = os.cpu_count() or 1
     torch.set_num_threads(threads)
+
+    if args.single:
+        name, shape, vocab, dtype_name, batch_size, block_size = parse_spec(args.single)
+        result = run_config(
+            name, shape, vocab, dtype_name, batch_size, block_size, args.budget, args.max_steps
+        )
+        print(RESULT_PREFIX + json.dumps(asdict(result)), flush=True)
+        return 0
 
     info = cpu_info()
     print("=" * 78)
@@ -314,53 +434,19 @@ def main() -> int:
         print(f"  {key:>18}: {value}")
     print()
 
-    shapes = {"25M": SHAPES["25M"]} if args.quick else SHAPES
+    shapes = ["25M"] if args.quick else list(SHAPES)
     batches = [1, 8] if args.quick else args.batch_sizes
 
-    results: list[Result] = []
-    for name, shape in shapes.items():
-        for dtype_name in args.dtypes:
-            for batch_size in batches:
-                label = f"{name}/{dtype_name}/batch{batch_size}"
-                print(f"  [RUN ] {label} ...", flush=True)
-                result = run_config(
-                    name,
-                    shape,
-                    VOCAB_SIZE,
-                    dtype_name,
-                    batch_size,
-                    args.block_size,
-                    args.budget,
-                    args.max_steps,
-                )
-                results.append(result)
-                if result.status == "ok":
-                    print(
-                        f"  [DONE] {label}: {result.tokens_per_sec:,.1f} tok/s, "
-                        f"{result.gflops:,.1f} GFLOP/s, {result.steps_timed} steps, "
-                        f"{result.peak_rss_gb:.1f} GB RSS",
-                        flush=True,
-                    )
-                else:
-                    print(f"  [{result.status.upper():4}] {label}: {result.note}", flush=True)
-
+    specs = [
+        f"{name}:{dtype_name}:{batch_size}:{args.block_size}"
+        for name in shapes
+        for dtype_name in args.dtypes
+        for batch_size in batches
+    ]
     if args.include_baseline:
-        print("  [RUN ] 494M-control/bf16/batch1 (production config today) ...", flush=True)
-        control = run_config(
-            "494M-control",
-            BASELINE_SHAPE,
-            BASELINE_VOCAB,
-            "bf16",
-            1,
-            256,
-            args.budget,
-            4,
-        )
-        results.append(control)
-        if control.status == "ok":
-            print(f"  [DONE] control: {control.tokens_per_sec:,.2f} tok/s", flush=True)
-        else:
-            print(f"  [{control.status.upper():4}] control: {control.note}", flush=True)
+        specs.append(f"{CONTROL_NAME}:bf16:1:256")
+
+    results = [run_spec_isolated(spec, args.budget, args.max_steps) for spec in specs]
 
     table = markdown_table(results)
     findings = summarize(results)
