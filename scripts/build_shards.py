@@ -85,11 +85,17 @@ def tokenize_dataset(spec, tokenizer, eos_id, target_tokens, staging_dir, batch_
     return {"path": path, "tokens": written, "domain": spec["domain"], "weight": spec["weight"]}
 
 
-def write_split(sources, out_path, total_tokens, block, rng, shard_tokens=None):
+def write_split(sources, out_path, total_tokens, block, rng, shard_tokens=None, max_epochs=1):
     """Pass B: interleave staging files into one output, sampling sources by weight.
 
     Copying in blocks rather than single tokens keeps each document's tokens contiguous,
     which is what the model needs to see; the interleaving happens between blocks.
+
+    ``max_epochs`` lets a source be reread from the start once exhausted. The finance
+    datasets total only ~87M tokens against effectively unlimited general text, so without
+    repetition the mix collapses toward whichever source is largest — the first full build
+    came out 70% general for a finance model. Repeating scarce data a bounded number of
+    times is the standard remedy; up to ~4 epochs is close to as useful as fresh tokens.
     """
     live = [s for s in sources if s["remaining"] > 0]
     if not live:
@@ -122,10 +128,17 @@ def write_split(sources, out_path, total_tokens, block, rng, shard_tokens=None):
         chunk.tofile(handle)
         source["offset"] += chunk.size
         source["remaining"] -= chunk.size
+        source["consumed"] = source.get("consumed", 0) + chunk.size
         written_total += chunk.size
         shard_written += chunk.size
 
         if source["remaining"] <= 0:
+            span = source["offset"] - source["start"]
+            source["epochs"] = source.get("epochs", 1)
+            if source["epochs"] < max_epochs and span > 0:
+                source["epochs"] += 1
+                source["offset"] = source["start"]
+                source["remaining"] = span
             live = [s for s in sources if s["remaining"] > 0]
 
         if shard_tokens is not None and shard_written >= shard_tokens:
@@ -144,6 +157,18 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--tokenizer", default="tokenizer")
     parser.add_argument("--target-tokens", type=int, default=300_000_000)
+    parser.add_argument(
+        "--finance-ratio",
+        type=float,
+        default=0.65,
+        help="Share of training tokens that should be finance text",
+    )
+    parser.add_argument(
+        "--max-epochs",
+        type=int,
+        default=4,
+        help="How many times a scarce source may be repeated (finance data is finite)",
+    )
     parser.add_argument("--val-tokens-per-domain", type=int, default=2_000_000)
     parser.add_argument("--shard-tokens", type=int, default=50_000_000)
     parser.add_argument("--interleave-block", type=int, default=8192)
@@ -173,29 +198,63 @@ def main() -> int:
     os.makedirs(args.staging, exist_ok=True)
     specs = dataset_specs(include_heavy=args.include_heavy)
 
-    # Over-collect: pass B samples by weight and stops at the target, so any single source
-    # running dry early would skew the realized mix.
     val_total = args.val_tokens_per_domain * 2
-    grand_total = args.target_tokens + val_total
-    headroom = 1.35
 
     print("=" * 78)
     print("  Phase 2 — tokenizing corpus to uint16 shards")
     print("=" * 78)
-    print(f"  Target: {args.target_tokens:,} train + {val_total:,} val tokens\n")
+    print(f"  Requested: {args.target_tokens:,} train tokens at {args.finance_ratio:.0%} finance")
+    print(f"  Repetition cap: {args.max_epochs} epochs on scarce sources\n")
     print("  Pass A — per-dataset tokenization")
 
+    # The finance sources are finite and small; the general ones (fineweb-edu,
+    # OpenMathInstruct) are effectively unlimited. So take finance to exhaustion and size the
+    # general pull to whatever the target ratio needs. Weighting alone cannot fix this: the
+    # first full build asked for 500M tokens, only finance had ~87M to give, and the mix
+    # inverted to 70% general for a finance model.
+    finance_specs = [s for s in specs if s["domain"] == "finance"]
+    general_specs = [s for s in specs if s["domain"] == "general"]
+    per_finance_cap = args.target_tokens  # effectively "take everything you have"
+
     staged = []
-    for spec in specs:
-        quota = int(grand_total * spec["weight"] * headroom) + 100_000
+    for spec in finance_specs:
         staged.append(
-            tokenize_dataset(spec, tokenizer, eos_id, quota, args.staging, args.batch_size)
+            tokenize_dataset(
+                spec, tokenizer, eos_id, per_finance_cap, args.staging, args.batch_size
+            )
+        )
+
+    finance_available = sum(s["tokens"] for s in staged)
+    if finance_available == 0:
+        raise SystemExit("FATAL: no finance dataset produced tokens")
+
+    # How much corpus the finance side can support, given bounded repetition.
+    finance_budget = finance_available * args.max_epochs
+    achievable = int(finance_budget / max(args.finance_ratio, 1e-6))
+    target_train = min(args.target_tokens + val_total, achievable) - val_total
+    target_train = max(target_train, 0)
+
+    general_needed = int((target_train + val_total) * (1 - args.finance_ratio) * 1.1) + 100_000
+    per_general = general_needed // max(len(general_specs), 1) + 100_000
+    for spec in general_specs:
+        staged.append(
+            tokenize_dataset(spec, tokenizer, eos_id, per_general, args.staging, args.batch_size)
         )
 
     staged = [s for s in staged if s["tokens"] > 0]
-    if not staged:
-        raise SystemExit("FATAL: no dataset produced tokens")
-    print(f"\n  Staged {sum(s['tokens'] for s in staged):,} tokens from {len(staged)} datasets\n")
+    general_available = sum(s["tokens"] for s in staged if s["domain"] == "general")
+    print(f"\n  Staged {sum(s['tokens'] for s in staged):,} tokens from {len(staged)} datasets")
+    print(f"    finance {finance_available:,} (x{args.max_epochs} epochs = {finance_budget:,})")
+    print(f"    general {general_available:,}")
+    if target_train < args.target_tokens:
+        print(
+            f"    [NOTE] Capped to {target_train:,} train tokens: {args.target_tokens:,} at "
+            f"{args.finance_ratio:.0%} finance would need "
+            f"{int(args.target_tokens * args.finance_ratio / args.max_epochs):,} unique finance "
+            f"tokens, and only {finance_available:,} exist. More finance data (SEC EDGAR) or a "
+            f"higher --max-epochs would lift this."
+        )
+    print()
 
     rng = random.Random(args.seed)
     manifest = {
@@ -230,37 +289,48 @@ def main() -> int:
                     original["val_offset"] = src["offset"]
 
     print("\n  Pass B — training shards")
+    # Weight each source as (domain share) x (its share within its domain), so the domain
+    # ratio is enforced directly instead of emerging from whichever sources happen to be
+    # largest. Repetition then keeps the scarce finance side from running dry mid-build.
+    domain_share = {"finance": args.finance_ratio, "general": 1 - args.finance_ratio}
+    within = {"finance": 0.0, "general": 0.0}
+    for s in staged:
+        within[s["domain"]] += s["weight"]
+
     train_sources = [
         {
             **s,
             "offset": s.get("val_offset", 0),
             "remaining": s["tokens"] - s.get("val_offset", 0),
             "start": s.get("val_offset", 0),
+            "weight": domain_share[s["domain"]] * (s["weight"] / (within[s["domain"]] or 1.0)),
         }
         for s in staged
     ]
     shards = write_split(
         train_sources,
         os.path.join(args.out, "train"),
-        args.target_tokens,
+        target_train,
         args.interleave_block,
         rng,
         shard_tokens=args.shard_tokens,
+        max_epochs=args.max_epochs,
     )
 
     # A dataset that runs dry has its share silently redistributed to whatever is still
     # live, so the realized mix can drift well away from the configured weights. Record
     # both per source and flag the exhausted ones rather than letting it pass unseen.
-    consumed_total = sum(s["offset"] - s["start"] for s in train_sources) or 1
+    consumed_total = sum(s.get("consumed", 0) for s in train_sources) or 1
     realized_sources, exhausted = [], []
     for source in train_sources:
-        consumed = source["offset"] - source["start"]
+        consumed = source.get("consumed", 0)
         entry = {
             "name": source["path"],
             "domain": source["domain"],
             "target_weight": round(source["weight"], 5),
             "realized_weight": round(consumed / consumed_total, 5),
             "tokens": consumed,
+            "epochs": source.get("epochs", 1),
             "exhausted": source["remaining"] <= 0,
         }
         realized_sources.append(entry)

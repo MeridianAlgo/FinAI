@@ -25,6 +25,14 @@ on:
         description: 'Training tokens to emit (0 skips shard building)'
         type: string
         default: '300000000'
+      finance_ratio:
+        description: 'Share of training tokens that should be finance text'
+        type: string
+        default: '0.65'
+      max_epochs:
+        description: 'Repetition cap for scarce finance sources'
+        type: string
+        default: '4'
       push_to_hub:
         description: 'Upload shards to the HF dataset repo'
         type: boolean
@@ -115,6 +123,8 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           ARGS="--target-tokens ${{ github.event.inputs.target_tokens || '300000000' }}"
+          ARGS="$ARGS --finance-ratio ${{ github.event.inputs.finance_ratio || '0.65' }}"
+          ARGS="$ARGS --max-epochs ${{ github.event.inputs.max_epochs || '4' }}"
           if [ "${{ github.event.inputs.push_to_hub }}" = "true" ]; then
             ARGS="$ARGS --push-to-hub"
           fi
