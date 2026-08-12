@@ -85,7 +85,16 @@ def tokenize_dataset(spec, tokenizer, eos_id, target_tokens, staging_dir, batch_
     return {"path": path, "tokens": written, "domain": spec["domain"], "weight": spec["weight"]}
 
 
-def write_split(sources, out_path, total_tokens, block, rng, shard_tokens=None, max_epochs=1):
+def write_split(
+    sources,
+    out_path,
+    total_tokens,
+    block,
+    rng,
+    shard_tokens=None,
+    max_epochs=1,
+    domain_share=None,
+):
     """Pass B: interleave staging files into one output, sampling sources by weight.
 
     Copying in blocks rather than single tokens keeps each document's tokens contiguous,
@@ -123,8 +132,25 @@ def write_split(sources, out_path, total_tokens, block, rng, shard_tokens=None, 
     shards.append(current)
 
     while written_total < total_tokens and live:
-        weights = [s["weight"] for s in live]
-        source = rng.choices(live, weights=weights, k=1)[0]
+        if domain_share:
+            # Pick the domain first, then a source inside it. Sampling over one flat pool
+            # leaks the ratio: as the small finance sets hit their epoch cap and drop out,
+            # a flat renormalization hands their share to whatever is still live, which is
+            # always the two general giants. That is how a 65%-finance request came out at
+            # 46.5%. Choosing the domain first makes the ratio independent of which
+            # individual sources survive.
+            pools: dict[str, list] = {}
+            for candidate in live:
+                pools.setdefault(candidate["domain"], []).append(candidate)
+            names = list(pools)
+            shares = [domain_share.get(name, 0.0) for name in names]
+            if sum(shares) <= 0:
+                shares = [1.0] * len(names)
+            pool = pools[rng.choices(names, weights=shares, k=1)[0]]
+        else:
+            pool = live
+
+        source = rng.choices(pool, weights=[s["weight"] for s in pool], k=1)[0]
 
         take = min(block, source["remaining"], total_tokens - written_total)
         chunk = np.fromfile(source["path"], dtype=DTYPE, count=take, offset=source["offset"] * 2)
@@ -311,7 +337,8 @@ def main() -> int:
             "offset": s.get("val_offset", 0),
             "remaining": s["tokens"] - s.get("val_offset", 0),
             "start": s.get("val_offset", 0),
-            "weight": domain_share[s["domain"]] * (s["weight"] / (within[s["domain"]] or 1.0)),
+            # Weight within the domain only; the domain ratio is applied by the sampler.
+            "weight": s["weight"] / (within[s["domain"]] or 1.0),
         }
         for s in staged
     ]
@@ -323,6 +350,7 @@ def main() -> int:
         rng,
         shard_tokens=args.shard_tokens,
         max_epochs=args.max_epochs,
+        domain_share=domain_share,
     )
 
     # A dataset that runs dry has its share silently redistributed to whatever is still
