@@ -53,6 +53,13 @@ def check(spec: dict) -> dict:
         "columns": [],
     }
 
+    # Sources with a custom loader (FinDB reads a SQLite file out of a git repo) are not on
+    # the Hub, so there is no schema here to check.
+    if spec.get("loader"):
+        result["ok"] = True
+        result["problem"] = f"skipped: custom loader '{spec['loader']}'"
+        return result
+
     splits = api("splits", dataset=name)
     if "splits" not in splits:
         result["problem"] = f"splits unavailable: {splits.get('error', 'unknown')}"

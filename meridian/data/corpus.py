@@ -15,6 +15,7 @@ staging files where it costs nothing.
 
 from __future__ import annotations
 
+import os
 import re
 from typing import Iterator
 
@@ -94,6 +95,36 @@ DROP_DATASETS = {
 }
 
 
+# --------------------------------------------------------------------------------------
+# Sources added beyond the trainer's list, to fix the finance shortage measured in Phase 2:
+# only 150.9M unique finance tokens existed, against a 500M-token corpus at 65% finance.
+# --------------------------------------------------------------------------------------
+
+# EDGAR-CORPUS (Loukas et al. 2021): 91,086 10-K filings, 1993-2020, ~5.7 GB of text, split
+# by item. Public domain, and on its own ~10x the entire previous finance pool. These are the
+# substantive prose sections; the ones left out (1B, 4, 9B, 10-14) are usually one-line
+# boilerplate or cross-references to a proxy statement.
+EDGAR_SECTIONS = (
+    "section_1",  # Business
+    "section_1A",  # Risk Factors
+    "section_3",  # Legal Proceedings
+    "section_5",  # Market for Registrant's Common Equity
+    "section_7",  # MD&A — the richest financial reasoning in a filing
+    "section_7A",  # Quantitative and Qualitative Disclosures About Market Risk
+    "section_8",  # Financial Statements
+    "section_9A",  # Controls and Procedures
+)
+EDGAR_MIN_SECTION_CHARS = 400
+
+# MeridianAlgo/FinDB: scraped financial news, ~22.8k articles. Not an HF dataset, so it is
+# read straight from the SQLite file in the repo.
+FINDB_URL = "https://github.com/MeridianAlgo/FinDB/raw/main/financial_news.db"
+# google_finance rows are unparsed Google News redirect URLs rather than article text —
+# 11,387 of them, 0% usable by inspection. seeking_alpha is mostly one-line teasers.
+FINDB_EXCLUDED_SOURCES = {"google_finance"}
+FINDB_MIN_CHARS = 400
+
+
 class _EosOnlyTokenizer:
     """``_format_text`` touches the tokenizer only for ``.eos_token``.
 
@@ -103,6 +134,83 @@ class _EosOnlyTokenizer:
 
     def __init__(self, eos_token: str) -> None:
         self.eos_token = eos_token
+
+
+def format_edgar(item: dict, eos_token: str) -> str:
+    """Concatenate the substantive sections of one 10-K into a single document.
+
+    Sections shorter than ``EDGAR_MIN_SECTION_CHARS`` are dropped: a filing that omits an
+    item still emits its header plus "Not Applicable", and training on thousands of those
+    teaches the model boilerplate rather than finance.
+    """
+    parts = [
+        text.strip()
+        for key in EDGAR_SECTIONS
+        if len(text := (item.get(key) or "").strip()) >= EDGAR_MIN_SECTION_CHARS
+    ]
+    return "\n\n".join(parts) + eos_token if parts else ""
+
+
+def iter_findb(eos_token: str, max_documents: int, cache_path: str = "findb.sqlite"):
+    """Stream usable articles out of the FinDB SQLite database.
+
+    Downloaded rather than streamed because it is a single 90 MB file in a git repo, not a
+    Hub dataset.
+    """
+    import sqlite3
+    import urllib.request
+
+    if not os.path.exists(cache_path):
+        print(f"    Downloading FinDB ({FINDB_URL}) ...", flush=True)
+        urllib.request.urlretrieve(FINDB_URL, cache_path)
+
+    connection = sqlite3.connect(cache_path)
+    placeholders = ",".join("?" * len(FINDB_EXCLUDED_SOURCES))
+    query = (
+        "SELECT title, content FROM financial_news "
+        f"WHERE source NOT IN ({placeholders}) AND LENGTH(content) >= ? "
+        "AND COALESCE(is_duplicate, 0) = 0 ORDER BY published_date"
+    )
+    params = (*FINDB_EXCLUDED_SOURCES, FINDB_MIN_CHARS)
+
+    emitted = 0
+    for title, content in connection.execute(query, params):
+        text = f"{title}\n\n{content}" if title else content
+        # U+FFFD marks bytes already lost to a mis-decode upstream; leaving them in would
+        # spend vocabulary on a character that carries nothing.
+        text = text.replace("�", "").strip()
+        # Guard against rows that are a URL blob rather than prose.
+        if len(text) < FINDB_MIN_CHARS or text.count(" ") / len(text) < 0.10:
+            continue
+        yield text + eos_token
+        emitted += 1
+        if emitted >= max_documents:
+            break
+    connection.close()
+
+
+# Weights are on the same scale as FinanceDataPipeline.DATASETS and renormalized with them.
+# EDGAR is weighted to become the backbone of the finance side: it is the largest, cleanest,
+# and most on-target finance text available, and it is public domain.
+EXTRA_SOURCES: list[dict] = [
+    {
+        "name": "c3po-ai/edgar-corpus",
+        "config": "full",
+        "split": "train",
+        "text_field": None,
+        "formatter": "edgar",
+        "weight": 0.60,
+        "heavy": True,
+    },
+    {
+        "name": "MeridianAlgo/FinDB",
+        "config": None,
+        "split": "train",
+        "text_field": None,
+        "loader": "findb",
+        "weight": 0.08,
+    },
+]
 
 
 def domain_of(dataset_name: str) -> str:
@@ -122,9 +230,9 @@ def dataset_specs(include_heavy: bool = True, exclude: set[str] | None = None) -
     """
     exclude = (exclude or set()) | DROP_DATASETS
     specs = []
-    for raw in FinanceDataPipeline.DATASETS:
+    for raw in list(FinanceDataPipeline.DATASETS) + EXTRA_SOURCES:
         name = raw["name"]
-        if name in exclude or (not include_heavy and name in HEAVY_DATASETS):
+        if name in exclude or (not include_heavy and (name in HEAVY_DATASETS or raw.get("heavy"))):
             continue
         spec = dict(raw)
         spec.update(SPEC_OVERRIDES.get(name, {}))
@@ -149,6 +257,13 @@ def iter_documents(
     as an early return rather than an exception: one unavailable dataset should cost its
     slice of the mix, not the whole corpus build.
     """
+    if spec.get("loader") == "findb":
+        try:
+            yield from iter_findb(eos_token, max_documents)
+        except Exception as exc:  # noqa: BLE001 — one unavailable source should not abort
+            print(f"    [SKIP] {spec['name']}: {exc}", flush=True)
+        return
+
     pipeline = FinanceDataPipeline.__new__(FinanceDataPipeline)
     pipeline.tokenizer = _EosOnlyTokenizer(eos_token)
 
@@ -163,11 +278,15 @@ def iter_documents(
         print(f"    [SKIP] {spec['name']}: {exc}", flush=True)
         return
 
+    formatter = spec.get("formatter")
     emitted = 0
     chars = 0
     try:
         for item in stream:
-            text = pipeline._format_text(item, spec)
+            if formatter == "edgar":
+                text = format_edgar(item, eos_token)
+            else:
+                text = pipeline._format_text(item, spec)
             if not text or not text.strip():
                 continue
             yield text
