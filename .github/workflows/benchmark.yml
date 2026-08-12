@@ -21,6 +21,10 @@ on:
         description: 'Add the 494M bf16 batch-1 control (slow, ~5-10 min)'
         type: boolean
         default: true
+      dtypes:
+        description: 'Dtypes to sweep (space separated). bf16 is 20x slower on this hardware.'
+        type: string
+        default: 'fp32'
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -33,7 +37,7 @@ jobs:
   benchmark:
     name: "CPU throughput sweep"
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
 
     steps:
       - uses: actions/checkout@v4
@@ -62,6 +66,7 @@ jobs:
           PYTHONPATH: .
         run: |
           ARGS="--budget ${{ github.event.inputs.budget || '40' }}"
+          ARGS="$ARGS --dtypes ${{ github.event.inputs.dtypes || 'fp32' }}"
           if [ "${{ github.event.inputs.quick }}" = "true" ]; then
             ARGS="$ARGS --quick"
           fi

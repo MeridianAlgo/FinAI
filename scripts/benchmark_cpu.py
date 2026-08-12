@@ -166,18 +166,29 @@ def run_config(
             out.loss.backward()
             optimizer.step()
 
-        # Warmup: first step pays lazy allocation and oneDNN primitive selection.
-        one_step()
-
         tokens_per_step = batch_size * block_size
-        steps = 0
-        start = time.perf_counter()
-        while steps < max_steps:
-            one_step()
-            steps += 1
-            if time.perf_counter() - start >= budget_s:
-                break
-        elapsed = time.perf_counter() - start
+
+        # Warmup: the first step pays lazy allocation and oneDNN primitive selection.
+        # Time it, because it also tells us whether a second step is affordable — a step
+        # cannot be interrupted once started, so a config slower than the budget would
+        # otherwise overrun it without bound. (bf16 at batch 32 takes ~20 min/step on a
+        # runner without AVX512-BF16, which is what timed out the first sweep.)
+        warm_start = time.perf_counter()
+        one_step()
+        warm_elapsed = time.perf_counter() - warm_start
+
+        if warm_elapsed >= budget_s:
+            steps, elapsed = 1, warm_elapsed
+            empty.note = "warmup-only; includes one-time init, so a slight underestimate"
+        else:
+            steps = 0
+            start = time.perf_counter()
+            while steps < max_steps:
+                one_step()
+                steps += 1
+                if time.perf_counter() - start >= budget_s:
+                    break
+            elapsed = time.perf_counter() - start
 
         tokens = steps * tokens_per_step
         tps = tokens / elapsed if elapsed > 0 else 0.0
@@ -280,6 +291,10 @@ def main() -> int:
     parser.add_argument("--block-size", type=int, default=512)
     parser.add_argument("--batch-sizes", type=int, nargs="+", default=[1, 8, 32])
     parser.add_argument("--quick", action="store_true", help="25M / batch 1,8 only")
+    # bf16 defaults off: the 2026-08-11 sweep measured it at 20x slower than fp32 on the
+    # runner's EPYC 7763 (no avx512_bf16, no amx_bf16), so it is a settled question and
+    # sweeping it just burns the time budget. Pass --dtypes fp32 bf16 to re-check on new hardware.
+    parser.add_argument("--dtypes", nargs="+", default=["fp32"], choices=["fp32", "bf16"])
     parser.add_argument(
         "--include-baseline",
         action="store_true",
@@ -304,7 +319,7 @@ def main() -> int:
 
     results: list[Result] = []
     for name, shape in shapes.items():
-        for dtype_name in ("fp32", "bf16"):
+        for dtype_name in args.dtypes:
             for batch_size in batches:
                 label = f"{name}/{dtype_name}/batch{batch_size}"
                 print(f"  [RUN ] {label} ...", flush=True)
