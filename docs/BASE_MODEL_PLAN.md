@@ -3,7 +3,15 @@
 Building **MeridianLM**, a from-scratch finance-native base model, instead of fine-tuning
 Qwen2.5-0.5B.
 
-Status: **Phase 1 in progress.**
+Status: **Phase 1 complete** — see `docs/benchmarks/2026-08-12-sweep-final.md`. Phase 2 is next.
+
+Phase 1 confirmed the diagnosis and moved three numbers materially:
+
+- **`DTYPE: 'bfloat16'` is the whole of the 1 tok/s problem.** The 494M control reproduced
+  production at exactly 1.0 tok/s, and fp32 is **20x faster** than bf16 on this hardware.
+- **The runner does 78–118 GFLOP/s, not the ~20 assumed** — so 25M reaches Chinchilla-optimal in
+  **~3 weeks**, not 3.2 months.
+- **Batch 8, not 32.** Batching buys ~1.3x, not 3–6x, and 57M *regresses* 33% at batch 32.
 
 ---
 
@@ -32,19 +40,15 @@ from-scratch model worth doing: the compute is already being paid for.
 ## The constraint
 
 Training compute is about `6 x params x tokens` FLOPs, so parameters and tokens trade directly
-against each other. Against a realistic post-fix 20 GFLOP/s:
+against each other. **Measured** in Phase 1, fp32 at batch 8:
 
 ```
 Monthly budget:  466 CPU-hours x ~70% training = ~325 h = 1.17e6 s
 
-N =  25 M  ->  133 tok/s  ->  156 M tokens/month
-N =  60 M  ->   56 tok/s  ->   65 M tokens/month
-N = 124 M  ->   27 tok/s  ->   31 M tokens/month
-N = 494 M  ->    7 tok/s  ->    8 M tokens/month   (today, after fixes)
-
-Chinchilla-optimal ~20 tokens/param:
-  25 M params -> 500 M tokens -> ~3.2 months
-  60 M params -> 1.2 B tokens -> ~18 months
+N =  25 M  ->  584.8 tok/s  ->  684 M tokens/month  -> Chinchilla (504 M) in ~3 weeks
+N =  57 M  ->  304.9 tok/s  ->  357 M tokens/month  -> Chinchilla (1.13 B) in ~3.2 months
+N = 126 M  ->  156.1 tok/s  ->  183 M tokens/month  -> Chinchilla (2.52 B) in ~13.8 months
+N = 494 M  ->    1.0 tok/s  (bf16, today's config — the control that reproduced production)
 ```
 
 **"Really smart in general" and "trained from scratch on CI CPUs" cannot both be true.** General
@@ -95,18 +99,19 @@ ships only if it beats the dense baseline at equal token count.
 
 ## Phases
 
-### Phase 1 — Benchmark the box *(in progress)*
+### Phase 1 — Benchmark the box *(complete)*
 
-Every performance number above is an estimate until measured on a real runner. Sweep
-`{25M, 57M, 126M} x {fp32, bf16} x {batch 1, 8, 32}` and record tok/s and GFLOP/s, plus a
-494M/bf16/batch-1 control to reproduce today's 1 tok/s and confirm the diagnosis.
+Hypothesis confirmed: `DTYPE=bfloat16` on a CPU without AVX512-BF16 or AMX is emulated in
+software and costs 20x. The 494M control landed at exactly 1.0 tok/s, matching production.
 
-Primary hypothesis: **`DTYPE=bfloat16` is the main culprit.** Without AVX512-BF16 or AMX, PyTorch
-emulates bf16 on CPU and it runs *slower* than fp32.
+Full results and method notes in `docs/benchmarks/2026-08-12-sweep-final.md`. Deliverables:
+`scripts/benchmark_cpu.py`, `.github/workflows/benchmark.yml`.
 
-Deliverables: `scripts/benchmark_cpu.py`, `.github/workflows/benchmark.yml`, results committed to
-`docs/benchmarks/`. Exit criterion: a measured tok/s figure for the 25M target that either
-confirms or resizes the plan.
+**Target size decision: start at 25M.** It reaches Chinchilla-optimal in ~3 weeks, so the data
+pipeline gets a real perplexity curve inside a month. 57M is the better final model — 2.2x the
+capacity for 3.2 months — and stays reachable afterwards, either trained fresh with what the 25M
+run teaches or by over-training the 25M past Chinchilla. Committing a quarter to 57M before the
+pipeline has ever produced a descending loss curve is the risk this ordering avoids.
 
 ### Phase 2 — Corpus and tokenizer
 
@@ -151,14 +156,14 @@ protecting.
 Independent of architecture, worth doing regardless. Multipliers are hypotheses to test, in the
 order to test them.
 
-| Change | Rationale | Est. |
-| --- | --- | --- |
-| fp32 instead of bf16 | Without AVX512-BF16/AMX, PyTorch emulates bf16 on CPU and it runs slower than fp32 | 2–4x |
-| batch 32–64, not 1 | Batch 1 gives matrix-vector products with terrible arithmetic intensity | 3–6x |
-| Pre-tokenized shards | Stops paying tokenization + streaming out of the training budget | 1.5–2x |
-| Drop EWC | Fisher estimation costs a full pass per run to protect knowledge a from-scratch model lacks | 1.2x |
-| AdamW over Adafactor | Adafactor trades convergence for optimizer memory we no longer need to save | quality |
-| `torch.compile`, thread pinning | oneDNN fusion on the CPU backend | 1.3–2x |
+| Change | Rationale | Est. | Measured |
+| --- | --- | --- | --- |
+| fp32 instead of bf16 | No AVX512-BF16/AMX on the runner, so PyTorch emulates bf16 in software | 2–4x | **20x** |
+| batch 8, not 1 | Better arithmetic intensity — but block 512 already gives a 512-row GEMM | 3–6x | **1.3x** (and batch 32 *regresses* at 57M) |
+| Pre-tokenized shards | Stops paying tokenization + streaming out of the training budget | 1.5–2x | not yet measured |
+| Drop EWC | Fisher estimation costs a full pass per run to protect knowledge a from-scratch model lacks | 1.2x | not yet measured |
+| AdamW over Adafactor | Adafactor trades convergence for optimizer memory we no longer need to save | quality | — |
+| `torch.compile`, thread pinning | oneDNN fusion on the CPU backend | 1.3–2x | not yet measured |
 
 **Scheduling.** GitHub-hosted jobs may run up to 6 hours; we do 80-minute jobs hourly. Each run
 pays ~10 min of setup, checkpoint pull, and upload — a ~20% tax plus 4x the Hub traffic that keeps
@@ -191,8 +196,11 @@ for fluent nonsense and for a model that has not moved in a month — it told us
 
 ## Open decisions
 
-- **Target size: 25M or smaller?** 25M/500M tokens is ~3 months; a 15M model reaches Chinchilla in
-  ~6 weeks and proves the pipeline sooner. Recommendation: hold at 25M, let Phase 1 decide.
+- ~~**Target size**~~ — settled by Phase 1: start at 25M (~3 weeks to Chinchilla), revisit 57M after.
+- **Set `DTYPE: 'float32'` in `train.yml` now?** The running Qwen fine-tune is losing 20x to bf16
+  emulation today. The catch is that fp32 doubles weight and gradient memory on a 494M model
+  against a pipeline whose RAM guards (`MAX_RAM_GB: 14.5`) were tuned for bf16, so it needs one
+  supervised run to confirm it fits. Worth doing only if that pipeline is staying alive.
 - **Keep the Qwen fine-tune running in parallel?** Costs nothing extra on free runners and
   preserves a fallback. Recommendation: keep it, reduced to every 6 hours.
 - **Rent a GPU for pretraining?** ~$10–30 of spot A10/T4 covers what CI does in three months. If
