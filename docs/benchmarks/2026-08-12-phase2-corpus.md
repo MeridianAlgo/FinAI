@@ -1,18 +1,70 @@
 # Phase 2 results — tokenizer and corpus, 2026-08-12
 
-Final build: [31628078595](https://github.com/MeridianAlgo/FinAI/actions/runs/31628078595).
-Corpus at [meridianal/FinAI-corpus](https://huggingface.co/datasets/meridianal/FinAI-corpus)
-(private).
+Final build: [31634323806](https://github.com/MeridianAlgo/FinAI/actions/runs/31634323806),
+after adding SEC EDGAR and FinDB. Corpus at
+[meridianal/FinAI-corpus](https://huggingface.co/datasets/meridianal/FinAI-corpus) (private).
 
 ## Deliverables
 
 | Artifact | Value |
 | --- | --- |
 | Tokenizer | 16,384-vocab byte-level BPE, digits split individually |
-| Training shards | 500,000,000 tokens, uint16, 10 x 50M shards |
+| Training shards | **1,000,000,000 tokens**, uint16, 20 x 50M shards |
 | Held-out validation | 2,000,000 finance + 2,000,000 general tokens |
-| Domain mix | **64.96% finance / 35.04% general** (target 65%) |
-| Unique source tokens | 150.9M finance, 139.5M general |
+| Domain mix | **69.97% finance / 30.03% general** (target 70%) |
+| Unique source tokens | **889.9M finance**, 231.1M general |
+| Repetition needed | **None** — 700M finance tokens drawn from 889.9M unique |
+
+That is ~2x Chinchilla-optimal for the 25M target (504M tokens), so there is now room to
+over-train, which is the main quality lever available for a model this size.
+
+## Adding SEC EDGAR closed the data gap
+
+The build before this one was finance-limited: 150.9M unique finance tokens forced ~2.2
+epochs of repetition to reach even 500M tokens at 65% finance.
+
+**EDGAR-CORPUS** (`c3po-ai/edgar-corpus`, the parquet mirror of Loukas et al. 2021) is
+91,086 10-K filings from 1993–2020 — public domain, and it alone contributed **728,984,985
+tokens** in 780s, a 5.9x increase in the unique finance pool.
+
+Two things were needed to use it:
+
+- It is published as a **loading script**, and `datasets` 4.x removed script execution, so
+  `load_dataset` fails outright with "Dataset scripts are no longer supported". The Hub
+  auto-converts every dataset to parquet on a `refs/convert/parquet` branch; those load
+  natively, so `resolve_parquet_urls` asks the datasets-server for them (9 files, 2.19 GB).
+- Filings arrive **split by item**, so `format_edgar` concatenates the substantive sections
+  and drops any under 400 chars. An omitted item still emits its header plus "Not
+  Applicable", and thousands of those would teach boilerplate rather than finance. Item 7
+  (MD&A) carries the richest financial reasoning in a filing and is included.
+
+**MeridianAlgo/FinDB** adds ~10M tokens of news prose, read from the SQLite file in the repo
+rather than the Hub. Half of it is unusable, though — see below.
+
+### FinDB data quality
+
+| Source | Articles | Avg chars | Usable |
+| --- | ---: | ---: | ---: |
+| google_finance | 11,387 | 398 | **0%** |
+| cnbc | 2,709 | 4,368 | 100% |
+| guardian_business | 2,149 | 4,995 | 96% |
+| yahoo_finance | 3,519 | 3,403 | 95% |
+| bbc_business | 971 | 4,015 | 94% |
+| marketwatch | 989 | 526 | 82% |
+| seeking_alpha | 1,098 | 325 | 34% |
+
+`google_finance` — half the database by article count — stores unparsed Google News redirect
+URLs instead of article text, e.g.
+`a hrefhttps:news.google.comrssarticlesCBMi9gFBVV95cUxQeTNRU1BK...`. **This looks like a
+scraper bug in FinDB worth fixing at the source**, since those rows also carry sentiment
+scores and entity extractions computed over a URL. Excluded here, along with a prose
+heuristic and U+FFFD stripping (mojibake from an upstream mis-decode), leaving 9,839 clean
+articles of 22,822 at 4,056 chars average.
+
+## Earlier build (superseded)
+
+The 500M-token build was: 64.96% finance, 150.9M unique finance tokens, ~2.2 epochs of
+repetition.
 
 ## 1. Fourteen of twenty-seven datasets were producing nothing
 
@@ -85,12 +137,11 @@ Final: **64.96%**.
 
 ## Open items for Phase 3
 
-- **The corpus is finance-limited, not compute-limited.** 500M tokens needs 325M finance
-  tokens, met only by repeating 150.9M unique tokens ~2.2x. Chinchilla for 25M is 504M
-  tokens, so this is exactly at budget with no room to over-train. More unique finance text
-  is the single highest-value addition — **SEC EDGAR filings are public domain** and absent
-  from the dataset list entirely, despite the plan assuming ~30% of the mix from them.
+- ~~The corpus is finance-limited~~ — resolved by EDGAR. 889.9M unique finance tokens now
+  support a 1B-token corpus with no repetition, at ~2x Chinchilla for the 25M target.
 - **Vocab 8,192 vs 16,384** is unresolved; 8k is ~9% cheaper per unit of text.
+- **FinDB's google_finance rows are broken at the source.** Excluded here, but half that
+  database is storing redirect URLs where article text should be.
 - **Licensing.** The shards are a derivative of the source datasets and reconstructible to
   text given the tokenizer, so the HF repo defaults to private. Making it public is a
   deliberate call, not a build flag.

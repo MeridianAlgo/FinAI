@@ -119,21 +119,25 @@ pipeline has ever produced a descending loss curve is the risk this ordering avo
 ### Phase 2 — Corpus and tokenizer *(complete)*
 
 Results in `docs/benchmarks/2026-08-12-phase2-corpus.md`. Delivered: a 16,384-vocab finance
-BPE, 500M training tokens in 10 uint16 shards at **64.96% finance**, and 2M held-out tokens
+BPE, **1B training tokens** in 20 uint16 shards at **69.97% finance**, and 2M held-out tokens
 per domain, at [meridianal/FinAI-corpus](https://huggingface.co/datasets/meridianal/FinAI-corpus).
+That is ~2x Chinchilla for the 25M target, so over-training is on the table.
 
-Three findings that revise this plan:
+Findings that revise this plan:
 
 - **14 of 27 datasets were yielding zero documents** — their spec named a column that does
   not exist, so `_format_text` returned `""` and every row was dropped silently. Since the
   trainer shares `_format_text`, live training has had the same hole. Now fixed and gated by
-  `scripts/validate_datasets.py`; 23/23 specs pass.
+  `scripts/validate_datasets.py`; 25/25 specs pass.
 - **The tokenizer compression claim below was wrong.** Ours produces *more* tokens than
   Qwen's, not 10–20% fewer. It still wins decisively on the metric that matters —
-  `params x tokens`, i.e. training cost for a fixed body of text — by **68.8%**.
-- **The corpus is finance-limited.** Only 150.9M unique finance tokens exist across all 19
-  finance sources, so 500M at 65% finance requires ~2.2 epochs of repetition. Adding SEC
-  EDGAR is now the highest-value work available.
+  `params x tokens`, i.e. training cost for a fixed body of text — by **66%**.
+- **SEC EDGAR closed the data gap.** The finance pool was 150.9M unique tokens, needing ~2.2
+  epochs of repetition; EDGAR-CORPUS added **729M tokens** of public-domain 10-K filings,
+  taking it to 889.9M and eliminating repetition entirely.
+- **FinDB contributes ~10M tokens of news prose**, but half that database — every
+  `google_finance` row — stores unparsed redirect URLs instead of article text. Excluded
+  here; worth fixing in the FinDB scraper.
 
 Original plan below, kept for context.
 
