@@ -3,7 +3,10 @@
 Building **MeridianLM**, a from-scratch finance-native base model, instead of fine-tuning
 Qwen2.5-0.5B.
 
-Status: **Phase 1 complete** — see `docs/benchmarks/2026-08-12-sweep-final.md`. Phase 2 is next.
+Status: **Phases 1 and 2 complete.** Phase 3 (dense 25M baseline) is next.
+
+- Phase 1: `docs/benchmarks/2026-08-12-sweep-final.md`
+- Phase 2: `docs/benchmarks/2026-08-12-phase2-corpus.md`
 
 Phase 1 confirmed the diagnosis and moved three numbers materially:
 
@@ -113,7 +116,28 @@ capacity for 3.2 months — and stays reachable afterwards, either trained fresh
 run teaches or by over-training the 25M past Chinchilla. Committing a quarter to 57M before the
 pipeline has ever produced a descending loss curve is the risk this ordering avoids.
 
-### Phase 2 — Corpus and tokenizer
+### Phase 2 — Corpus and tokenizer *(complete)*
+
+Results in `docs/benchmarks/2026-08-12-phase2-corpus.md`. Delivered: a 16,384-vocab finance
+BPE, 500M training tokens in 10 uint16 shards at **64.96% finance**, and 2M held-out tokens
+per domain, at [meridianal/FinAI-corpus](https://huggingface.co/datasets/meridianal/FinAI-corpus).
+
+Three findings that revise this plan:
+
+- **14 of 27 datasets were yielding zero documents** — their spec named a column that does
+  not exist, so `_format_text` returned `""` and every row was dropped silently. Since the
+  trainer shares `_format_text`, live training has had the same hole. Now fixed and gated by
+  `scripts/validate_datasets.py`; 23/23 specs pass.
+- **The tokenizer compression claim below was wrong.** Ours produces *more* tokens than
+  Qwen's, not 10–20% fewer. It still wins decisively on the metric that matters —
+  `params x tokens`, i.e. training cost for a fixed body of text — by **68.8%**.
+- **The corpus is finance-limited.** Only 150.9M unique finance tokens exist across all 19
+  finance sources, so 500M at 65% finance requires ~2.2 epochs of repetition. Adding SEC
+  EDGAR is now the highest-value work available.
+
+Original plan below, kept for context.
+
+### Phase 2 — Corpus and tokenizer (as planned)
 
 Assemble the mix, train a 16k finance BPE, measure its compression against Qwen's on held-out
 filings, pre-tokenize to `uint16` shards, publish as an HF dataset repo.
