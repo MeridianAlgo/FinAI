@@ -97,6 +97,14 @@ def write_split(sources, out_path, total_tokens, block, rng, shard_tokens=None, 
     came out 70% general for a finance model. Repeating scarce data a bounded number of
     times is the standard remedy; up to ~4 epochs is close to as useful as fresh tokens.
     """
+    # Normalize the bookkeeping keys here rather than at each call site: the validation
+    # splits legitimately do not care about repetition, and a missing key should not be
+    # their problem.
+    for source in sources:
+        source.setdefault("start", source.get("offset", 0))
+        source.setdefault("consumed", 0)
+        source.setdefault("epochs", 1)
+
     live = [s for s in sources if s["remaining"] > 0]
     if not live:
         return []
