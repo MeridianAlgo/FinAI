@@ -35,6 +35,16 @@ import torch
 RESULT_PREFIX = "RESULT_JSON:"
 CONTROL_NAME = "494M-control"
 
+# Saved tensors per layer kept alive for the backward pass, as a multiple of one
+# (batch x block x hidden) activation. Calibrated against observed RSS on the 4-core runner;
+# deliberately on the high side, since overestimating costs a skipped data point while
+# underestimating costs the entire job.
+ACT_TENSORS_PER_LAYER = 12
+
+# Configs predicted above this are skipped. The runner has 15 GB, and systemd-oomd starts
+# killing well before that, so this leaves real headroom for the OS and the runner agent.
+DEFAULT_MEM_BUDGET_GB = 10.5
+
 # FLOPs per token for forward + backward is ~6N (2N forward, 4N backward). Attention adds a
 # term that is small at these depths and context lengths; we note it rather than model it.
 FLOPS_PER_PARAM_PER_TOKEN = 6
@@ -215,6 +225,36 @@ def run_config(
         return empty
 
 
+def estimate_peak_gb(
+    shape: dict[str, int], vocab: int, batch: int, block: int, dtype_name: str
+) -> float:
+    """Predict peak memory for a config, so we can decline to run the ones that die.
+
+    This has to be predictive rather than defensive. When a config exhausts the runner,
+    systemd-oomd SIGTERMs the whole cgroup — parent and child together — so neither an
+    ``except`` nor subprocess isolation survives it. Sweeps 2 and 3 both died at
+    126M/batch32 for exactly this reason (exit 143).
+
+    Three terms: optimizer state (weights + grads + AdamW's two fp32 moments), saved
+    activations for the backward pass, and the vocab-wide logits, which are materialized in
+    fp32 for the loss and are far from negligible — at batch 32 they alone are ~2 GB.
+    """
+    bytes_per = 2 if dtype_name == "bf16" else 4
+    hidden, layers = shape["hidden"], shape["layers"]
+
+    params = vocab * hidden  # tied embeddings, counted once
+    params += layers * (
+        2 * hidden * hidden  # q_proj, o_proj
+        + 2 * hidden * (shape["kv_heads"] * (hidden // shape["heads"]))  # k_proj, v_proj
+        + 3 * hidden * shape["ffn"]  # SwiGLU gate/up/down
+    )
+
+    state = params * (2 * bytes_per + 8)
+    activations = batch * block * hidden * layers * bytes_per * ACT_TENSORS_PER_LAYER
+    logits = batch * block * vocab * 4 * 2  # fp32 logits plus their gradient
+    return (state + activations + logits) / 1024**3
+
+
 def parse_spec(spec: str) -> tuple[str, dict[str, int], int, str, int, int]:
     """Decode ``name:dtype:batch:block`` into the arguments ``run_config`` needs."""
     name, dtype_name, batch_raw, block_raw = spec.split(":")
@@ -225,7 +265,9 @@ def parse_spec(spec: str) -> tuple[str, dict[str, int], int, str, int, int]:
     return name, shape, vocab, dtype_name, int(batch_raw), int(block_raw)
 
 
-def run_spec_isolated(spec: str, budget_s: float, max_steps: int) -> Result:
+def run_spec_isolated(
+    spec: str, budget_s: float, max_steps: int, mem_budget_gb: float = DEFAULT_MEM_BUDGET_GB
+) -> Result:
     """Run one config in a child process and return its Result.
 
     Isolation is not optional here. A config that exhausts the runner's 15 GB is
@@ -233,9 +275,33 @@ def run_spec_isolated(spec: str, budget_s: float, max_steps: int) -> Result:
     that killed the whole job at 126M/batch32 and cost every result after it. In a child,
     the same kill costs one data point and the sweep continues.
     """
-    name, _, _, dtype_name, batch_size, block_size = parse_spec(spec)
+    name, shape, vocab, dtype_name, batch_size, block_size = parse_spec(spec)
     label = f"{name}/{dtype_name}/batch{batch_size}"
-    print(f"  [RUN ] {label} ...", flush=True)
+
+    def blank(status: str, note: str) -> Result:
+        return Result(
+            shape=name,
+            params=0,
+            dtype=dtype_name,
+            batch_size=batch_size,
+            block_size=block_size,
+            steps_timed=0,
+            tokens=0,
+            seconds=0.0,
+            tokens_per_sec=0.0,
+            gflops=0.0,
+            peak_rss_gb=0.0,
+            status=status,
+            note=note,
+        )
+
+    predicted = estimate_peak_gb(shape, vocab, batch_size, block_size, dtype_name)
+    if predicted > mem_budget_gb:
+        note = f"predicted {predicted:.1f} GB peak > {mem_budget_gb:.1f} GB budget"
+        print(f"  [SKIP] {label}: {note}", flush=True)
+        return blank("skipped-memory", note)
+
+    print(f"  [RUN ] {label} (est. {predicted:.1f} GB) ...", flush=True)
 
     # The warmup guard in run_config bounds a config at roughly two steps, but a pathological
     # shape could still stall; cap it so one config cannot consume the whole job.
@@ -258,21 +324,7 @@ def run_spec_isolated(spec: str, budget_s: float, max_steps: int) -> Result:
         )
     except subprocess.TimeoutExpired:
         print(f"  [TIME] {label}: exceeded per-config wall clock", flush=True)
-        return Result(
-            shape=name,
-            params=0,
-            dtype=dtype_name,
-            batch_size=batch_size,
-            block_size=block_size,
-            steps_timed=0,
-            tokens=0,
-            seconds=0.0,
-            tokens_per_sec=0.0,
-            gflops=0.0,
-            peak_rss_gb=0.0,
-            status="timeout",
-            note="exceeded per-config wall clock",
-        )
+        return blank("timeout", "exceeded per-config wall clock")
 
     for line in proc.stdout.splitlines():
         if line.startswith(RESULT_PREFIX):
@@ -298,21 +350,7 @@ def run_spec_isolated(spec: str, budget_s: float, max_steps: int) -> Result:
         else (proc.stderr.strip().splitlines() or ["no output"])[-1][:200]
     )
     print(f"  [{status.upper():4}] {label}: {note}", flush=True)
-    return Result(
-        shape=name,
-        params=0,
-        dtype=dtype_name,
-        batch_size=batch_size,
-        block_size=block_size,
-        steps_timed=0,
-        tokens=0,
-        seconds=0.0,
-        tokens_per_sec=0.0,
-        gflops=0.0,
-        peak_rss_gb=0.0,
-        status=status,
-        note=note,
-    )
+    return blank(status, note)
 
 
 def markdown_table(results: list[Result]) -> str:
@@ -408,6 +446,12 @@ def main() -> int:
     )
     parser.add_argument("--out", default="docs/benchmarks/latest.json")
     parser.add_argument(
+        "--mem-budget-gb",
+        type=float,
+        default=DEFAULT_MEM_BUDGET_GB,
+        help="Skip configs predicted to exceed this peak memory",
+    )
+    parser.add_argument(
         "--single",
         metavar="NAME:DTYPE:BATCH:BLOCK",
         help="Internal: measure one config and emit its Result as JSON. Used by the parent "
@@ -446,7 +490,9 @@ def main() -> int:
     if args.include_baseline:
         specs.append(f"{CONTROL_NAME}:bf16:1:256")
 
-    results = [run_spec_isolated(spec, args.budget, args.max_steps) for spec in specs]
+    results = [
+        run_spec_isolated(spec, args.budget, args.max_steps, args.mem_budget_gb) for spec in specs
+    ]
 
     table = markdown_table(results)
     findings = summarize(results)
